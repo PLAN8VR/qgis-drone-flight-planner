@@ -4,29 +4,28 @@
 
 [general]
 name=PlanoVoo
-qgisMinimumVersion=3.1
+qgisMinimumVersion=3.0
 description=Plano de Voo para Drones
 version=1.0
 author=Prof Cazaroli e Leandro França
 email=suporteo@geoone.com.br
 
+about=Plano de Voo para Drones.
 
-about=Plano Voo para Drones com Litchi
-
-tracker=https://github.com/ProfCazaroli/PlanoVoo/issues
+tracker=https://github.com/OpenGeoOne/PlanoVoo/issues
 repository=https://github.com/OpenGeoOne/PlanoVoo
 # End of mandatory metadata
 
 # Recommended items:
 
-hasProcessingProvider=no
+hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 # changelog=1.0 - Initial version
 
 # Tags are comma separated with spaces allowed
-tags=topografia, cartografia, drone, rural, georural, geourbano, brazil, Geoone
+tags=drones, topografia, georreferenciamento, car, rural, levantamento, georural, brazil, GeoOne
 
-homepage=http://homepage
+homepage=https://github.com/OpenGeoOne/PlanoVoo/wiki
 category=Topography
 icon=images/PlanoVoo.png
 # experimental flag
@@ -40,7 +39,7 @@ deprecated=False
 # Check the documentation for more information.
 # plugin_dependencies=
 
-Category of the plugin: Raster, Vector, Drone
+Category of the plugin: Raster, Vector, Drone or Topography
 # category=Processing
 
 # If the plugin can run on QGIS Server.
