@@ -30,4 +30,4 @@ __revision__ = '$Format:%H$'
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
     from .PlanoVoo import PlanoVooPlugin
-    return PlanoVooPlugin(iface)
+    return PlanoVooPlugin()

@@ -65,7 +65,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                        minValue=0.60,defaultValue=0.85))
         
     def processAlgorithm(self, parameters, context, model_feedback):
-        feedback = QgsProcessingMultiStepFeedback(2, model_feedback)
+        feedback = QgsProcessingMultiStepFeedback(7, model_feedback)
         outputs = {}
 
         # =====Parâmetros de entrada para variáveis========================
@@ -409,31 +409,30 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         return
     
     def name(self):
-        return 'Linha de Voo e Pontos Fotos'
+        return 'PlanoVooH'.lower()
 
     def displayName(self):
-        return self.tr('Linha de Voo e Pontos Fotos')
+        return self.tr('Pontos Fotos - Voo Horizontal')
 
     def group(self):
-        return 'Drones'
+        return self.tr(self.groupId())
 
     def groupId(self):
-        return 'Drones'
+        return ''
         
     def tr(self, string):
-        return QCoreApplication.translate('Processing3', string)
+        return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return PlanoVooAlgorithm()
-    
-    def tags(self):
-        return self.tr('drone,side overlap,front overlay,flight,flight plan,topography').split(',')
+        return PlanoVoo_H()
     
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/topoGeoone.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
     
     texto = "Este algoritmo calcula a sobreposição lateral e frontal de Voo de Drone, \
-            fornecendo uma camada da 'Linha do Voo' e uma camada dos 'Pontos' para Fotos"
+            fornecendo uma camada da 'Linha do Voo' e uma camada dos 'Pontos' para Fotos. \
+            Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth. \
+            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS."
     figura = 'images/PlanoVoo1.jpg'
 
     def shortHelpString(self):
@@ -442,8 +441,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                       </div>
                       <div align="right">
                       <p align="right">
-                      <b>'Autor: Prof Cazaroli'</b>
+                      <b>'Autor: Prof Cazaroli     -     Leandro França'</b>
                       </p>'Geoone'</div>
                     </div>'''
         return self.tr(self.texto) + corpo
-    

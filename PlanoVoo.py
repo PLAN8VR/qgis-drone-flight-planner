@@ -39,7 +39,9 @@ cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
+
 class PlanoVooPlugin(object):
+
     def __init__(self):
         self.provider = None
 
@@ -48,8 +50,8 @@ class PlanoVooPlugin(object):
         self.provider = PlanoVooProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
 
-    def initGui(self): # Código para inicializar a interface gráfica do plugin
+    def initGui(self):
         self.initProcessing()
 
-    def unload(self):  # Código para limpar/descarregar o plugin
-        QgsApplication.processingRegistry().removeProvider(self.provider) 
+    def unload(self):
+        QgsApplication.processingRegistry().removeProvider(self.provider)
