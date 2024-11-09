@@ -28,10 +28,11 @@ __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
-from .algoritmos.PlanoVoo_H import PlanoVoo_HAlgorithm
-from .algoritmos.PlanoVoo_V import PlanoVoo_VAlgorithm
 from qgis.PyQt.QtGui import QIcon
 import os
+
+from .algoritmos.PlanoVoo_H import PlanoVoo_H
+from .algoritmos.PlanoVoo_V import PlanoVoo_V
 
 class PlanoVooProvider(QgsProcessingProvider):
     def __init__(self):
@@ -41,8 +42,8 @@ class PlanoVooProvider(QgsProcessingProvider):
         pass
 
     def loadAlgorithms(self):
-        self.addAlgorithm(PlanoVoo_HAlgorithm())
-        self.addAlgorithm(PlanoVoo_VAlgorithm())
+        self.addAlgorithm(PlanoVoo_H())
+        self.addAlgorithm(PlanoVoo_V())
 
     def id(self):
         return 'PlanoVoo'

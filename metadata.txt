@@ -10,7 +10,7 @@ version=1.0
 author=Prof Cazaroli e Leandro França
 email=suporteo@geoone.com.br
 
-about=Plano de Voo para Drones.
+about=Plano de Voo para Drones, gerando Pontos para Fotos.
 
 tracker=https://github.com/OpenGeoOne/PlanoVoo/issues
 repository=https://github.com/OpenGeoOne/PlanoVoo

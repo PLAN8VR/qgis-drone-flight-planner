@@ -30,7 +30,8 @@ __revision__ = '$Format:%H$'
 import os
 import sys
 import inspect
-from qgis.core import QgsApplication
+
+from qgis.core import QgsProcessingAlgorithm, QgsApplication
 from .PlanoVoo_provider import PlanoVooProvider
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -43,6 +44,7 @@ class PlanoVooPlugin(object):
         self.provider = None
 
     def initProcessing(self):
+        """Init Processing provider for QGIS >= 3.8."""
         self.provider = PlanoVooProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
 

@@ -27,6 +27,7 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-def classFactory(iface):
+# noinspection PyPep8Naming
+def classFactory(iface):  # pylint: disable=invalid-name
     from .PlanoVoo import PlanoVooPlugin
     return PlanoVooPlugin(iface)

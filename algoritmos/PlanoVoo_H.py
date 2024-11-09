@@ -42,7 +42,7 @@ import os
 
 # Dados Air 2S (5472 × 3648)
 
-class PlanoVooAlgorithm(QgsProcessingAlgorithm):
+class PlanoVoo_H(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Terreno do Voo', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterNumber('h','Altura de Voo',
