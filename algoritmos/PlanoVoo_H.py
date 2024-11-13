@@ -68,10 +68,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                                fileFilter='CSV files (*.csv)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML para o Google Earth',
                                                                fileFilter='KML files (*.kml)'))
+        
     def processAlgorithm(self, parameters, context, model_feedback):
-        feedback = QgsProcessingMultiStepFeedback(7, model_feedback)
-        outputs = {}
-
         # =====Parâmetros de entrada para variáveis========================
         camada = self.parameterAsVectorLayer(parameters, 'terreno', context)
         crs = camada.crs()
@@ -102,103 +100,145 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         SD_front = percF * D_front
         h1 = SD_front / (2 * tg_alfa_2)
         deltaFront = SD_front * (H / h1 - 1)
-
+        
+        #feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
+        
         # =====================================================================
-        feedback.setCurrentStep(1)
-        if feedback.isCanceled():
-            return {}
-
         # ===== Determinação das Linhas de Voo ================================
-        lado_mais_longo = None
-        comprimento_lado = 0
-        linha_mais_longa = None
-
-        # Obter a primeira feição (polígono) da camada
-        feature = next(camada.getFeatures())
-        geom = feature.geometry()
-
-        # Iterar sobre os segmentos do perímetro do polígono
+        f = next(camada.getFeatures())
+        geom = f.geometry()
+        
         vertices = list(geom.vertices())
+        
+        # maior distância entre vértices -> maior_distancia
+        maior_distancia = 0
+
+        for i in range(len(vertices)):
+            for j in range(i + 1, len(vertices)):
+                ponto_a = vertices[i]
+                ponto_b = vertices[j]
+                
+                # Calcular a distância entre os dois vértices
+                dist = ponto_a.distance(ponto_b)
+                
+                # Verificar se essa distância é a maior encontrada até agora
+                if dist > maior_distancia:
+                    maior_distancia = dist
+        
+        # maior lado do polígono -> maior_lado (distância), p1 e p2 (geom Pontos) e lado_mais_longo (geom Linha)
+        p1 = p2 = None
+        maior_lado = 0
+
         for i in range(len(vertices) - 1):
-            ponto1 = vertices[i]
-            ponto2 = vertices[i + 1]
+            ponto_a = vertices[i]
+            ponto_b = vertices[i + 1]
             
             # Calcular a distância entre os dois pontos
-            dist = ponto1.distance(ponto2)
+            dist = ponto_a.distance(ponto_b)
             
             # Verificar se essa distância é a maior
-            if dist > comprimento_lado:
-                comprimento_lado = dist
-                lado_mais_longo = (ponto1, ponto2)
+            if dist > maior_lado:
+                maior_lado = dist
+                p1 = ponto_a
+                p2 = ponto_b
 
-        # Para gerar as linhas paralelas no sentido do polígono, criamos uma linha a partir de 'lado_mais_longo'
-        ponto1, ponto2 = lado_mais_longo
-    
-        # Gerar linhas paralelas ao lado mais longo
-        flight_lines = []
-
-        # Criar a linha base (lado mais longo)
-        linha_base = QgsGeometry.fromPolylineXY([ponto1, ponto2])
-
-        # O deslocamento será aplicado em um único sentido (do polígono)
-
-        # Para deslocar as linhas em um só sentido, aplicamos um vetor normal à linha
-        for i in range(1, 11):  # Gera 10 linhas paralelas, no sentido do polígono
-            # Deslocamento no eixo X e Y, no sentido desejado (perpendicular ao lado)
-            deslocamento_x = i * deltaLat * (ponto2.y() - ponto1.y()) / comprimento_lado
-            deslocamento_y = -i * deltaLat * (ponto2.x() - ponto1.x()) / comprimento_lado
-            
-            # Criar a nova linha paralela com o deslocamento
-            linha_inicio = QgsPointXY(ponto1.x() + deslocamento_x, ponto1.y() + deslocamento_y)
-            linha_fim = QgsPointXY(ponto2.x() + deslocamento_x, ponto2.y() + deslocamento_y)
-            
-            # Criar a geometria da linha
-            line_geom = QgsGeometry.fromPolylineXY([linha_inicio, linha_fim])
-
-            # Cortar a linha com a geometria do polígono para não ultrapassar as bordas
-            clipped_line = line_geom.intersection(geom)
-
-            # Verificar se a linha cortada não é nula
-            if not clipped_line.isNull():
-                # Adicionar a linha à lista de linhas de voo
-                flight_line = QgsFeature()
-                flight_line.setGeometry(clipped_line)
-                flight_lines.append(flight_line)
-
-        # Verificar se as linhas foram geradas
-        if not flight_lines:
-            print("Nenhuma linha foi gerada.")
-        else:
-            print(f"{len(flight_lines)} linhas de voo geradas.")
-
-        # Criar a camada de linhas de voo
-        flight_layer = QgsVectorLayer("LineString?crs=" + crs.authid(), "Linhas_de_Voo", "memory")
-        if not flight_layer.isValid():
-            print("Erro: A camada de linhas de voo não foi criada corretamente.")
-        else:
-            print("Camada de linhas de voo criada com sucesso.")
-
-        # Adicionar os atributos à camada
-        flight_layer.dataProvider().addAttributes([QgsField("ID", QVariant.Int)])
-        flight_layer.updateFields()
-
-        # Adicionar as linhas à camada
-        for i, line in enumerate(flight_lines):
-            line.setAttributes([i + 1])
-            flight_layer.dataProvider().addFeature(line)
-
-        # Forçar a atualização da camada
-        flight_layer.triggerRepaint()
-
-        # Verificar se a camada foi adicionada ao projeto
-        if not QgsProject.instance().mapLayersByName("Linhas_de_Voo"):
-            print("Camada não foi adicionada ao projeto.")
-        else:
-            print("Camada de linhas de voo adicionada com sucesso.")
-
-        # Adicionar a camada ao projeto QGIS
-        QgsProject.instance().addMapLayer(flight_layer)
+        lado_mais_longo = QgsGeometry.fromPolylineXY([QgsPointXY(p1), QgsPointXY(p2)])
         
+        # Agora, encontrar o vértice mais oposto -> dist_P (distância) e ponto_oposto (geom Ponto)
+        ponto_oposto = None
+        dist_P = 0 
+
+        for i in range(len(vertices)):
+            ponto_atual = vertices[i]
+            
+            # Calcular a distância entre o ponto atual e o maior lado do polígono
+            dist = lado_mais_longo.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_atual)))
+             
+            # Verificar se é a maior distância
+            if dist > dist_P:
+                dist_P = dist
+                ponto_oposto = ponto_atual
+        
+        # Criar a linha temporária sobre o lado mais longo do Polígono = Primeira Linha  
+        lado_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Lado Mais Longo', 'memory')
+        lado_provider = lado_layer.dataProvider()
+        lado_provider.addAttributes([QgsField('id', QVariant.Int)])
+        lado_layer.updateFields()
+
+        lado_feature = QgsFeature()
+        lado_feature.setGeometry(lado_mais_longo)
+        lado_feature.setAttributes([1]) 
+        lado_provider.addFeature(lado_feature)
+
+        QgsProject.instance().addMapLayer(lado_layer)
+
+        # Criar camada temporária para o ponto oposto
+        ponto_layer = QgsVectorLayer('Point?crs=' + crs.authid(), 'Ponto Oposto', 'memory')
+        ponto_provider = ponto_layer.dataProvider()
+        ponto_provider.addAttributes([QgsField('id', QVariant.Int)])
+        ponto_layer.updateFields()
+
+        ponto_feature = QgsFeature()
+        ponto_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto_oposto)))
+        ponto_feature.setAttributes([1])  # Atribuindo um valor qualquer, pode ser ajustado
+        ponto_provider.addFeature(ponto_feature)
+
+        QgsProject.instance().addMapLayer(ponto_layer)
+  
+        # Criar as Paralelas
+        paralelas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas Paralelas', 'memory')
+        paralelas_provider = paralelas_layer.dataProvider()
+        paralelas_provider.addAttributes([QgsField('id', QVariant.Int)])
+        paralelas_layer.updateFields()
+        
+        # Incluir o lado mais longo como a primeira linha paralela
+        linha_id = 1
+        paralela_feature = QgsFeature()
+        paralela_feature.setGeometry(lado_mais_longo)
+        paralela_feature.setAttributes([linha_id])
+        paralelas_provider.addFeature(paralela_feature)
+
+        # cálculo do ângulo da linha do lado mais longo do polígono  
+        dx = p2.x() - p1.x()
+        dy = p2.y() - p1.y()
+        angulo = math.atan2(dy, dx)
+        
+        # Ângulo perpendicular (90 graus ou π/2 radianos)
+        angulo_perpendicular = angulo + math.pi / 2
+        
+        deslocamento = deltaLat
+
+        extensao_x = maior_lado * math.cos(angulo)
+        extensao_y = maior_lado * math.sin(angulo)
+            
+        while True:
+            desloc_x = deslocamento * math.cos(angulo_perpendicular)
+            desloc_y = deslocamento * math.sin(angulo_perpendicular)
+            
+            p1_deslocado = QgsPointXY(p1.x() + desloc_x, p1.y() + desloc_y)
+            p2_deslocado = QgsPointXY(p2.x() + desloc_x, p2.y() + desloc_y)
+
+            p1_estendido = QgsPointXY(p1_deslocado.x() - extensao_x ,p1_deslocado.y() - extensao_y)
+            p2_estendido = QgsPointXY(p2_deslocado.x() + extensao_x ,p2_deslocado.y() + extensao_y)
+            
+            # Criar a linha paralela estendida e depois realizar a interseção
+            linha_estendida = QgsGeometry.fromPolylineXY([p1_deslocado, p2_deslocado])
+            #linha_estendida = QgsGeometry.fromPolylineXY([p1_estendido, p2_estendido])
+            linha_paralela = linha_estendida.intersection(geom)
+            
+            paralela_feature = QgsFeature()
+            paralela_feature.setGeometry(linha_paralela)
+            paralela_feature.setAttributes([linha_id])
+            paralelas_provider.addFeature(paralela_feature)
+
+            deslocamento += deltaLat
+            linha_id += 1
+            
+            if linha_id > 30:
+                break
+
+        QgsProject.instance().addMapLayer(paralelas_layer)
+
         return {}
         """
         pN = pontoN.y()
@@ -217,10 +257,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         print('Norte-Sul',dNS)
         print('Oeste-Leste',dWE)
 
-         # =====================================================================
-        feedback.setCurrentStep(2)
-        if feedback.isCanceled():
-            return {}
+        # =====================================================================
+
 
         # =====Criar Linha do lado polígono mais ao Norte========================
         maxNorte = float('-inf')
@@ -268,11 +306,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         provider.addFeatures([linha]) # Adicionar a feição à camada
         camadaLinha.updateExtents()
-
-        # =====================================================================
-        feedback.setCurrentStep(3)
-        if feedback.isCanceled():
-            return {}
         
         # =====Extender a Linha criada com os extremos W e E====================
         if dWE > dLinha: # redefinindo o tamanho da Linha criada
@@ -288,11 +321,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         outputs['linhaExtendida'] = processing.run('native:extendlines', alg_params, context=context,
                                                        feedback=feedback, is_child_algorithm=True)
 
-        # =====================================================================
-        feedback.setCurrentStep(4)
-        if feedback.isCanceled():
-            return {}
-        
         # =====Linhas paralelas a partir da Linha criada=======================
         n = int(dNS / deltaLat) * -1 # número de Linhas e negativo N para S
         alg_params = {
@@ -307,11 +335,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         outputs['linhas'] = processing.run('native:arrayoffsetlines', alg_params, context=context,
                                                        feedback=feedback, is_child_algorithm=True)
-        
-       # =====================================================================
-        feedback.setCurrentStep(5)
-        if feedback.isCanceled():
-            return {}
         
         # =====Unir as Linhas //s ============================================
         camadaLinhas = context.getMapLayer(outputs['linhas']['OUTPUT'])
@@ -376,11 +399,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         camadaLinhas.updateExtents()
         camadaLinhas.commitChanges()
         
-      # =======================================================================
-        feedback.setCurrentStep(6)
-        if feedback.isCanceled():
-            return {}
-        
         # =====Transformar várias linhas em uma só==============================
         geomTotal = None
 
@@ -409,11 +427,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         camadaLinhaVoo.triggerRepaint()
         QgsProject.instance().addMapLayer(camadaLinhaVoo)
 
-     # =======================================================================
-        feedback.setCurrentStep(7)
-        if feedback.isCanceled():
-            return {}
-        
         # =====Criar uma camada Ponto com os deltaFront sobre a linha===========
         camadaPontos = QgsVectorLayer(f"Point?crs={crs}", "Pontos", "memory")
         dados = camadaPontos.dataProvider()
