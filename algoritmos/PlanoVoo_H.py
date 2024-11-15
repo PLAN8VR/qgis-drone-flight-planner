@@ -28,7 +28,6 @@ __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm
-from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber
 from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsProcessingParameterFileDestination
 from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling
@@ -69,7 +68,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML para o Google Earth',
                                                                fileFilter='KML files (*.kml)'))
         
-    def processAlgorithm(self, parameters, context, model_feedback):
+    def processAlgorithm(self, parameters, context, feedback):
         # =====Parâmetros de entrada para variáveis========================
         camada = self.parameterAsVectorLayer(parameters, 'terreno', context)
         crs = camada.crs()
@@ -91,9 +90,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         h1 = SD_lat / (2 * tg_alfa_2)
         deltaLat = SD_lat * (H / h1 - 1)
 
-        if deltaLat > 0: # valor negativo para ser do Norte para o Sul
-            deltaLat = deltaLat * (-1)
-
         # Espaçamento Frontal entre as fotografias- Espaçamento Frontal
         tg_alfa_2 = dl / (2 * f)
         D_front = dl * H / f
@@ -101,7 +97,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         h1 = SD_front / (2 * tg_alfa_2)
         deltaFront = SD_front * (H / h1 - 1)
         
-        #feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
+        feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
         
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
@@ -144,6 +140,18 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         lado_mais_longo = QgsGeometry.fromPolylineXY([QgsPointXY(p1), QgsPointXY(p2)])
         
+        # Criar a linha estendida e depois realizar a interseção
+        dx = p2.x() - p1.x()
+        dy = p2.y() - p1.y()
+        angulo = math.atan2(dy, dx)
+        
+        extensao_x = maior_distancia * math.cos(angulo)
+        extensao_y = maior_distancia * math.sin(angulo)
+        
+        p1_estendido = QgsPointXY(p1.x() - extensao_x ,p1.y() - extensao_y)
+        p2_estendido = QgsPointXY(p2.x() + extensao_x ,p2.y() + extensao_y)
+        lado_estendido = QgsGeometry.fromPolylineXY([QgsPointXY(p1_estendido), QgsPointXY(p2_estendido)])
+        
         # Agora, encontrar o vértice mais oposto -> dist_P (distância) e ponto_oposto (geom Ponto)
         ponto_oposto = None
         dist_P = 0 
@@ -169,7 +177,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         lado_feature.setGeometry(lado_mais_longo)
         lado_feature.setAttributes([1]) 
         lado_provider.addFeature(lado_feature)
-
+        
         QgsProject.instance().addMapLayer(lado_layer)
 
         # Criar camada temporária para o ponto oposto
@@ -194,151 +202,65 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Incluir o lado mais longo como a primeira linha paralela
         linha_id = 1
         paralela_feature = QgsFeature()
-        paralela_feature.setGeometry(lado_mais_longo)
+        paralela_feature.setGeometry(lado_estendido)
         paralela_feature.setAttributes([linha_id])
         paralelas_provider.addFeature(paralela_feature)
-
-        # cálculo do ângulo da linha do lado mais longo do polígono  
-        dx = p2.x() - p1.x()
-        dy = p2.y() - p1.y()
-        angulo = math.atan2(dy, dx)
         
-        # Ângulo perpendicular (90 graus ou π/2 radianos)
-        angulo_perpendicular = angulo + math.pi / 2
+        QgsProject.instance().addMapLayer(paralelas_layer)
         
-        deslocamento = deltaLat
-
-        extensao_x = maior_lado * math.cos(angulo)
-        extensao_y = maior_lado * math.sin(angulo)
+        # Calcular o produto vetorial para determinar a direção das linhas paralelas
+        vetor_linha = QgsPointXY(p2.x() - p1.x(), p2.y() - p1.y())  # Vetor da linha
+        vetor_ponto = QgsPointXY(ponto_oposto.x() - p1.x(), ponto_oposto.y() - p1.y())
+        direcao = vetor_linha.x() * vetor_ponto.y() - vetor_linha.y() * vetor_ponto.x()
+        if direcao > 0:
+            sentido = 1  # Ponto está à direita
+        else:
+            sentido = -1 # Ponto está à esquerda
             
-        while True:
-            desloc_x = deslocamento * math.cos(angulo_perpendicular)
-            desloc_y = deslocamento * math.sin(angulo_perpendicular)
+        deslocamento = 0
+        linha_base = paralelas_layer
+        
+        feedback.pushInfo(f"Sentido: {sentido}, Dist_P: {dist_P}")
+        
+        while abs(deslocamento) < dist_P: # Linhas paralelas a partir da Linha criada
+            parameters = {
+                'INPUT': linha_base,
+                'DISTANCE': deltaLat * sentido,
+                'OUTPUT': 'memory:'
+            }
+        
+            result = processing.run("native:offsetline", parameters)
+            linha_paralela_layer = result['OUTPUT']
             
-            p1_deslocado = QgsPointXY(p1.x() + desloc_x, p1.y() + desloc_y)
-            p2_deslocado = QgsPointXY(p2.x() + desloc_x, p2.y() + desloc_y)
-
-            p1_estendido = QgsPointXY(p1_deslocado.x() - extensao_x ,p1_deslocado.y() - extensao_y)
-            p2_estendido = QgsPointXY(p2_deslocado.x() + extensao_x ,p2_deslocado.y() + extensao_y)
-            
-            # Criar a linha paralela estendida e depois realizar a interseção
-            linha_estendida = QgsGeometry.fromPolylineXY([p1_deslocado, p2_deslocado])
-            #linha_estendida = QgsGeometry.fromPolylineXY([p1_estendido, p2_estendido])
-            linha_paralela = linha_estendida.intersection(geom)
+            feature = next(linha_paralela_layer.getFeatures(), None)
+            linha_geom = feature.geometry()
+            intersecao_geom = linha_geom.intersection(geom)
             
             paralela_feature = QgsFeature()
-            paralela_feature.setGeometry(linha_paralela)
+            paralela_feature.setGeometry(intersecao_geom)
             paralela_feature.setAttributes([linha_id])
-            paralelas_provider.addFeature(paralela_feature)
+            paralelas_layer.dataProvider().addFeature(paralela_feature)
+            paralelas_layer.updateExtents()
 
-            deslocamento += deltaLat
+            
+            # features = linha_paralela_layer.getFeatures()
+            # paralelas_layer.dataProvider().addFeatures(features)
+            # paralelas_layer.updateExtents()
+            
+            linha_base = linha_paralela_layer
+           
+            deslocamento += deltaLat * sentido
             linha_id += 1
             
-            if linha_id > 30:
-                break
-
         QgsProject.instance().addMapLayer(paralelas_layer)
 
         return {}
         """
-        pN = pontoN.y()
-        pS = pontoS.y()
-        pW = pontoW.x()
-        pE = pontoE.x()
+        feedback.pushInfo(f"Deslocamento: {deslocamento}, Dist_P: {dist_P}")
+    
 
-        print('N',pN)
-        print('S',pS)
-        print('W',pW)
-        print('E',pE)
-
-        dNS = abs(pN-pS) # cálculo das distâncias extremas Norte-Sul
-        dWE = abs(pW-pE) # Oeste-Leste
-
-        print('Norte-Sul',dNS)
-        print('Oeste-Leste',dWE)
-
-        # =====================================================================
-
-
-        # =====Criar Linha do lado polígono mais ao Norte========================
-        maxNorte = float('-inf')
-        limiteMaisNorte = None
-
-        f = next(camada.getFeatures()) # Obter a primeira feature (único polígono)
-
-        geom = f.geometry() # Obter a geometria do polígono
-
-        pols = geom.asPolygon() # obter o Lado do Terreno mais ao Norte
-        for p in pols:
-            for i in range(len(p) - 1):
-                ponto1 = p[i]
-                ponto2 = p[i + 1]
-                pontoMedio = QgsPoint((ponto1.x() + ponto2.x()) / 2, (ponto1.y() + ponto2.y()) / 2)
-                if pontoMedio.y() > maxNorte: # obter a maior Latitude
-                    maxNorte = pontoMedio.y()
-                    limiteMaisNorte = (ponto1, ponto2)
-
-        p1, p2 = limiteMaisNorte
-        x1, y1 = p1.x(),p1.y()
-        x2, y2 = p2.x(),p2.y()
-
-        print(x1, y1)
-        print(x2, y2)
-        
-        p1 = QgsPointXY(x1, y1)
-        p2 = QgsPointXY(x2, y2)
-
-        dLinha = p1.distance(p2) # cálculo da medida da Linha
-        print('Medida da Linha',dLinha)
-        
-        if dWE > dLinha: # redefinindo o tamanho da Linha criada
-            extender = (dWE - dLinha) / 2
-
-        camadaLinha = QgsVectorLayer(f"LineString?crs={crs}", "Lado Mais ao Norte", "memory")
-        provider = camadaLinha.dataProvider()
-
-        provider.addAttributes([QgsField("ID", QVariant.Int)]) 
-        camadaLinha.updateFields() # Adicionar um campo de ID à nova camada
-
-        linha = QgsFeature() # Criar uma nova feição com a aresta mais ao norte
-        linha.setGeometry(QgsGeometry.fromPolylineXY([p1, p2]))
-        linha.setAttributes([1])
-
-        provider.addFeatures([linha]) # Adicionar a feição à camada
-        camadaLinha.updateExtents()
-        
-        # =====Extender a Linha criada com os extremos W e E====================
-        if dWE > dLinha: # redefinindo o tamanho da Linha criada
-            estender = (dWE - dLinha) / 2 # metade no início e no fim
-
-        alg_params = {
-            'INPUT': camadaLinha,
-            'START_DISTANCE':estender,
-            'END_DISTANCE':estender,
-            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
-        }
-
-        outputs['linhaExtendida'] = processing.run('native:extendlines', alg_params, context=context,
-                                                       feedback=feedback, is_child_algorithm=True)
-
-        # =====Linhas paralelas a partir da Linha criada=======================
-        n = int(dNS / deltaLat) * -1 # número de Linhas e negativo N para S
-        alg_params = {
-            'INPUT': outputs['linhaExtendida']['OUTPUT'],
-            'COUNT':n,
-            'OFFSET':deltaLat,
-            'SEGMENTS':8,
-            'JOIN_STYLE':0,
-            'MITER_LIMIT':2,
-            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
-        }
-
-        outputs['linhas'] = processing.run('native:arrayoffsetlines', alg_params, context=context,
-                                                       feedback=feedback, is_child_algorithm=True)
-        
-        # =====Unir as Linhas //s ============================================
-        camadaLinhas = context.getMapLayer(outputs['linhas']['OUTPUT'])
-
+       
+         # =====Unir as Linhas //s ============================================
         todasLinhas = [f for f in camadaLinhas.getFeatures()]
 
         paresPontos = []
