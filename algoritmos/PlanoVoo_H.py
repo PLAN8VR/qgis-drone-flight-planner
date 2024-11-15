@@ -168,30 +168,30 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 ponto_oposto = ponto_atual
         
         # Criar a linha temporária sobre o lado mais longo do Polígono = Primeira Linha  
-        lado_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Lado Mais Longo', 'memory')
-        lado_provider = lado_layer.dataProvider()
-        lado_provider.addAttributes([QgsField('id', QVariant.Int)])
-        lado_layer.updateFields()
+        # lado_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Lado Mais Longo', 'memory')
+        # lado_provider = lado_layer.dataProvider()
+        # lado_provider.addAttributes([QgsField('id', QVariant.Int)])
+        # lado_layer.updateFields()
 
-        lado_feature = QgsFeature()
-        lado_feature.setGeometry(lado_mais_longo)
-        lado_feature.setAttributes([1]) 
-        lado_provider.addFeature(lado_feature)
+        # lado_feature = QgsFeature()
+        # lado_feature.setGeometry(lado_mais_longo)
+        # lado_feature.setAttributes([1]) 
+        # lado_provider.addFeature(lado_feature)
         
-        QgsProject.instance().addMapLayer(lado_layer)
+        # QgsProject.instance().addMapLayer(lado_layer)
 
         # Criar camada temporária para o ponto oposto
-        ponto_layer = QgsVectorLayer('Point?crs=' + crs.authid(), 'Ponto Oposto', 'memory')
-        ponto_provider = ponto_layer.dataProvider()
-        ponto_provider.addAttributes([QgsField('id', QVariant.Int)])
-        ponto_layer.updateFields()
+        # ponto_layer = QgsVectorLayer('Point?crs=' + crs.authid(), 'Ponto Oposto', 'memory')
+        # ponto_provider = ponto_layer.dataProvider()
+        # ponto_provider.addAttributes([QgsField('id', QVariant.Int)])
+        # ponto_layer.updateFields()
 
-        ponto_feature = QgsFeature()
-        ponto_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto_oposto)))
-        ponto_feature.setAttributes([1])  # Atribuindo um valor qualquer, pode ser ajustado
-        ponto_provider.addFeature(ponto_feature)
+        # ponto_feature = QgsFeature()
+        # ponto_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto_oposto)))
+        # ponto_feature.setAttributes([1])  # Atribuindo um valor qualquer, pode ser ajustado
+        # ponto_provider.addFeature(ponto_feature)
 
-        QgsProject.instance().addMapLayer(ponto_layer)
+        # QgsProject.instance().addMapLayer(ponto_layer)
   
         # Criar as Paralelas
         paralelas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas Paralelas', 'memory')
@@ -206,8 +206,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         paralela_feature.setAttributes([linha_id])
         paralelas_provider.addFeature(paralela_feature)
         
-        QgsProject.instance().addMapLayer(paralelas_layer)
-        
         # Calcular o produto vetorial para determinar a direção das linhas paralelas
         vetor_linha = QgsPointXY(p2.x() - p1.x(), p2.y() - p1.y())  # Vetor da linha
         vetor_ponto = QgsPointXY(ponto_oposto.x() - p1.x(), ponto_oposto.y() - p1.y())
@@ -220,9 +218,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         deslocamento = 0
         linha_base = paralelas_layer
         
-        feedback.pushInfo(f"Sentido: {sentido}, Dist_P: {dist_P}")
+        #feedback.pushInfo(f"Sentido: {sentido}, Dist_P: {dist_P}")
         
         while abs(deslocamento) < dist_P: # Linhas paralelas a partir da Linha criada
+            linha_id += 1
+            
             parameters = {
                 'INPUT': linha_base,
                 'DISTANCE': deltaLat * sentido,
@@ -241,17 +241,29 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             paralela_feature.setAttributes([linha_id])
             paralelas_layer.dataProvider().addFeature(paralela_feature)
             paralelas_layer.updateExtents()
-
-            
-            # features = linha_paralela_layer.getFeatures()
-            # paralelas_layer.dataProvider().addFeatures(features)
-            # paralelas_layer.updateExtents()
             
             linha_base = linha_paralela_layer
            
             deslocamento += deltaLat * sentido
-            linha_id += 1
-            
+
+        # Interseção da linha base (lado estendido) com o polígono
+        intersecao_geom_base = lado_estendido.intersection(geom)
+        primeira_linha = next(paralelas_layer.getFeatures())
+        primeira_linha.setGeometry(intersecao_geom_base)
+        paralelas_provider.changeGeometryValues({primeira_linha.id(): intersecao_geom_base})
+        paralelas_layer.updateExtents()
+
+        # Verificar se a última linha paralela está fora do polígono
+        linha_features = list(paralelas_layer.getFeatures())
+        ultima_linha = linha_features[-1]
+        ultima_geom = ultima_linha.geometry()
+        intersecao_geom = ultima_geom.intersection(geom)
+
+        # Se a interseção estiver vazia, remover a última linha
+        if intersecao_geom.isEmpty():
+            paralelas_provider.deleteFeatures([ultima_linha.id()])
+            paralelas_layer.updateExtents()
+        
         QgsProject.instance().addMapLayer(paralelas_layer)
 
         return {}
