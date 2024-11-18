@@ -40,7 +40,7 @@ import processing
 import os
 import math
 
-# Dados Air 2S (5472 × 3648)
+# pontos_provider Air 2S (5472 × 3648)
 
 class PlanoVoo_H(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
@@ -263,6 +263,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             paralelas_provider.deleteFeatures([ultima_linha.id()])
             paralelas_layer.updateExtents()
         
+        # =====================================================================
         # Unir todas as linhas paralelas
         linha_features = list(paralelas_layer.getFeatures())
         geometrias = [feature.geometry() for feature in linha_features]
@@ -334,7 +335,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_layer.updateExtents()
         
         # Adicionar a camada ao projeto
-        QgsProject.instance().addMapLayer(pontos_layer)
+        #QgsProject.instance().addMapLayer(pontos_layer)
 
         # Criar segmentos diretamente na camada paralelas_layer
         paralelas_provider = paralelas_layer.dataProvider()
@@ -379,121 +380,103 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 id_counter += 1
             except:
                 break
-            
+
         # Adicionar os novos segmentos à camada
         paralelas_provider.addFeatures(novos_segmentos)
         paralelas_layer.updateExtents()
 
-        # Adicionar a camada de segmentos ao projeto
         QgsProject.instance().addMapLayer(paralelas_layer)
-
-
-        return {}
-        """
-         # Unir as Linhas //s
-        todasLinhas = [f for f in camadaLinhas.getFeatures()]
-
-        paresPontos = []
-        for i, f in enumerate(todasLinhas): # obtém os pares de Pontos de cada Linha
-            geom = f.geometry()
-            p = geom.asPolyline()
-            
-            p1, p2 = p[0], p[1]
-            paresPontos.append([p1,p2])
-            
-        # print(paresPontos)
-
-        pontosOrdenados = sorted(paresPontos, key=lambda sublist: sublist[0].y(), reverse=True)
-
-        # for sublist in pontosOrdenados:
-        #     print("\n".join([str(point) for point in sublist]))
-        #     print()  # Adiciona uma linha em branco entre cada sublista
-
-        pontos = [] # pontos para a uniao com as linhas //s
-        i = 0
-
-        for p in pontosOrdenados:
-            if i%2 == 0:
-                p = QgsPointXY(p[1].x(), p[1].y())
-            else:
-                p = QgsPointXY(p[0].x(), p[0].y())
-            
-            p1, p2 = p[0], p[1]
-            
-            i+=1    
-            # print(p1,p2)
-            
-            pontos.append(p)
-
-        # print(pontos)
-
-        # Criar as novas linhas unindo cada par de pontos à linha correspondente
-        camadaLinhas.startEditing()
-
-        for i, p1 in enumerate(pontos):
-            # print(i, p)
-
-            try:
-                p2 = pontosOrdenados[i+1][1] if i%2 == 0 else pontosOrdenados[i+1][0]
-                # if i%2 == 0:
-                #     p2 = pontosOrdenados[i+1][1]
-                # else:
-                #     p2 = pontosOrdenados[i+1][0]
-                
-                # print(p2)
-            except IndexError:
-                break
-
-            novaLinha = QgsFeature() # criar uma linha com os pontos p1 e p2 
-            novaLinha.setGeometry(QgsGeometry.fromPolylineXY([p1, p2]))
-            camadaLinhas.dataProvider().addFeatures([novaLinha])
-            
-        camadaLinhas.updateExtents()
-        camadaLinhas.commitChanges()
-        
-        # Transformar várias linhas em uma só
-        geomTotal = None
-
-        # Iterar sobre as features da camada de entrada para unir todas as geometrias
-        for f in camadaLinhas.getFeatures():
-            geom = f.geometry()
-            if geomTotal is None:
-                geomTotal = geom
-            else:
-                geomTotal = geomTotal.combine(geom)
-
-        # Criar a nova feature com a geometria unificada
-        nova_feature = QgsFeature()
-        nova_feature.setGeometry(geomTotal)
-
-        # Criar a nova camada temporária
-        camadaLinhaVoo = QgsVectorLayer("Linestring?crs=crs", "LinhaVoo", "memory")
-
-        camadaLinhaVoo.dataProvider().addFeatures([nova_feature])
-
-        # Criar o símbolo de linha
-        simbolo = QgsSimpleLineSymbolLayer.create({'color': '#fd1b07', 'width': 1.45})
-        s = QgsLineSymbol([simbolo])
-        camadaLinhaVoo.renderer().setSymbol(s)
-
-        camadaLinhaVoo.triggerRepaint()
-        QgsProject.instance().addMapLayer(camadaLinhaVoo)
-
         # =====================================================================
-        # =====Criar uma camada Ponto com os deltaFront sobre a linha===========    
-        camadaPontos = QgsVectorLayer(f"Point?crs={crs}", "Pontos", "memory")
-        dados = camadaPontos.dataProvider()
+        # =====Criar a camada Pontos de Fotos==================================
+        
+        # Ordenar os segmentos de linha para garantir a sequência das Fotos
+        linha_features = list(paralelas_layer.getFeatures())
+        geometrias = []
+
+        # Tratar separadamente MultiLineString e LineString
+        for feature in linha_features:
+            geom = feature.geometry()
+            if geom.isMultipart():
+                partes = geom.asMultiPolyline()
+                for parte in partes:
+                    geometrias.append(QgsGeometry.fromPolylineXY(parte))  # Adicionar cada parte como LineString
+            else:
+                geometrias.append(geom)  # Adicionar diretamente se for LineString
+
+        # Criar uma nova camada para as linhas ordenadas
+        crs = paralelas_layer.crs()
+        nova_paralela_layer = QgsVectorLayer(f"LineString?crs={crs.authid()}", "Linhas Ordenadas", "memory")
+        nova_paralela_provider = nova_paralela_layer.dataProvider()
+
+        # Adicionar campo para ID na nova camada
+        nova_paralela_provider.addAttributes([QgsField("id", QVariant.Int)])
+        nova_paralela_layer.updateFields()
+
+        # Ordenar as linhas com base na continuidade dos pontos extremos
+        linhas_ordenadas = [geometrias.pop(0)]  # Começar com a primeira linha
+        while geometrias:
+            linha_atual = linhas_ordenadas[-1]  # Última linha adicionada
+            pontos_linha_atual = linha_atual.asPolyline()  # Obter pontos da linha atual
+            ponto_final_atual = pontos_linha_atual[-1]  # Último ponto da linha atual
+
+            proxima_linha = None
+            for linha in geometrias:
+                pontos_linha = linha.asPolyline()
+                ponto_inicial = pontos_linha[0]  # Primeiro ponto da próxima linha
+                ponto_final = pontos_linha[-1]  # Último ponto da próxima linha
+
+                # Verificar continuidade
+                if ponto_inicial == ponto_final_atual:
+                    proxima_linha = linha
+                    break
+                elif ponto_final == ponto_final_atual:
+                    # Inverter a linha para garantir a continuidade
+                    nova_geom = QgsGeometry.fromPolylineXY(list(reversed(pontos_linha)))
+                    geometrias[geometrias.index(linha)] = nova_geom
+                    proxima_linha = nova_geom
+                    break
+
+            # Adicionar a linha contínua à lista ordenada
+            if proxima_linha:
+                linhas_ordenadas.append(proxima_linha)
+                geometrias.remove(proxima_linha)
+            else:
+                break  # Finalizar se não houver continuidade
+
+        # Criar novos segmentos na camada nova
+        id_counter = 1
+        for linha in linhas_ordenadas:
+            nova_feature = QgsFeature()
+            nova_feature.setGeometry(linha)
+            nova_feature.setAttributes([id_counter])
+            nova_paralela_provider.addFeature(nova_feature)
+            id_counter += 1
+
+        # Atualizar a nova camada
+        nova_paralela_layer.updateExtents()
+
+        # Adicionar a camada ordenada ao projeto
+        QgsProject.instance().addMapLayer(nova_paralela_layer)
+       
+
+
+
+
+        
+        # Criar uma camada Ponto com os deltaFront sobre a linha
+        pontos_fotos = QgsVectorLayer(f"Point?crs={crs}", "PontosFotos", "memory")
+        pontos_provider = pontos_fotos.dataProvider()
 
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
-        dados.addAttributes(campos)
-        camadaPontos.updateFields()
+        pontos_provider.addAttributes(campos)
+        pontos_fotos.updateFields()
 
         # Iterar sobre as linhas e criar pontos espaçados
-        features = camadaLinhaVoo.getFeatures()
+        features = nova_paralela_layer.getFeatures()
         pontoID = 0
 
         for f in features:
@@ -512,18 +495,18 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 
                 nova_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto)))
                 
-                dados.addFeature(nova_feature)
+                pontos_provider.addFeature(nova_feature)
                 
                 pontoID += 1
                 x += deltaFront
 
         # Adicionar camada de pontos ao projeto
-        QgsProject.instance().addMapLayer(camadaPontos)
+        QgsProject.instance().addMapLayer(pontos_fotos)
 
         # Simbologia e Rótulo
         simbolo = QgsMarkerSymbol.createSimple({'color': 'blue', 'size': '3'})
         renderer = QgsSingleSymbolRenderer(simbolo)
-        camadaPontos.setRenderer(renderer)
+        pontos_fotos.setRenderer(renderer)
 
         settings = QgsPalLayerSettings()
         settings.fieldName = "id"
@@ -542,14 +525,14 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         textoF.setBuffer(bufferS)
         settings.setFormat(textoF)
 
-        camadaPontos.setLabelsEnabled(True)
-        camadaPontos.setLabeling(QgsVectorLayerSimpleLabeling(settings))
+        pontos_fotos.setLabelsEnabled(True)
+        pontos_fotos.setLabeling(QgsVectorLayerSimpleLabeling(settings))
 
-        camadaPontos.triggerRepaint()
-        QgsProject.instance().addMapLayer(camadaPontos)
+        pontos_fotos.triggerRepaint()
+        QgsProject.instance().addMapLayer(pontos_fotos)
         
-        return
-        """
+        return {}
+        
     def name(self):
         return 'PlanoVooH'.lower()
 
