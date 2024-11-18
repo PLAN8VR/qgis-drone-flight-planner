@@ -282,44 +282,57 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         id_counter = 0
 
         for geom in geometrias:
-            if geom.isMultipart():
+            if geom.isMultipart():  # Se for uma geometria multipart
                 partes = geom.asMultiPolyline()
-                for parte in partes:
-                    ponto_inicio = QgsGeometry.fromPointXY(QgsPointXY(parte[0]))
-                    ponto_final = QgsGeometry.fromPointXY(QgsPointXY(parte[-1]))
 
-                    for ponto in [ponto_inicio, ponto_final]:
-                        ponto_feature = QgsFeature()
-                        ponto_feature.setGeometry(ponto)
-                        ponto_feature.setAttributes([id_counter])
-                    
-                        if id_counter % 2 == 0:
-                            pontos_pares.append(ponto_feature)
-                        else:
-                            pontos_impares.append(ponto_feature)
-                        id_counter += 1
-            else:
+                # Pegar o primeiro ponto do primeiro segmento e o último ponto do último segmento
+                ponto_inicio = partes[0][0]  # Pega o primeiro ponto do primeiro segmento
+                ponto_final = partes[-1][-1]  # Pega o último ponto do último segmento
+
+                # Criar as geometrias dos pontos de início e final
+                pontos = [ponto_inicio, ponto_final]
+
+                for ponto in pontos:
+                    ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto[0], ponto[1]))
+
+                    ponto_feature = QgsFeature()
+                    ponto_feature.setGeometry(ponto_geom)
+                    ponto_feature.setAttributes([id_counter])
+
+                    # Adicionar o ponto à camada
+                    pontos_provider.addFeature(ponto_feature)
+
+                    # Classificar em pares ou ímpares
+                    if id_counter % 2 == 0:
+                        pontos_pares.append(ponto_feature)
+                    else:
+                        pontos_impares.append(ponto_feature)
+                    id_counter += 1
+
+            else:  # Para geometrias de linha simples
                 parte = geom.asPolyline()
                 if len(parte) > 1:
-                    ponto_inicio = QgsGeometry.fromPointXY(QgsPointXY(parte[0]))
-                    ponto_final = QgsGeometry.fromPointXY(QgsPointXY(parte[-1]))
+                    # Incluir todos os pontos da linha simples
+                    for ponto in parte:
+                        ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto[0], ponto[1]))
 
-                    for ponto in [ponto_inicio, ponto_final]:
                         ponto_feature = QgsFeature()
-                        ponto_feature.setGeometry(ponto)
+                        ponto_feature.setGeometry(ponto_geom)
                         ponto_feature.setAttributes([id_counter])
-                        
+
+                        # Adicionar o ponto à camada
+                        pontos_provider.addFeature(ponto_feature)
+
+                        # Classificar em pares ou ímpares
                         if id_counter % 2 == 0:
                             pontos_pares.append(ponto_feature)
                         else:
                             pontos_impares.append(ponto_feature)
                         id_counter += 1
 
-        # Adicionar os pontos à camada
-        pontos_provider.addFeatures(pontos_pares)
-        pontos_provider.addFeatures(pontos_impares)
+        # Atualizar a camada de pontos
         pontos_layer.updateExtents()
-
+        
         # Adicionar a camada ao projeto
         QgsProject.instance().addMapLayer(pontos_layer)
 
@@ -330,7 +343,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         novos_segmentos = []
         id_counter = len(paralelas_layer) + 1
 
-        for i in range(1, len(pontos_pares) - 1, 2):
+        for i in range(1, len(pontos_pares), 2):
             try:
                 p1 = pontos_pares[i].geometry().asPoint()
                 p2 = pontos_pares[i + 1].geometry().asPoint()
@@ -349,7 +362,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 break
 
         # Criar segmentos conforme o padrão P1-P3, P5-P7, etc.
-        for i in range(0, len(pontos_impares) - 1, 2):
+        for i in range(0, len(pontos_impares), 2):
             try:
                 p1 = pontos_impares[i].geometry().asPoint()
                 p2 = pontos_impares[i + 1].geometry().asPoint()
