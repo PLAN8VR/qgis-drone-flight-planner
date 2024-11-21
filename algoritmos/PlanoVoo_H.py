@@ -46,7 +46,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Terreno do Voo', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','Primeira Linha de Voo', types=[QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterBoolean('corta_terreno','Corte de Terreno?',defaultValue=True))
         self.addParameter(QgsProcessingParameterNumber('h','Altura de Voo',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=50,defaultValue=100))
@@ -76,12 +75,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         crs = camada.crs()
         
         primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
-        corta_terreno = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
-        
-        if corta_terreno:
-            feedback.pushInfo('Processando com corte de terreno...')
-        else:
-            feedback.pushInfo('Processando sem corte de terreno...')
 
         H = parameters['h']
         dc = parameters['dc']
@@ -240,32 +233,36 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         paralelas_provider.addAttributes([QgsField('id', QVariant.Int)])
         paralelas_layer.updateFields()
         
-        # Incluir a linha base estendida como a primeira linha paralela
+        # Incluir a linha como a primeira linha paralela
+        # Interseção da linha paralela com o polígono
+        intersecao_geom = linha_estendida.intersection(poligono)
+        
         linha_id = 1
         paralela_feature = QgsFeature()
-        paralela_feature.setGeometry(linha_estendida)
+        paralela_feature.setGeometry(intersecao_geom)
         paralela_feature.setAttributes([linha_id])
         paralelas_provider.addFeature(paralela_feature)
 
         pontos_extremos = []
         if ponto_extremo_dir:  # Se existe o ponto extremo à direita
-            dist_extremo_dir = linha_estendida.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_extremo_dir))) if ponto_extremo_dir else 0
-            pontos_extremos.append((dist_extremo_dir, 1))  # Distância e sentido para o ponto direito
+            dist = linha_estendida.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_extremo_dir))) if ponto_extremo_dir else 0
+            pontos_extremos.append((dist, 1))  # Distância e sentido para o ponto direito
             
         if ponto_extremo_esq:  # Se existe o ponto extremo à esquerda
-            dist_extremo_esq = linha_estendida.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_extremo_esq))) if ponto_extremo_esq else 0
-            pontos_extremos.append((dist_extremo_esq, -1))  # Distância e sentido para o ponto esquerdo
+            dist = linha_estendida.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_extremo_esq))) if ponto_extremo_esq else 0
+            pontos_extremos.append((dist, -1))  # Distância e sentido para o ponto esquerdo
 
         # Criar as paralelas em um sentido de cada vez
         for dist, sentido in pontos_extremos:
-            deslocamento = 0
-            while deslocamento < dist:  # Criar linhas paralelas até o ponto extremo
+            deslocamento = deltaLat * sentido  # Usando a direção positiva ou negativa
+            
+            while abs(deslocamento) <= dist:  # Criar linhas paralelas até o ponto extremo
                 linha_id += 1
 
                 # Deslocamento da linha base para criar a paralela
                 parameters = {
                     'INPUT': linhaEstendida_layer,  # Linha base
-                    'DISTANCE': deltaLat * sentido,  # Usando a direção positiva ou negativa
+                    'DISTANCE': deslocamento,
                     'OUTPUT': 'memory:'
                 }
 
@@ -290,7 +287,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                     # Atualizar a linha base para a próxima paralela
                     linha_estendida = linha_paralela_layer
 
-                    deslocamento += deltaLat  # Atualizar o deslocamento
+                    deslocamento += deltaLat * sentido  # Atualizar o deslocamento
 
         # # Verificar se há linhas fora do polígono
         # linha_features = list(paralelas_layer.getFeatures())
