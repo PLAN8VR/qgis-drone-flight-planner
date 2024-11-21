@@ -27,10 +27,10 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm
+from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes
 from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber
 from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsProcessingParameterFileDestination
-from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling
+from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsProcessingParameterBoolean
 from qgis.core import QgsVectorLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
 from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol
 from qgis.PyQt.QtCore import QCoreApplication
@@ -45,6 +45,8 @@ import math
 class PlanoVoo_H(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Terreno do Voo', types=[QgsProcessing.TypeVectorPolygon]))
+        self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','Primeira Linha de Voo', types=[QgsProcessing.TypeVectorLine]))
+        self.addParameter(QgsProcessingParameterBoolean('corta_terreno','Corte de Terreno?',defaultValue=True))
         self.addParameter(QgsProcessingParameterNumber('h','Altura de Voo',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=50,defaultValue=100))
@@ -72,6 +74,14 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # =====Parâmetros de entrada para variáveis========================
         camada = self.parameterAsVectorLayer(parameters, 'terreno', context)
         crs = camada.crs()
+        
+        primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
+        corta_terreno = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
+        
+        if corta_terreno:
+            feedback.pushInfo('Processando com corte de terreno...')
+        else:
+            feedback.pushInfo('Processando sem corte de terreno...')
 
         H = parameters['h']
         dc = parameters['dc']
@@ -102,180 +112,210 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
         
-        # maior lado do polígono
-        f = next(camada.getFeatures())
-        geom = f.geometry()
-        
-        vertices = list(geom.vertices())
-        
-        # maior distância entre vértices -> maior_distancia
-        maior_distancia = 0
+        # Verificar se o polígono e a primeira_linha contém exatamente uma feature
+        poligono_features = list(camada.getFeatures()) # dados do Terreno
+        if len(poligono_features) != 1:
+            raise ValueError("A camada deve conter somente um polígono.")
 
-        for i in range(len(vertices)):
-            for j in range(i + 1, len(vertices)):
-                ponto_a = vertices[i]
-                ponto_b = vertices[j]
-                
-                # Calcular a distância entre os dois vértices
-                dist = ponto_a.distance(ponto_b)
-                
-                # Verificar se essa distância é a maior encontrada até agora
-                if dist > maior_distancia:
-                    maior_distancia = dist
+        poligono = poligono_features[0].geometry()
+        vertices = [QgsPointXY(v) for v in poligono.vertices()] # Extrair os vértices do polígono
         
-        # maior_lado (distância), p1 e p2 (geom Pontos) e lado_mais_longo (geom Linha)
-        p1 = p2 = None
-        maior_lado = 0
+        linha_features = list(primeira_linha.getFeatures())
+        if len(linha_features) != 1:
+            raise ValueError("A camada primeira_linha deve conter somente uma linha.")
 
+        # Verifica a geometria da primeira linha
+        linha_geom = linha_features[0].geometry() # Obter a geometria da linha
+        
+        if linha_geom.asMultiPolyline():
+            linha_vertices = linha_geom.asMultiPolyline()[0]  # Se a linha for do tipo poly
+        else:
+            linha_vertices = linha_geom.asPolyline() 
+        
+        # Criar a geometria da linha basee
+        linha_base = QgsGeometry.fromPolylineXY([QgsPointXY(p) for p in linha_vertices])  
+
+        # Verificar se a linha base coincide com um lado do polígono (até a segunda casa decimal)
+        flag = False
         for i in range(len(vertices) - 1):
-            ponto_a = vertices[i]
-            ponto_b = vertices[i + 1]
-            
-            # Calcular a distância entre os dois pontos
-            dist = ponto_a.distance(ponto_b)
-            
-            # Verificar se essa distância é a maior
-            if dist > maior_lado:
-                maior_lado = dist
-                p1 = ponto_a
-                p2 = ponto_b
+            # Criar a geometria do lado do polígono (em ambas as orientações)
+            lado = QgsGeometry.fromPolylineXY([QgsPointXY(vertices[i]), QgsPointXY(vertices[i + 1])])
+            lado_invertido = QgsGeometry.fromPolylineXY([QgsPointXY(vertices[i + 1]), QgsPointXY(vertices[i])])
 
-        lado_mais_longo = QgsGeometry.fromPolylineXY([QgsPointXY(p1), QgsPointXY(p2)])
+            # Comparar se a geometria da linha base é igual ao lado (considerando a inversão também)
+            if lado.equals(linha_base) or lado_invertido.equals(linha_base):
+                flag = True
+                break
+            
+        #feedback.pushInfo(f"Lado {i} - Ponto 1: ({vertices[i].x()}, {vertices[i].y()}) | Ponto 2: ({vertices[i + 1].x()}, {vertices[i + 1].y()})")
+        #feedback.pushInfo(f"Linha base - Ponto 1: ({linha_vertices[0].x()}, {linha_vertices[0].y()}) | Ponto 2: ({linha_vertices[1].x()}, {linha_vertices[1].y()})")
+
+        if not flag:
+            raise ValueError("A camada primeira_linha deve ser um dos lados do terreno.")
         
-        # Criar a linha estendida e depois realizar a interseção
+        # Encontrar os pontos extremos de cada lado da linha base (sempre terá 1 ou 2 pontos)
+        ponto_extremo_dir = None
+        ponto_extremo_esq = None
+        dist_max_dir = float('-inf')
+        dist_max_esq = float('-inf')
+
+        # Iterar sobre os vértices do polígono
+        ponto1 = QgsPointXY(linha_vertices[0])
+        ponto2 = QgsPointXY(linha_vertices[1])
+
+        for ponto_atual in vertices:
+            # Calcular o produto vetorial (determinante) para determinar se o ponto está à direita ou à esquerda
+            produto_vetorial = (ponto2.x() - ponto1.x()) * (ponto_atual.y() - ponto1.y()) - (ponto2.y() - ponto1.y()) * (ponto_atual.x() - ponto1.x())
+
+            # Calcular a distância do ponto à linha
+            dist = linha_base.distance(QgsGeometry.fromPointXY(ponto_atual))
+
+            # Atualizar o ponto extremo à direita
+            if produto_vetorial > 0 and dist > dist_max_dir:
+                dist_max_dir = dist
+                ponto_extremo_dir = ponto_atual
+
+            # Atualizar o ponto extremo à esquerda
+            elif produto_vetorial < 0 and dist > dist_max_esq:
+                dist_max_esq = dist
+                ponto_extremo_esq = ponto_atual
+
+        # Adicionar os pontos extremos encontrados à lista
+        pontos_extremos = []
+        if ponto_extremo_dir:
+            pontos_extremos.append(ponto_extremo_dir)
+        if ponto_extremo_esq:
+            pontos_extremos.append(ponto_extremo_esq)
+
+        # Criar camada temporária para o(s) ponto(s) oposto(s); a maioria das vezes será um ponto só
+        pontosExtremos_layer = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Extremos', 'memory')
+        pontos_provider = pontosExtremos_layer.dataProvider()
+        pontos_provider.addAttributes([QgsField('id', QVariant.Int)])
+        pontosExtremos_layer.updateFields()
+
+        # Adicionar os pontos extremos à camada temporária
+        for feature_id, ponto in enumerate(pontos_extremos, start=1):
+            if ponto:
+                ponto_feature = QgsFeature()
+                ponto_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto)))
+                ponto_feature.setAttributes([feature_id])  # ID do ponto
+                pontos_provider.addFeature(ponto_feature)
+
+        #QgsProject.instance().addMapLayer(pontosExtremos_layer)
+        
+        # Criar uma linha estendida sobre a linha base
+        
+         # ponto inicial e final da linha base
+        p1 = linha_vertices[0]
+        p2 = linha_vertices[1]
+        
         dx = p2.x() - p1.x()
         dy = p2.y() - p1.y()
         angulo = math.atan2(dy, dx)
         
-        extensao_x = maior_distancia * math.cos(angulo)
-        extensao_y = maior_distancia * math.sin(angulo)
+        extensao_x = (dist_max_esq + dist_max_dir) * math.cos(angulo)
+        extensao_y = (dist_max_esq + dist_max_dir) * math.sin(angulo)
         
         p1_estendido = QgsPointXY(p1.x() - extensao_x ,p1.y() - extensao_y)
         p2_estendido = QgsPointXY(p2.x() + extensao_x ,p2.y() + extensao_y)
-        lado_estendido = QgsGeometry.fromPolylineXY([QgsPointXY(p1_estendido), QgsPointXY(p2_estendido)])
+        linha_estendida = QgsGeometry.fromPolylineXY([QgsPointXY(p1_estendido), QgsPointXY(p2_estendido)])
+
+        # Criar camada temporária para a linha estendida
+        linhaEstendida_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linha Estendida', 'memory')
+        linha_provider = linhaEstendida_layer.dataProvider()
+        linha_provider.addAttributes([QgsField('id', QVariant.Int)])
+        linhaEstendida_layer.updateFields()
+
+        # Adicionar a linha estendida à camada temporária
+        linha_feature = QgsFeature()
+        linha_feature.setGeometry(linha_estendida)
+        linha_feature.setAttributes([1])  # ID da linha estendida
+        linha_provider.addFeature(linha_feature)
+
+        #QgsProject.instance().addMapLayer(linhaEstendida_layer)
         
-        # Agora, encontrar o vértice mais oposto -> dist_P (distância) e ponto_oposto (geom Ponto)
-        ponto_oposto = None
-        dist_P = 0 
-
-        for i in range(len(vertices)):
-            ponto_atual = vertices[i]
-            
-            # Calcular a distância entre o ponto atual e o maior lado do polígono
-            dist = lado_mais_longo.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_atual)))
-             
-            # Verificar se é a maior distância
-            if dist > dist_P:
-                dist_P = dist
-                ponto_oposto = ponto_atual
-        
-        # Criar a linha temporária sobre o lado mais longo do Polígono = Primeira Linha  
-        # lado_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Lado Mais Longo', 'memory')
-        # lado_provider = lado_layer.dataProvider()
-        # lado_provider.addAttributes([QgsField('id', QVariant.Int)])
-        # lado_layer.updateFields()
-
-        # lado_feature = QgsFeature()
-        # lado_feature.setGeometry(lado_mais_longo)
-        # lado_feature.setAttributes([1]) 
-        # lado_provider.addFeature(lado_feature)
-        
-        # QgsProject.instance().addMapLayer(lado_layer)
-
-        # Criar camada temporária para o ponto oposto
-        # ponto_layer = QgsVectorLayer('Point?crs=' + crs.authid(), 'Ponto Oposto', 'memory')
-        # ponto_provider = ponto_layer.dataProvider()
-        # ponto_provider.addAttributes([QgsField('id', QVariant.Int)])
-        # ponto_layer.updateFields()
-
-        # ponto_feature = QgsFeature()
-        # ponto_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto_oposto)))
-        # ponto_feature.setAttributes([1])  # Atribuindo um valor qualquer, pode ser ajustado
-        # ponto_provider.addFeature(ponto_feature)
-
-        # QgsProject.instance().addMapLayer(ponto_layer)
-        
-        # Criar as Paralelas - temos: lado_mais_longo e ponto_oposto
+        # Criar linhas Paralelas à linha base até o(s) ponto(s) extremo(s)
         paralelas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas Paralelas', 'memory')
         paralelas_provider = paralelas_layer.dataProvider()
         paralelas_provider.addAttributes([QgsField('id', QVariant.Int)])
         paralelas_layer.updateFields()
         
-        # Incluir o lado mais longo como a primeira linha paralela
+        # Incluir a linha base estendida como a primeira linha paralela
         linha_id = 1
         paralela_feature = QgsFeature()
-        paralela_feature.setGeometry(lado_estendido)
+        paralela_feature.setGeometry(linha_estendida)
         paralela_feature.setAttributes([linha_id])
         paralelas_provider.addFeature(paralela_feature)
-        
-        # Calcular o produto vetorial para determinar a direção das linhas paralelas
-        vetor_linha = QgsPointXY(p2.x() - p1.x(), p2.y() - p1.y())  # Vetor da linha
-        vetor_ponto = QgsPointXY(ponto_oposto.x() - p1.x(), ponto_oposto.y() - p1.y())
-        direcao = vetor_linha.x() * vetor_ponto.y() - vetor_linha.y() * vetor_ponto.x()
-        if direcao > 0:
-            sentido = 1  # Ponto está à direita
-        else:
-            sentido = -1 # Ponto está à esquerda
-            
-        deslocamento = 0
-        linha_base = paralelas_layer
-        
-        #feedback.pushInfo(f"Sentido: {sentido}, Dist_P: {dist_P}")
-        
-        while abs(deslocamento) < dist_P: # Linhas paralelas a partir da Linha criada
-            linha_id += 1
-            
-            parameters = {
-                'INPUT': linha_base,
-                'DISTANCE': deltaLat * sentido,
-                'OUTPUT': 'memory:'
-            }
-        
-            result = processing.run("native:offsetline", parameters)
-            linha_paralela_layer = result['OUTPUT']
-            
-            feature = next(linha_paralela_layer.getFeatures(), None)
-            linha_geom = feature.geometry()
-            intersecao_geom = linha_geom.intersection(geom)
-            
-            paralela_feature = QgsFeature()
-            paralela_feature.setGeometry(intersecao_geom)
-            paralela_feature.setAttributes([linha_id])
-            paralelas_layer.dataProvider().addFeature(paralela_feature)
-            paralelas_layer.updateExtents()
-            
-            linha_base = linha_paralela_layer
-           
-            deslocamento += deltaLat * sentido
 
-        # Interseção da linha base (lado estendido) com o polígono
-        primeira_linha = next(paralelas_layer.getFeatures())
-        primeira_linha.setGeometry(lado_mais_longo)
-        paralelas_provider.changeGeometryValues({primeira_linha.id(): lado_mais_longo})
-        paralelas_layer.updateExtents()
-
-        # Verificar se há linhas fora do polígono
-        linha_features = list(paralelas_layer.getFeatures())
-        
-        # Lista para armazenar os IDs das feições a serem deletadas
-        ids_para_remover = []
-        
-        for linha in linha_features:
-            geom_linha = linha.geometry()
+        pontos_extremos = []
+        if ponto_extremo_dir:  # Se existe o ponto extremo à direita
+            dist_extremo_dir = linha_estendida.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_extremo_dir))) if ponto_extremo_dir else 0
+            pontos_extremos.append((dist_extremo_dir, 1))  # Distância e sentido para o ponto direito
             
-            # Verificar se a geometria da linha está fora do polígono
-            intersecao_geom = geom_linha.intersection(geom)
-            if intersecao_geom.isEmpty():
-                # Adicionar o ID da feição à lista para remoção se estiver fora
-                ids_para_remover.append(linha.id())
+        if ponto_extremo_esq:  # Se existe o ponto extremo à esquerda
+            dist_extremo_esq = linha_estendida.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_extremo_esq))) if ponto_extremo_esq else 0
+            pontos_extremos.append((dist_extremo_esq, -1))  # Distância e sentido para o ponto esquerdo
+
+        # Criar as paralelas em um sentido de cada vez
+        for dist, sentido in pontos_extremos:
+            deslocamento = 0
+            while deslocamento < dist:  # Criar linhas paralelas até o ponto extremo
+                linha_id += 1
+
+                # Deslocamento da linha base para criar a paralela
+                parameters = {
+                    'INPUT': linhaEstendida_layer,  # Linha base
+                    'DISTANCE': deltaLat * sentido,  # Usando a direção positiva ou negativa
+                    'OUTPUT': 'memory:'
+                }
+
+                result = processing.run("native:offsetline", parameters)
+                linha_paralela_layer = result['OUTPUT']
                 
-        # Remover as feições fora ou sobre o polígono
-        if ids_para_remover:
-            paralelas_provider.deleteFeatures(ids_para_remover)
-            paralelas_layer.updateExtents()
+                # Obter a geometria da linha paralela
+                feature = next(linha_paralela_layer.getFeatures(), None)
+                linha_geom = feature.geometry() if feature else None
+
+                if linha_geom:
+                    # Interseção da linha paralela com o polígono
+                    intersecao_geom = linha_geom.intersection(poligono)
+
+                    # Adicionar a paralela à camada
+                    paralela_feature = QgsFeature()
+                    paralela_feature.setGeometry(intersecao_geom)
+                    paralela_feature.setAttributes([linha_id])
+                    paralelas_provider.addFeature(paralela_feature)
+                    paralelas_layer.updateExtents()
+
+                    # Atualizar a linha base para a próxima paralela
+                    linha_estendida = linha_paralela_layer
+
+                    deslocamento += deltaLat  # Atualizar o deslocamento
+
+        # # Verificar se há linhas fora do polígono
+        # linha_features = list(paralelas_layer.getFeatures())
+        
+        # # Lista para armazenar os IDs das feições a serem deletadas
+        # ids_para_remover = []
+        
+        # for linha in linha_features:
+        #     geom_linha = linha.geometry()
+            
+        #     # Verificar se a geometria da linha está fora do polígono
+        #     intersecao_geom = geom_linha.intersection(geom)
+        #     if intersecao_geom.isEmpty():
+        #         # Adicionar o ID da feição à lista para remoção se estiver fora
+        #         ids_para_remover.append(linha.id())
+                
+        # # Remover as feições fora ou sobre o polígono
+        # if ids_para_remover:
+        #     paralelas_provider.deleteFeatures(ids_para_remover)
+        #     paralelas_layer.updateExtents()
         
         # Adicionar a camada ao projeto       
-        #QgsProject.instance().addMapLayer(paralelas_layer)
+        QgsProject.instance().addMapLayer(paralelas_layer)
+        """
+        
         
         # Geração das linhas de costura diretamente na camada Linha de Voo
         paralelas_features = list(paralelas_layer.getFeatures())
@@ -329,7 +369,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         # Adicionar a camada final ao projeto
         QgsProject.instance().addMapLayer(linha_voo_layer)
-        
+        """
         
         """
         # =====================================================================
