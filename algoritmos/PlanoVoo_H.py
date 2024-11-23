@@ -149,8 +149,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Encontrar os pontos extremos de cada lado da linha base (sempre terá 1 ou 2 pontos)
         ponto_extremo_dir = None
         ponto_extremo_esq = None
-        dist_max_dir = float('-inf')
-        dist_max_esq = float('-inf')
+        dist_max_dir = 0 # float('-inf')
+        dist_max_esq = 0 # float('-inf')
 
         # Iterar sobre os vértices do polígono
         ponto1 = QgsPointXY(linha_vertices[0])
@@ -208,7 +208,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         extensao_x = (dist_max_esq + dist_max_dir) * math.cos(angulo)
         extensao_y = (dist_max_esq + dist_max_dir) * math.sin(angulo)
-        
+
         p1_estendido = QgsPointXY(p1.x() - extensao_x ,p1.y() - extensao_y)
         p2_estendido = QgsPointXY(p2.x() + extensao_x ,p2.y() + extensao_y)
         linha_estendida = QgsGeometry.fromPolylineXY([QgsPointXY(p1_estendido), QgsPointXY(p2_estendido)])
@@ -234,12 +234,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         paralelas_layer.updateFields()
         
         # Incluir a linha como a primeira linha paralela
-        # Interseção da linha paralela com o polígono
-        intersecao_geom = linha_estendida.intersection(poligono)
-        
+        primeira_linha_feature = self.parameterAsVectorLayer(parameters, 'primeira_linha', context).getFeature(0)
+        primeira_linha = primeira_linha_feature.geometry()       
         linha_id = 1
         paralela_feature = QgsFeature()
-        paralela_feature.setGeometry(intersecao_geom)
+        paralela_feature.setGeometry(primeira_linha)
         paralela_feature.setAttributes([linha_id])
         paralelas_provider.addFeature(paralela_feature)
 
@@ -308,21 +307,18 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # if ids_para_remover:
         #     paralelas_provider.deleteFeatures(ids_para_remover)
         #     paralelas_layer.updateExtents()
-        
-        # Adicionar a camada ao projeto       
+              
         #QgsProject.instance().addMapLayer(paralelas_layer)
-        
-        # Geração das linhas de costura diretamente na camada Linha de Voo
-        paralelas_features = list(paralelas_layer.getFeatures())
 
-        # Criar a camada de linha de voo
+        # Criar a camada com a união das linhas paralelas
         linhas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas', 'memory')
         linhas_provider = linhas_layer.dataProvider()
         linhas_provider.addAttributes([QgsField('id', QVariant.Int)])
         linhas_layer.updateFields()
-
-        # A primeira linha é a linha inicial
-        linha_id = 1  # Iniciar a numeração das linhas de voo a partir de 1
+        
+        paralelas_features = list(paralelas_layer.getFeatures())
+        linha_id = 1
+        
         for i in range(len(paralelas_features)):
             # Adicionar a linha paralela à camada
             linha_paralela = paralelas_features[i]
@@ -330,7 +326,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             linhas_provider.addFeature(linha_paralela)
             linha_id += 1
 
-            # Criar a linha de costura somente se houver uma próxima linha
+            # Criar a linha de costura
             if i < len(paralelas_features) - 1:
                 geom_atual = paralelas_features[i].geometry()
                 geom_seguinte = paralelas_features[i + 1].geometry()
@@ -345,7 +341,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 else:  # Conecta pelo lado esquerdo
                     ponto_inicio = QgsPointXY(extremos_atual[0])  # Extremo inicial da linha atual
                     ponto_fim = QgsPointXY(extremos_seguinte[0])  # Extremo inicial da próxima linha
-
+                
                 # Criar a geometria da linha de costura
                 conexao_geom = QgsGeometry.fromPolylineXY([ponto_inicio, ponto_fim])
                 conexao_feature = QgsFeature()
@@ -357,8 +353,34 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         # Atualizar extensão da camada de resultado
         linhas_layer.updateExtents()
+      
+        # Verificar se as linhas estão contínuas
+        linhas = sorted(linhas_layer.getFeatures(), key=lambda f: f['id'])
+        
+        for i in range(len(linhas) - 1):
+            geom_atual = linhas[i].geometry()
+            geom_seguinte = linhas[i + 1].geometry()
+        
+            # Obter os extremos das linhas (direita ou esquerda alternando)
+            extremos_atual = list(geom_atual.vertices())
+            extremos_seguinte = list(geom_seguinte.vertices())
+        
+            ponto_final_atual = QgsPointXY(extremos_atual[-1].x(), extremos_atual[-1].y())  # Extremo final da linha atual
+            ponto_inicial_seguinte = QgsPointXY(extremos_seguinte[0].x(), extremos_seguinte[0].y())  # Extremo inicial da próxima linha
 
-        # Adicionar a camada final ao projeto
+            if ponto_final_atual != ponto_inicial_seguinte: # se for igual continua para a próxima linha
+                extremos_seguinte = [QgsPointXY(p.x(), p.y()) for p in reversed(extremos_seguinte)] # Invertemos os vértices da linha seguinte
+                geom_seguinte = QgsGeometry.fromPolylineXY(extremos_seguinte)
+
+                # Atualizar imediatamente a geometria da linha na camada
+                linhas_layer.dataProvider().changeGeometryValues({linhas[i + 1].id(): geom_seguinte})
+
+                # Atualizar a linha seguinte na lista local para manter consistência no loop
+                linhas[i + 1].setGeometry(geom_seguinte)
+        
+        # Atualizar a extensão da camada
+        linhas_layer.updateExtents()
+
         #QgsProject.instance().addMapLayer(linhas_layer)
         
         # Criação de uma linha única para Linha de Voo
@@ -367,22 +389,31 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_voo_provider.addAttributes([QgsField('id', QVariant.Int)])
         linha_voo_layer.updateFields()
 
-        # Obter e ordenar as feições pela ordem dos IDs
+        # Obter e ordenar as feições pela ordem dos IDs para garantir
         linhas = sorted(linhas_layer.getFeatures(), key=lambda f: f['id'])
 
-        # Inicializar a geometria da linha única com a primeira geometria
-        linha_unica_geom = linhas[0].geometry()
+        # Iniciar a lista de coordenadas para a linha única
+        linha_unica_coords = []
 
-        # Combinar as geometrias das linhas em uma única linha
-        for f in linhas[1:]:
-            linha_unica_geom = linha_unica_geom.combine(f.geometry())
+        # Adicionar coordenadas de todas as linhas em ordem
+        for f in linhas:
+            geom = f.geometry()
+            if geom.isMultipart():
+                partes = geom.asMultiPolyline()
+                for parte in partes:
+                    linha_unica_coords.extend(parte)  # Adicionar todas as partes
+            else:
+                linha_unica_coords.extend(geom.asPolyline())  # Adicionar a linha simples
+
+        # Criar a geometria combinada a partir das coordenadas coletadas
+        linha_unica_geom = QgsGeometry.fromPolylineXY(linha_unica_coords)
 
         # Criar a feature para a linha única
         linha_unica_feature = QgsFeature()
         linha_unica_feature.setGeometry(linha_unica_geom)
-        linha_unica_feature.setAttributes([1])
+        linha_unica_feature.setAttributes([1])  # Atributo ID = 1
 
-        # Adicionar a linha única à camada
+        # Adicionar a feature à camada de linha de voo
         linha_voo_provider.addFeature(linha_unica_feature)
 
         # Atualizar extensão da camada de resultado
@@ -398,9 +429,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         marcador.setSubSymbol(seta)
         linha_voo_layer.renderer().symbol().appendSymbolLayer(marcador)
         
-        # Adicionar a camada final ao projeto
         QgsProject.instance().addMapLayer(linha_voo_layer)
-        """
+        
         # =====================================================================
         # =====Criar a camada Pontos de Fotos==================================
         
@@ -421,7 +451,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         geom = linha_voo.geometry() # Obter a geometria da linha
 
         # Obter o ponto inicial da linha
-        ponto_inicial = QgsPointXY(ponto_inicial)
+        ponto_inicial = QgsPointXY(geom.vertexAt(0))
 
         # Gerar pontos
         pontoID = 1
@@ -484,7 +514,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_fotos.triggerRepaint()
         QgsProject.instance().addMapLayer(pontos_fotos)
-        """
+        
         return {}
         
     def name(self):
