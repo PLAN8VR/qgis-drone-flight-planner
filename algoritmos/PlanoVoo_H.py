@@ -70,6 +70,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                                fileFilter='KML files (*.kml)'))
         
     def processAlgorithm(self, parameters, context, feedback):
+        teste = False # Quando True mostra camadas intermediárias
+        
         # =====Parâmetros de entrada para variáveis========================
         camada = self.parameterAsVectorLayer(parameters, 'terreno', context)
         crs = camada.crs()
@@ -157,20 +159,22 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         ponto2 = QgsPointXY(linha_vertices[1])
 
         for ponto_atual in vertices:
-            # Calcular o produto vetorial (determinante) para determinar se o ponto está à direita ou à esquerda
+            # Calcular o produto vetorial para determinar se o ponto está à direita ou à esquerda
             produto_vetorial = (ponto2.x() - ponto1.x()) * (ponto_atual.y() - ponto1.y()) - (ponto2.y() - ponto1.y()) * (ponto_atual.x() - ponto1.x())
 
-            # Calcular a distância do ponto à linha
-            dist = linha_base.distance(QgsGeometry.fromPointXY(ponto_atual))
+            # Calcular a distância perpendicular do ponto à linha base
+            numerador = abs((ponto2.y() - ponto1.y()) * ponto_atual.x() - (ponto2.x() - ponto1.x()) * ponto_atual.y() + ponto2.x() * ponto1.y() - ponto2.y() * ponto1.x())
+            denominador = math.sqrt((ponto2.y() - ponto1.y())**2 + (ponto2.x() - ponto1.x())**2)
+            dist_perpendicular = numerador / denominador if denominador != 0 else 0
 
-            # Atualizar o ponto extremo à direita
-            if produto_vetorial > 0 and dist > dist_max_dir:
-                dist_max_dir = dist
+            # Atualizar o ponto extremo à direita (produto vetorial positivo)
+            if produto_vetorial > 0 and dist_perpendicular > dist_max_dir:
+                dist_max_dir = dist_perpendicular
                 ponto_extremo_dir = ponto_atual
 
-            # Atualizar o ponto extremo à esquerda
-            elif produto_vetorial < 0 and dist > dist_max_esq:
-                dist_max_esq = dist
+            # Atualizar o ponto extremo à esquerda (produto vetorial negativo)
+            elif produto_vetorial < 0 and dist_perpendicular > dist_max_esq:
+                dist_max_esq = dist_perpendicular
                 ponto_extremo_esq = ponto_atual
 
         # Adicionar os pontos extremos encontrados à lista
@@ -193,8 +197,9 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 ponto_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto)))
                 ponto_feature.setAttributes([feature_id])  # ID do ponto
                 pontos_provider.addFeature(ponto_feature)
-
-        #QgsProject.instance().addMapLayer(pontosExtremos_layer)
+        
+        if teste == True:
+            QgsProject.instance().addMapLayer(pontosExtremos_layer)
         
         # Criar uma linha estendida sobre a linha base
         
@@ -225,7 +230,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_feature.setAttributes([1])  # ID da linha estendida
         linha_provider.addFeature(linha_feature)
 
-        #QgsProject.instance().addMapLayer(linhaEstendida_layer)
+        if teste == True:
+            QgsProject.instance().addMapLayer(linhaEstendida_layer)
         
         # Criar linhas Paralelas à linha base até o(s) ponto(s) extremo(s)
         paralelas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas Paralelas', 'memory')
@@ -287,28 +293,9 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                     linha_estendida = linha_paralela_layer
 
                     deslocamento += deltaLat * sentido  # Atualizar o deslocamento
-
-        # # Verificar se há linhas fora do polígono
-        # linha_features = list(paralelas_layer.getFeatures())
-        
-        # # Lista para armazenar os IDs das feições a serem deletadas
-        # ids_para_remover = []
-        
-        # for linha in linha_features:
-        #     geom_linha = linha.geometry()
-            
-        #     # Verificar se a geometria da linha está fora do polígono
-        #     intersecao_geom = geom_linha.intersection(geom)
-        #     if intersecao_geom.isEmpty():
-        #         # Adicionar o ID da feição à lista para remoção se estiver fora
-        #         ids_para_remover.append(linha.id())
-                
-        # # Remover as feições fora ou sobre o polígono
-        # if ids_para_remover:
-        #     paralelas_provider.deleteFeatures(ids_para_remover)
-        #     paralelas_layer.updateExtents()
               
-        #QgsProject.instance().addMapLayer(paralelas_layer)
+        if teste == True:
+            QgsProject.instance().addMapLayer(paralelas_layer)
 
         # Criar a camada com a união das linhas paralelas
         linhas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas', 'memory')
@@ -381,7 +368,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Atualizar a extensão da camada
         linhas_layer.updateExtents()
 
-        #QgsProject.instance().addMapLayer(linhas_layer)
+        if teste == True:
+            QgsProject.instance().addMapLayer(linhas_layer)
         
         # Criação de uma linha única para Linha de Voo
         linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linha de Voo', 'memory')
@@ -404,7 +392,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                     linha_unica_coords.extend(parte)  # Adicionar todas as partes
             else:
                 linha_unica_coords.extend(geom.asPolyline())  # Adicionar a linha simples
-
+            
         # Criar a geometria combinada a partir das coordenadas coletadas
         linha_unica_geom = QgsGeometry.fromPolylineXY(linha_unica_coords)
 
@@ -447,17 +435,25 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_fotos.updateFields()
 
         linha_voo = next(linha_voo_layer.getFeatures())  # Pegando a única linha
-        
-        geom = linha_voo.geometry() # Obter a geometria da linha
+        geom_linha = linha_voo.geometry() # Obter a geometria da linha
+
+        # Obter a geometria do polígono a partir da camada
+        poligono_feature = next(camada.getFeatures())  # Assumindo que a camada contém apenas um polígono
+        poligono_geom = poligono_feature.geometry()  # Geometria do polígono
+
+        # Criar um buffer com tolerância de 3 metros
+        tolerancia = 3  # Margem de 3 metros
+        poligono_com_tolerancia = poligono_geom.buffer(tolerancia, 5)  # Buffer com 5 segmentos por quadrante
 
         # Obter o ponto inicial da linha
-        ponto_inicial = QgsPointXY(geom.vertexAt(0))
+        ponto_inicial = QgsPointXY(geom_linha.vertexAt(0))
 
         # Gerar pontos
         pontoID = 1
-        distVoo = geom.length()
+        distVoo = geom_linha.length()
         distAtual = 0
         
+        # Primeiro Ponto no início da primeira linha da Linha de Voo
         ponto_feature = QgsFeature()
         ponto_feature.setFields(campos)
         ponto_feature.setAttribute("id", pontoID)
@@ -465,23 +461,30 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         ponto_feature.setAttribute("longitude", ponto_inicial.x())
         ponto_feature.setGeometry(QgsGeometry.fromPointXY(ponto_inicial))
         pontos_provider.addFeature(ponto_feature)
-
+        
         pontoID += 1
-        distAtual += deltaFront
 
-        while distAtual < distVoo:
-            ponto = geom.interpolate(distAtual).asPoint()
-            
-            ponto_feature = QgsFeature()
-            ponto_feature.setFields(campos)
-            ponto_feature.setAttribute("id", pontoID)
-            ponto_feature.setAttribute("latitude", ponto.y())
-            ponto_feature.setAttribute("longitude", ponto.x())
-            ponto_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto)))
-            pontos_provider.addFeature(ponto_feature)
-            
-            pontoID += 1
+        while True:
             distAtual += deltaFront
+            
+            if distAtual > (distVoo):  # Evitar extrapolação além do comprimento da linha
+                feedback.pushInfo(f"Dist. Atual: {distAtual}, Dist. Voo: {distVoo}")
+                break
+            
+            ponto = geom_linha.interpolate(distAtual).asPoint()
+            ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
+            
+            # Adicionar ponto somente se estiver dentro do polígono
+            if poligono_com_tolerancia.contains(ponto_geom):
+                ponto_feature = QgsFeature()
+                ponto_feature.setFields(campos)
+                ponto_feature.setAttribute("id", pontoID)
+                ponto_feature.setAttribute("latitude", ponto.y())
+                ponto_feature.setAttribute("longitude", ponto.x())
+                ponto_feature.setGeometry(ponto_geom)
+                pontos_provider.addFeature(ponto_feature)
+                
+                pontoID += 1
 
         # Atualizar a camada
         pontos_fotos.updateExtents()
