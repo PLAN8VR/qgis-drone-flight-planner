@@ -28,9 +28,9 @@ __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes
-from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber
-from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsProcessingParameterFileDestination
-from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsProcessingParameterBoolean
+from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
+from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsProcessingParameterFileDestination, QgsCoordinateReferenceSystem
+from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsProcessingParameterBoolean, QgsCoordinateTransform
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
 from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer
 from qgis.PyQt.QtCore import QCoreApplication
@@ -66,6 +66,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('percF','Percentual de sobreposição Frontal (85% = 0.85)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=0.85))
+        self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue='d0fd2bf40aa8a6225e8cb6a4a1a5faf7'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV para o Litchi',
                                                                fileFilter='CSV files (*.csv)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML para o Google Earth',
@@ -79,6 +80,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         crs = camada.crs()
         
         primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
+
+        apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
 
         H = parameters['h']
         dc = parameters['dc']
@@ -518,101 +521,87 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_fotos.setLabeling(QgsVectorLayerSimpleLabeling(settings))
 
         pontos_fotos.triggerRepaint()
-        QgsProject.instance().addMapLayer(pontos_fotos)
-        """
+        #QgsProject.instance().addMapLayer(pontos_fotos)
+        
         # ==================================================================================
         # =====Obter a altitude dos pontos das Fotos========================================
         
         # OpenTopography
         
-        # Obter as coordenadas extremas da área
+        # Obter as coordenadas extremas da área (em WGS 84)
         pontoN = float('-inf')  # coordenada máxima (Norte) / inf de inifito
         pontoS = float('inf')   # coordenada mínima (Sul)
         pontoW = float('inf')   # coordenada mínima (Oeste)
         pontoE = float('-inf')  # coordenada máxima (Leste)
-        
-        for feature in camada.getFeatures(): # Terreno
+
+        # Reprojetar Pontos (Fotos) de UTM para 4326; nesse caso EPSG:31983
+        crs_wgs = QgsCoordinateReferenceSystem(4326) # WGS84 que OpenTopography usa
+
+        # Transformador de coordenadas (UTM -> WGS84)
+        transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
+
+        for feature in camada.getFeatures():  # Terreno
             geom = feature.geometry()
-            bounds = geom.boundingBox() # Obtém os limites da geometria
+            bounds = geom.boundingBox()  # Limites da geometria em UTM
 
-            pontoN = max(pontoN, bounds.yMaximum())
-            pontoS = min(pontoS, bounds.yMinimum())
-            pontoW = min(pontoW, bounds.xMinimum())
-            pontoE = max(pontoE, bounds.xMaximum())
+            # Transformar limites para WGS 84
+            ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
+            ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
 
+            pontoN = max(pontoN, ponto_max.y())
+            pontoS = min(pontoS, ponto_min.y())
+            pontoW = min(pontoW, ponto_min.x())
+            pontoE = max(pontoE, ponto_max.x())
+
+        # Ajustar os limites
         ajuste_lat = (pontoN - pontoS) * 0.70
         ajuste_long = (pontoE - pontoW) * 0.70
-        
+
         pontoN += ajuste_lat
         pontoS -= ajuste_lat
         pontoW -= ajuste_long
         pontoE += ajuste_long    
 
-        # obter o MDE da área
-        src = crs.authid().split(":")[1] # 31983
+        # Obter o MDE da área
         coordenadas = f'{pontoW},{pontoE},{pontoS},{pontoN}'
-        area = f"{coordenadas}[EPSG:{src}]"
-        apiKey = 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7'
+        area = f"{coordenadas}[EPSG:4326]"
 
         result = processing.run(
                 "OTDEMDownloader:OpenTopography DEM Downloader", {
-                    'DEMs': 7,
+                    'DEMs': 7, # 7: Copernicus Global DSM 30m
                     'Extent': area,
-                    'API_key': apiKey,
+                    'API_key': apikey,
                     'OUTPUT': 'TEMPORARY_OUTPUT'})
 
         output_path = result['OUTPUT']
         camadaMDE = QgsRasterLayer(output_path, "DEM")
     
-        # Reprojetar Camada Pontos (Fotos) de 31983 para 4326
-        # crs é do projeto EPSG:31983
-        srcDestino = QgsCoordinateReferenceSystem(4326) # EPSG:4326
-
-        # Configuração do transformador
-        transform_context = QgsProject.instance().transformContext()
-        transform = QgsCoordinateTransform(crs, srcDestino, transform_context)
-
-        # Crie uma nova camada para os dados reprojetados
-        camadaReproj = QgsVectorLayer('Point?crs=' + src.authid(), 'Pontos Reprojetados', 'memory')
-        camadaReproj.startEditing()
-        camadaReproj.dataProvider().addAttributes(pontos_fotos.fields())
-        camadaReproj.updateFields()
-
-        # Reprojetar os pontos
-        for f in pontos_fotos.getFeatures():
-            geom = f.geometry()
-            geom.transform(transform)
-            reprojFeature = QgsFeature()
-            reprojFeature.setGeometry(geom)
-            reprojFeature.setAttributes(f.attributes())
-            camadaReproj.addFeature(reprojFeature)
-
-        camadaReproj.commitChanges()
+        # Valor da Altitude
+        prov = pontos_fotos.dataProvider()
+        pontos_fotos.startEditing()
         
-        # Obter Cota Z - Pontos e DEM
-        if camadaReproj.fields().indexFromName('Z') == -1:
-            camadaReproj.dataProvider().addAttributes([QgsField('Z', QVariant.Double)])
-            camadaReproj.updateFields()
+        # Adicionar um campo para altitude, se não existir
+        if 'altitude' not in [field.name() for field in prov.fields()]:
+            prov.addAttributes([QgsField('altitude', QVariant.Double)])
+            pontos_fotos.updateFields()
 
-        camadaReproj.startEditing()
-
-        # definir o valor de Z
-        for f in camadaReproj.getFeatures():
+         # definir o valor de Z
+        for f in pontos_fotos.getFeatures():
             point = f.geometry().asPoint()
-            x, y = point.x(), point.y()
+            
+            # Transformar coordenada para CRS do raster
+            point_wgs = transformador.transform(QgsPointXY(point.x(), point.y()))
             
             # Obter o valor de Z do MDE
-            mde = camadaMDE.dataProvider().identify(QgsPointXY(x, y), QgsRaster.IdentifyFormatValue)
-            z_value = mde.results()[1]  # O valor de Z está no índice 1
-            
-            # Atualizar o campo "Z" da feature
-            f['Z'] = z_value + H  # altura de Voo
-            camadaReproj.updateFeature(f)
+            value, result = camadaMDE.dataProvider().sample(point_wgs, 1)  # Resolução = 1
+            if result:
+                f['altitude'] = value + H  # altura de Voo
+                pontos_fotos.updateFeature(f)
 
-        camadaReproj.commitChanges()
-        
-        QgsProject.instance().addMapLayer(camadaReproj)
-        
+        pontos_fotos.commitChanges()
+
+        QgsProject.instance().addMapLayer(pontos_fotos)
+        """
         # ==================================================================================
         # Exportar para o Google Earth Pro (kml)
         camArq = self.dlg.arqKml.filePath()
