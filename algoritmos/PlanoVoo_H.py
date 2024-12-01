@@ -606,7 +606,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
-        # =========Exportar para o Google Earth Pro (kml)=================================
+        # =========Exportar para o Google Earth Pro (kml)================================================
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)  
         pontos_reproj = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reprojetados', 'memory') 
         pontos_reproj.startEditing()
@@ -624,7 +624,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_reproj.commitChanges()
         
-        QgsProject.instance().addMapLayer(pontos_reproj)
+        if teste == True:
+            QgsProject.instance().addMapLayer(pontos_reproj)
         
         # Verificar se o caminho KML está preenchido
         if caminho_kml and caminho_kml.endswith('.kml'):
@@ -642,10 +643,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
         """
+        pontos_reproj = QgsProject.instance().mapLayersByName("Pontos Reprojetados")[0]
+        
         # =============L I T C H I==========================================================
-        # Definir Atributos de Geometria
-        pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double),
-                                                        QgsField("ycoord", QVariant.Double)])
+        # Definir novos campos xcoord e ycoord com coordenadas geográficas - E um campo para Altitude AGL
+        pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double), QgsField('Alt. AGL [m]', QVariant.Double)])
         pontos_reproj.updateFields()
 
         # Obtenha o índice dos novos campos
@@ -667,82 +669,61 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             f.setAttribute(idx_x, x)
             f.setAttribute(idx_y, y)
 
-            camadaReproj.updateFeature(f)
+            pontos_reproj.updateFeature(f)
 
-        camadaReproj.commitChanges()
-        """
-        # Mapeamento dos campos antigos para os novos nomes
-        campos = camadaReproj.fields()
-                
+        pontos_reproj.commitChanges()
+        
+        # Alterar o nome de alguns campos conforme o dicionário
         novos_nomes = {
             'id': 'Waypoint Number',
             'latitude': 'Y [m]',
             'longitude': 'X [m]',
-            'Z': 'Alt. ASL [m]',
+            'alturaVoo': 'Alt. ASL [m]',
             'xcoord': 'xcoord',
-            'ycoord': 'ycoord'}
+            'ycoord': 'ycoord',
+            'Alt. AGL [m]': 'Alt. AGL [m]'}
 
-        # Adicionar novos campos à camada
-        novoCampos = QgsFields()
-        for f in campos:
-            novoNome = novos_nomes.get(f.name(), f.name())
-            novoCampo = QgsField(novoNome, f.type())
-            novoCampos.append(novoCampo)
+        pontos_reproj.startEditing()
 
-        # Criar uma nova camada com os campos renomeados
-        camadaRenomeados = QgsVectorLayer(f'Point?crs={camada.crs().authid()}', 'Pontos_renomeados', 'memory')
-        provider = camadaRenomeados.dataProvider()
-        provider.addAttributes(novoCampos)
-        camadaRenomeados.updateFields()
+        # Iterar sobre os campos para renomeá-los
+        for old_name, new_name in novos_nomes.items():
+            idx = pontos_reproj.fields().indexFromName(old_name)
+            if idx != -1:  # Verifica se o campo existe
+                pontos_reproj.renameAttribute(idx, new_name)
 
-        # Copiar os recursos da camada original para a nova camada
-        with edit(camadaRenomeados):
-            for f in camadaReproj.getFeatures():
-                novaFeature = QgsFeature(camadaRenomeados.fields())
-                novaFeature.setGeometry(f.geometry())
-                
-                novaFeature.setAttributes(f.attributes())
-                camadaRenomeados.dataProvider().addFeature(novaFeature)
-        
-        # Adicionar o novo campo 'Alt. AGL [m]'
-        campos = camadaRenomeados.fields()
+        pontos_reproj.commitChanges()
 
-        novoCampo = QgsField('Alt. AGL [m]', QVariant.Double) # QVariant.Double p/valores numéricos
-        camadaRenomeados.dataProvider().addAttributes([novoCampo])
-        camadaRenomeados.updateFields()
-        
-        # Trocar Coluna X e Y de lugar e columa Alt. AGL [m]
-
-        # Definindo a nova ordem dos campos
+        # Definindo uma nova ordem dos campos em uma nova camada
+        atualOrdem = ['Waypoint Number', 'Y [m]', 'X [m]', 'Alt. ASL [m]', 'xcoord', 'ycoord', 'Alt. AGL [m]']
         novaOrdem = ['Waypoint Number', 'X [m]', 'Y [m]', 'Alt. ASL [m]', 'Alt. AGL [m]', 'xcoord', 'ycoord']
 
         # Criando uma nova camada de memória com a nova ordem de campos
-        camadaReordenados = QgsVectorLayer(f'Point?crs={camadaRenomeados.crs().authid()}', 'Pontos_reordenados', 'memory')
-        provider = camadaReordenados.dataProvider()
+        pontos_reordenados = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reordenados', 'memory')
+        pontos_provider = pontos_reordenados.dataProvider()
 
         # Adicionando os campos na nova ordem
         novosCampos = QgsFields()
-        for field_name in novaOrdem:
-            field = camadaRenomeados.fields().field(field_name)
-            novosCampos.append(field)
+        for campo in novaOrdem:
+            original_field = pontos_reproj.fields().field(pontos_reproj.fields().indexFromName(campo))
+            novosCampos.append(original_field)
             
-        provider.addAttributes(novosCampos)
-        camadaReordenados.updateFields()
+        pontos_provider.addAttributes(novosCampos)
+        pontos_reordenados.updateFields()
         
-        # Copiando os registros da camada original para a nova camada
-        for f in camadaRenomeados.getFeatures():
-            n = QgsFeature(camadaReordenados.fields())
-            n.setGeometry(f.geometry())
-            
-            for field_name in novaOrdem:
-                n.setAttribute(field_name, f[field_name])
+        # Copiando os dados da camada Reprojetados para a nova camada
+        for f in pontos_reproj.getFeatures():
+            nova_feature = QgsFeature()
+            nova_feature.setGeometry(f.geometry())
+            nova_feature.setFields(novosCampos)
+            for campo in novaOrdem:
+                if campo in f.fields().names():
+                    nova_feature[campo] = f[campo]
+            pontos_provider.addFeature(nova_feature)
         
-            provider.addFeature(n)
-        
-        # Multiplicar por -1 as latitudes e longitudes
-        camadaReordenados.startEditing()
+        # Multiplicar por -1 as colunas X e Y
+        pontos_reordenados.startEditing()
 
-        for f in camadaReordenados.getFeatures():
+        for f in pontos_reordenados.getFeatures():
             xcoord = f['xcoord']
             x = f['X [m]']
             
@@ -754,27 +735,29 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 x = x * -1
                 
                 f.setAttribute(f.fieldNameIndex('X [m]'), x)
-                camadaReordenados.updateFeature(f)
+                pontos_reordenados.updateFeature(f)
                 
             if ycoord < 0:
                 y = y * -1
                 
                 f.setAttribute(f.fieldNameIndex('Y [m]'), y)
-                camadaReordenados.updateFeature(f)
+                pontos_reordenados.updateFeature(f)
 
-        camadaReordenados.commitChanges()
-        
+        pontos_reordenados.commitChanges()
+        #if teste == True:
+        QgsProject.instance().addMapLayer(pontos_reordenados)
+        """    
         # Renumerar a coluna de IDs - Waypoint Number
-        camadaReordenados.startEditing()
+        pontos_reordenados.startEditing()
             
         n = 1
 
-        for f in camadaReordenados.getFeatures():
+        for f in pontos_reordenados.getFeatures():
             f['Waypoint Number'] = n
-            camadaReordenados.updateFeature(f)
+            pontos_reordenados.updateFeature(f)
             n += 1
 
-        camadaReordenados.commitChanges()
+        pontos_reordenados.commitChanges()
         
         # ====Mudar Sistema numérico - ponto no lugar de vírgula para separa a parte decimal
         def addCampo(camada, field_name, field_type):
@@ -785,17 +768,17 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             camada.dataProvider().deleteAttributes([camada.fields().indexOf(campo)])
             camada.updateFields()
                 
-        camadaReordenados.startEditing()
+        pontos_reordenados.startEditing()
         
         # Adicionar campos de texto
-        addCampo(camadaReordenados, 'X [m] ', QVariant.String) # observe o espaço em branco no
-        addCampo(camadaReordenados, 'Y [m] ', QVariant.String) # final para diferenciar
-        addCampo(camadaReordenados, 'Alt. ASL [m] ', QVariant.String)
-        addCampo(camadaReordenados, 'Alt. AGL [m] ', QVariant.String)
-        addCampo(camadaReordenados, 'xcoord ', QVariant.String)
-        addCampo(camadaReordenados, 'ycoord ', QVariant.String)
+        addCampo(pontos_reordenados, 'X [m] ', QVariant.String) # observe o espaço em branco no
+        addCampo(pontos_reordenados, 'Y [m] ', QVariant.String) # final para diferenciar
+        addCampo(pontos_reordenados, 'Alt. ASL [m] ', QVariant.String)
+        addCampo(pontos_reordenados, 'Alt. AGL [m] ', QVariant.String)
+        addCampo(pontos_reordenados, 'xcoord ', QVariant.String)
+        addCampo(pontos_reordenados, 'ycoord ', QVariant.String)
 
-        for f in camadaReordenados.getFeatures():
+        for f in pontos_reordenados.getFeatures():
             x1 = str(f['X [m]']).replace(',', '.')
             x2 = str(f['Y [m]']).replace(',', '.')
             x3 = str(f['Alt. ASL [m]']).replace(',', '.')
@@ -819,18 +802,18 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             f['xcoord '] = x5
             f['ycoord '] = x6
 
-            camadaReordenados.updateFeature(f)
+            pontos_reordenados.updateFeature(f)
 
-        camadaReordenados.commitChanges()
+        pontos_reordenados.commitChanges()
 
-        camadaReordenados.startEditing()
+        pontos_reordenados.startEditing()
 
         # Lista de campos Double a serem removidos
         camposDel = ['X [m]', 'Y [m]', 'Alt. ASL [m]', 'Alt. AGL [m]', 'xcoord', 'ycoord'] # sem o espaço
         for f in camposDel:
-            delCampo(camadaReordenados, f)
+            delCampo(pontos_reordenados, f)
 
-        camadaReordenados.commitChanges()
+        pontos_reordenados.commitChanges()
         
         # Exportar para o Litch (csv preparado)
         camArq = self.dlg.arqCSV.filePath()
@@ -859,7 +842,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             writer.writeheader()
 
             # Ler os dados da camada Pontos
-            for f in camadaReordenados.getFeatures():
+            for f in pontos_reordenados.getFeatures():
                 # Extrair os valores dos campos da camada
                 x_coord = f['xcoord '] # atenção ao espaço
                 y_coord = f['ycoord ' ]
@@ -924,7 +907,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         msg.setText("Plugin executado com sucesso.")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
-        
+        """
         return {}
         
     def name(self):
