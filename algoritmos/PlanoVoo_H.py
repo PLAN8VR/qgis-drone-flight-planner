@@ -27,7 +27,7 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes
+from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes, QgsVectorFileWriter
 from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
 from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsProcessingParameterFileDestination, QgsCoordinateReferenceSystem
 from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsProcessingParameterBoolean, QgsCoordinateTransform
@@ -90,7 +90,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         percL = parameters['percL'] # Lateral
         percF = parameters['percF'] # Frontal
         caminho_csv = parameters['saida_csv']
-        caminho_kml = parameters, ['saida_kml']
+        caminho_kml = parameters['saida_kml']
         
         # =====Cálculo das Sobreposições====================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
@@ -108,7 +108,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         deltaFront = SD_front * (H / h1 - 1)
         
         feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
-        
+        """
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
         
@@ -528,18 +528,20 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         # OpenTopography
         
+        feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
+        
         # Obter as coordenadas extremas da área (em WGS 84)
         pontoN = float('-inf')  # coordenada máxima (Norte) / inf de inifito
         pontoS = float('inf')   # coordenada mínima (Sul)
         pontoW = float('inf')   # coordenada mínima (Oeste)
         pontoE = float('-inf')  # coordenada máxima (Leste)
-
+        """
         # Reprojetar Pontos (Fotos) de UTM para 4326; nesse caso EPSG:31983
         crs_wgs = QgsCoordinateReferenceSystem(4326) # WGS84 que OpenTopography usa
-
+        
         # Transformador de coordenadas (UTM -> WGS84)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-
+        """
         for feature in camada.getFeatures():  # Terreno
             geom = feature.geometry()
             bounds = geom.boundingBox()  # Limites da geometria em UTM
@@ -581,8 +583,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_fotos.startEditing()
         
         # Adicionar um campo para altitude, se não existir
-        if 'altitude' not in [field.name() for field in prov.fields()]:
-            prov.addAttributes([QgsField('altitude', QVariant.Double)])
+        if 'alturaVoo' not in [field.name() for field in prov.fields()]:
+            prov.addAttributes([QgsField('alturaVoo', QVariant.Double)])
             pontos_fotos.updateFields()
 
          # definir o valor de Z
@@ -595,50 +597,65 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             # Obter o valor de Z do MDE
             value, result = camadaMDE.dataProvider().sample(point_wgs, 1)  # Resolução = 1
             if result:
-                f['altitude'] = value + H  # altura de Voo
+                f['alturaVoo'] = value + H  # altura de Voo
                 pontos_fotos.updateFeature(f)
 
         pontos_fotos.commitChanges()
 
         QgsProject.instance().addMapLayer(pontos_fotos)
+        
+        #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
+        
+        # =========Exportar para o Google Earth Pro (kml)=================================
+        # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)  
+        pontos_reproj = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reprojetados', 'memory') 
+        pontos_reproj.startEditing()
+        pontos_reproj.dataProvider().addAttributes(pontos_fotos.fields())
+        pontos_reproj.updateFields()
+
+        # Reprojetar os pontos
+        for f in pontos_fotos.getFeatures():
+            geom = f.geometry()
+            geom.transform(transformador)
+            reproj = QgsFeature()
+            reproj.setGeometry(geom)
+            reproj.setAttributes(f.attributes())
+            pontos_reproj.addFeature(reproj)
+
+        pontos_reproj.commitChanges()
+        
+        QgsProject.instance().addMapLayer(pontos_reproj)
+        
+        # Verificar se o caminho KML está preenchido
+        if caminho_kml and caminho_kml.endswith('.kml'):
+            # Configure as opções para gravar o arquivo
+            options = QgsVectorFileWriter.SaveVectorOptions()
+            options.fileEncoding = 'UTF-8'
+            options.driverName = 'KML'
+            options.crs = crs_wgs
+            options.layerOptions = ['ALTITUDE_MODE=absolute'] 
+            
+            # Escrever a camada no arquivo KML
+            grava = QgsVectorFileWriter.writeAsVectorFormat(pontos_reproj, caminho_kml, options)
+            
+            feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {caminho_kml}")
+        else:
+            feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
         """
-        # ==================================================================================
-        # Exportar para o Google Earth Pro (kml)
-        camArq = self.dlg.arqKml.filePath()
-        
-        # Configure as opções para o escritor de arquivos
-        options = QgsVectorFileWriter.SaveVectorOptions()
-        options.fileEncoding = 'UTF-8'
-        options.driverName = 'KML'
-        options.crs = QgsCoordinateReferenceSystem('EPSG:4326')
-        options.layerOptions = ['ALTITUDE_MODE=absolute'] 
-
-        # Crie o escritor de arquivos
-        writer = QgsVectorFileWriter.writeAsVectorFormat(camadaReproj, camArq, options)
-        
         # =============L I T C H I==========================================================
-        # Colocar a cota Z em alturaVoo(altura do Voo)
-        camadaReproj.startEditing()
-
-        for f in camadaReproj.getFeatures():
-            f['Z'] = alturaVoo
-            camadaReproj.updateFeature(f)
-
-        camadaReproj.commitChanges()
-    
         # Definir Atributos de Geometria
-        camadaReproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double),
+        pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double),
                                                         QgsField("ycoord", QVariant.Double)])
-        camadaReproj.updateFields()
+        pontos_reproj.updateFields()
 
         # Obtenha o índice dos novos campos
-        idx_x = camadaReproj.fields().indexFromName('xcoord')
-        idx_y = camadaReproj.fields().indexFromName('ycoord')
+        idx_x = pontos_reproj.fields().indexFromName('xcoord')
+        idx_y = pontos_reproj.fields().indexFromName('ycoord')
 
         # Inicie a edição da camada
-        camadaReproj.startEditing()
+        pontos_reproj.startEditing()
 
-        for f in camadaReproj.getFeatures():
+        for f in pontos_reproj.getFeatures():
             geom = f.geometry()
             if geom.isEmpty():
                 continue
@@ -653,7 +670,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             camadaReproj.updateFeature(f)
 
         camadaReproj.commitChanges()
-        
+        """
         # Mapeamento dos campos antigos para os novos nomes
         campos = camadaReproj.fields()
                 
@@ -818,7 +835,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Exportar para o Litch (csv preparado)
         camArq = self.dlg.arqCSV.filePath()
         
-        espacFrontal = 35 # vc coloca o valor do espaçamento frontal da 1a. parte do Plugin (Curso 3)
+        espacFrontal = deltaFontal
 
         # Criar o arquivo CSV
         with open(camArq, mode='w', newline='') as csvfile:
@@ -907,7 +924,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         msg.setText("Plugin executado com sucesso.")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
-        """
+        
         return {}
         
     def name(self):
