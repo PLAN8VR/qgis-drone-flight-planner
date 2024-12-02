@@ -73,7 +73,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                                fileFilter='KML files (*.kml)'))
         
     def processAlgorithm(self, parameters, context, feedback):
-        teste = True # Quando True mostra camadas intermediárias
+        teste = False # Quando True mostra camadas intermediárias
         
         # =====Parâmetros de entrada para variáveis========================
         camada = self.parameterAsVectorLayer(parameters, 'terreno', context)
@@ -627,9 +627,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_reproj.commitChanges()
         
-        if teste == True:
-            QgsProject.instance().addMapLayer(pontos_reproj)
-        
         # Verificar se o caminho KML está preenchido
         if caminho_kml and caminho_kml.endswith('.kml'):
             # Configure as opções para gravar o arquivo
@@ -646,170 +643,93 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
         
-        #pontos_reproj = QgsProject.instance().mapLayersByName("Pontos Reprojetados")[0]
-        
+        if teste == True:
+            QgsProject.instance().addMapLayer(pontos_reproj)
+            
         # =============L I T C H I==========================================================
+
+        # Definir novos campos xcoord e ycoord com coordenadas geográficas
+        pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
+        pontos_reproj.updateFields()
+
+        # Obtenha o índice dos novos campos
+        idx_x = pontos_reproj.fields().indexFromName('xcoord')
+        idx_y = pontos_reproj.fields().indexFromName('ycoord')
+
+        # Inicie a edição da camada
+        pontos_reproj.startEditing()
+
+        for f in pontos_reproj.getFeatures():
+            geom = f.geometry()
+            if geom.isEmpty():
+                continue
+
+            point = geom.asPoint()
+            x = point.x()
+            y = point.y()
+
+            f.setAttribute(idx_x, x)
+            f.setAttribute(idx_y, y)
+
+            pontos_reproj.updateFeature(f)
+
+        pontos_reproj.commitChanges()
+
+        # deletar campos desnecessários
+        campos = ['latitude', 'longitude']
+        
+        pontos_reproj.startEditing()
+        
+        # Obtem os índices dos campos a serem deletados
+        indices = [pontos_reproj.fields().indexFromName(campo) for campo in campos if campo in pontos_reproj.fields().names()]
+        
+        pontos_reproj.deleteAttributes(indices)
+        
+        pontos_reproj.commitChanges()
+            
+        # Mudar Sistema numérico - ponto no lugar de vírgula para separa a parte decimal - Campos Double para String
+        def addCampo(camada, field_name, field_type):
+            camada.dataProvider().addAttributes([QgsField(field_name, field_type)])
+            camada.updateFields()
+                
+        pontos_reproj.startEditing()
+
+        # Adicionar campos de texto em Pontos Reordenados
+        addCampo(pontos_reproj, 'xcoord ', QVariant.String) # o espaço é para diferenciar; depois vamos deletar os campos antigos
+        addCampo(pontos_reproj, 'ycoord ', QVariant.String)
+        addCampo(pontos_reproj, 'alturaVoo ', QVariant.String)
+
+        for f in pontos_reproj.getFeatures():
+            x1= str(f['xcoord']).replace(',', '.')
+            x2 = str(f['ycoord']).replace(',', '.')
+            x3 = str(f['alturaVoo']).replace(',', '.')
+
+            # Formatar os valores como strings com ponto como separador decimal
+            x1 = "{:.6f}".format(float(x1))
+            x2 = "{:.6f}".format(float(x2))
+            x3 = "{:.6f}".format(float(x3))
+
+            # Atualizar os valores dos campos de texto
+            f['xcoord '] = x1
+            f['ycoord '] = x2
+            f['alturaVoo '] = x3
+
+            pontos_reproj.updateFeature(f)
+
+        pontos_reproj.commitChanges()
+
+        # Lista de campos Double a serem removidos de Pontos Reprojetados
+        camposDel = ['xcoord', 'ycoord', 'alturaVoo'] # sem o espaço
+        
+        pontos_reproj.startEditing()
+        pontos_reproj.dataProvider().deleteAttributes([pontos_reproj.fields().indexOf(campo) for campo in camposDel if pontos_reproj.fields().indexOf(campo) != -1])
+        pontos_reproj.commitChanges()
+
+        if teste == True:
+            QgsProject.instance().addMapLayer(pontos_reproj)
 
         # Verificar se o caminho CSV está preenchido
         if caminho_csv and caminho_csv.endswith('.csv'):
-            # Definir novos campos xcoord e ycoord com coordenadas geográficas - E um campo para Altitude AGL
-            pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double), QgsField('Alt. AGL [m]', QVariant.Double)])
-            pontos_reproj.updateFields()
-
-            # Obtenha o índice dos novos campos
-            idx_x = pontos_reproj.fields().indexFromName('xcoord')
-            idx_y = pontos_reproj.fields().indexFromName('ycoord')
-
-            # Inicie a edição da camada
-            pontos_reproj.startEditing()
-
-            for f in pontos_reproj.getFeatures():
-                geom = f.geometry()
-                if geom.isEmpty():
-                    continue
-
-                point = geom.asPoint()
-                x = point.x()
-                y = point.y()
-
-                f.setAttribute(idx_x, x)
-                f.setAttribute(idx_y, y)
-
-                pontos_reproj.updateFeature(f)
-
-            pontos_reproj.commitChanges()
-            
-            # Alterar o nome de alguns campos conforme o dicionário
-            novos_nomes = {
-                'id': 'Waypoint Number',
-                'latitude': 'Y [m] ',
-                'longitude': 'X [m] ',
-                'alturaVoo': 'Alt. ASL [m] ',
-                'xcoord': 'xcoord ',
-                'ycoord': 'ycoord ',
-                'Alt. AGL [m]': 'Alt. AGL [m] '}
-
-            pontos_reproj.startEditing()
-
-            # Iterar sobre os campos para renomeá-los
-            for old_name, new_name in novos_nomes.items():
-                idx = pontos_reproj.fields().indexFromName(old_name)
-                if idx != -1:  # Verifica se o campo existe
-                    pontos_reproj.renameAttribute(idx, new_name)
-
-            pontos_reproj.commitChanges()
-
-            # Definindo uma nova ordem dos campos em uma nova camada
-            atualOrdem = ['Waypoint Number', 'Y [m] ', 'X [m] ', 'Alt. ASL [m] ', 'xcoord ', 'ycoord ', 'Alt. AGL [m] ']
-            novaOrdem = ['Waypoint Number', 'X [m] ', 'Y [m] ', 'Alt. ASL [m] ', 'Alt. AGL [m] ', 'xcoord ', 'ycoord ']
-
-            # Criando uma nova camada de memória com a nova ordem de campos
-            pontos_reordenados = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reordenados', 'memory')
-            pontos_provider = pontos_reordenados.dataProvider()
-
-            # Adicionando os campos na nova ordem
-            novosCampos = QgsFields()
-            for campo in novaOrdem:
-                original_field = pontos_reproj.fields().field(pontos_reproj.fields().indexFromName(campo))
-                novosCampos.append(original_field)
-                
-            pontos_provider.addAttributes(novosCampos)
-            pontos_reordenados.updateFields()
-            
-            # Copiando os dados da camada Reprojetados para a nova camada
-            for f in pontos_reproj.getFeatures():
-                nova_feature = QgsFeature()
-                nova_feature.setGeometry(f.geometry())
-                nova_feature.setFields(novosCampos)
-                for campo in novaOrdem:
-                    if campo in f.fields().names():
-                        nova_feature[campo] = f[campo]
-                pontos_provider.addFeature(nova_feature)
-            
-            # Multiplicar por -1 as colunas X e Y
-            pontos_reordenados.startEditing()
-
-            for f in pontos_reordenados.getFeatures():
-                xcoord = f['xcoord ']
-                x = f['X [m] ']
-                
-                ycoord = f['ycoord ']
-                y = f['Y [m] ']
-                
-                # Se 'xcoord' for negativo, multiplica 'X [m]' por -1
-                if xcoord < 0:
-                    x = x * -1
-                    
-                    f.setAttribute(f.fieldNameIndex('X [m] '), x)
-                    pontos_reordenados.updateFeature(f)
-                    
-                if ycoord < 0:
-                    y = y * -1
-                    
-                    f.setAttribute(f.fieldNameIndex('Y [m] '), y)
-                    pontos_reordenados.updateFeature(f)
-
-            pontos_reordenados.commitChanges()
-            
-            # Mudar Sistema numérico - ponto no lugar de vírgula para separa a parte decimal - Campos Double para String
-            def addCampo(camada, field_name, field_type):
-                camada.dataProvider().addAttributes([QgsField(field_name, field_type)])
-                camada.updateFields()
-
-            def delCampo(camada, campo):
-                camada.dataProvider().deleteAttributes([camada.fields().indexOf(campo)])
-                camada.updateFields()
-                    
-            pontos_reordenados.startEditing()
-
-            # Adicionar campos de texto
-            addCampo(pontos_reordenados, 'X [m]', QVariant.String) 
-            addCampo(pontos_reordenados, 'Y [m]', QVariant.String)
-            addCampo(pontos_reordenados, 'Alt. ASL [m]', QVariant.String)
-            addCampo(pontos_reordenados, 'Alt. AGL [m]', QVariant.String)
-            addCampo(pontos_reordenados, 'xcoord', QVariant.String)
-            addCampo(pontos_reordenados, 'ycoord', QVariant.String)
-
-            for f in pontos_reordenados.getFeatures():
-                x1 = str(f['X [m] ']).replace(',', '.')
-                x2 = str(f['Y [m] ']).replace(',', '.')
-                x3 = str(f['Alt. ASL [m] ']).replace(',', '.')
-                x4 = 'nan'
-                x5 = str(f['xcoord ']).replace(',', '.')
-                x6 = str(f['ycoord ']).replace(',', '.')
-
-                # Formatar os valores como strings com ponto como separador decimal
-                x1 = "{:.6f}".format(float(x1))
-                x2 = "{:.6f}".format(float(x2))
-                x3 = "{:.6f}".format(float(x3))
-                
-                x5 = "{:.6f}".format(float(x5))
-                x6 = "{:.6f}".format(float(x6))
-
-                # Atualizar os valores dos campos de texto
-                f['X [m]'] = x1
-                f['Y [m]'] = x2
-                f['Alt. ASL [m]'] = x3
-                f['Alt. AGL [m]'] = x4
-                f['xcoord'] = x5
-                f['ycoord'] = x6
-
-                pontos_reordenados.updateFeature(f)
-
-            pontos_reordenados.commitChanges()
-
-            pontos_reordenados.startEditing()
-
-            # Lista de campos Double a serem removidos
-            camposDel = ['X [m] ', 'Y [m] ', 'Alt. ASL [m] ', 'Alt. AGL [m] ', 'xcoord ', 'ycoord '] # com o espaço
-            for f in camposDel:
-                delCampo(pontos_reordenados, f)
-
-            pontos_reordenados.commitChanges()
-
-            if teste == True:
-                QgsProject.instance().addMapLayer(pontos_reordenados)
-
             # Exportar para o Litch (CSV já preparado)
             # Criar o arquivo CSV
             with open(caminho_csv, mode='w', newline='') as csvfile:
@@ -833,17 +753,16 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 writer.writeheader()
 
                 # Ler os dados da camada Pontos
-                for f in pontos_reordenados.getFeatures():
+                for f in pontos_reproj.getFeatures():
                     # Extrair os valores dos campos da camada
-                    x_coord = f['xcoord'] 
-                    y_coord = f['ycoord' ]
-                    altitude = f['Alt. ASL [m]']
+                    x_coord = f['xcoord '] 
+                    y_coord = f['ycoord ' ]
 
                     # Criar um dicionário de dados para cada linha do CSV
                     data = {
                         "latitude": y_coord,
                         "longitude": x_coord,
-                        "altitude(m)": altitude,
+                        "altitude(m)": H, # altura de voo
                         "heading(deg)": 360,
                         "curvesize(m)": 0,
                         "rotationdir": 0,
@@ -890,13 +809,13 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
                     # Escrever a linha no CSV
                     writer.writerow(data)
-            
-            # Mensagem de Encerramento
-            feedback.pushInfo("")
-            feedback.pushInfo("Plano de Voo Horizontal executado com sucesso.") 
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
 
+        # Mensagem de Encerramento
+        feedback.pushInfo("")
+        feedback.pushInfo("Plano de Voo Horizontal executado com sucesso.") 
+            
         return {}
         
     def name(self):
