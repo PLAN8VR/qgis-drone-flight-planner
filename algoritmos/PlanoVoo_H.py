@@ -108,7 +108,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         deltaFront = SD_front * (H / h1 - 1)
         
         feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
-        """
+        
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
         
@@ -535,13 +535,13 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontoS = float('inf')   # coordenada mínima (Sul)
         pontoW = float('inf')   # coordenada mínima (Oeste)
         pontoE = float('-inf')  # coordenada máxima (Leste)
-        """
+        
         # Reprojetar Pontos (Fotos) de UTM para 4326; nesse caso EPSG:31983
         crs_wgs = QgsCoordinateReferenceSystem(4326) # WGS84 que OpenTopography usa
         
         # Transformador de coordenadas (UTM -> WGS84)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-        """
+        
         for feature in camada.getFeatures():  # Terreno
             geom = feature.geometry()
             bounds = geom.boundingBox()  # Limites da geometria em UTM
@@ -603,11 +603,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_fotos.commitChanges()
 
         QgsProject.instance().addMapLayer(pontos_fotos)
-        """
+        
         feedback.pushInfo("")
         feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
         
-        pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
+        #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
         # =========Exportar para o Google Earth Pro (kml)================================================
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)  
