@@ -46,26 +46,15 @@ import csv
 
 class PlanoVoo_V(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Terreno do Voo', types=[QgsProcessing.TypeVectorPolygon]))
-        self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','Primeira Linha de Voo', types=[QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterNumber('h','Altura de Voo',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=50,defaultValue=100))
-        self.addParameter(QgsProcessingParameterNumber('dc','Tamanho do Sensor Horizontal (m)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=13.2e-3)) # igual p/o Phantom 4 Pro (5472 × 3648)
-        self.addParameter(QgsProcessingParameterNumber('dl','Tamanho do Sensor Vertical (m)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=8.8e-3)) # igual p/o Phantom 4 Pro
-        self.addParameter(QgsProcessingParameterNumber('f','Distância Focal (m)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=8.38e-3)) # Phantom 4 Pro é f = 9e-3
-        self.addParameter(QgsProcessingParameterNumber('percL','Percentual de sobreposição Lateral (75% = 0.75)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.60,defaultValue=0.75))
-        self.addParameter(QgsProcessingParameterNumber('percF','Percentual de sobreposição Frontal (85% = 0.85)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.60,defaultValue=0.85))
+        self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Linha Base de Voo', types=[QgsProcessing.TypeVectorLine]))
+        self.addParameter(QgsProcessingParameterNumber('altura','Altura do Objeto (m)',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=15))
+        self.addParameter(QgsProcessingParameterNumber('alturaMin','Altura Inicial (m)',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=2))
+        self.addParameter(QgsProcessingParameterNumber('deltaHorizontal','Espaçamento Horizontal (m)',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=10))
+        self.addParameter(QgsProcessingParameterNumber('deltaVertical','Espaçamento Vertical (m)',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=5)) 
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue='d0fd2bf40aa8a6225e8cb6a4a1a5faf7'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV para o Litchi',
                                                                fileFilter='CSV files (*.csv)'))
@@ -73,235 +62,83 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                                                                fileFilter='KML files (*.kml)'))
         
     def processAlgorithm(self, parameters, context, feedback):
-        teste = False # Quando True mostra camadas intermediárias
+        teste = True # Quando True mostra camadas intermediárias
         
         # =====Parâmetros de entrada para variáveis========================
-        camada = self.parameterAsVectorLayer(parameters, 'terreno', context)
-        crs = camada.crs()
+        linha_base = self.parameterAsVectorLayer(parameters, 'linha_base', context)
+        crs = linha_base.crs()
+
+        H = parameters['altura']
+        h = parameters['alturaMin']
+        deltaH = parameters['deltaHorizontal']
+        deltaV = parameters['deltaVertical']
         
-        primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
-
         apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
-
-        H = parameters['h']
-        dc = parameters['dc']
-        dl = parameters['dl']
-        f = parameters['f']
-        percL = parameters['percL'] # Lateral
-        percF = parameters['percF'] # Frontal
+        
         caminho_kml = parameters['saida_kml']
         caminho_csv = parameters['saida_csv']
         
-        # =====Cálculo das Sobreposições====================================
-        # Distância das linhas de voo paralelas - Espaçamento Lateral
-        tg_alfa_2 = dc / (2 * f)
-        D_lat = dc * H / f
-        SD_lat = percL * D_lat
-        h1 = SD_lat / (2 * tg_alfa_2)
-        deltaLat = SD_lat * (H / h1 - 1)
-
-        # Espaçamento Frontal entre as fotografias- Espaçamento Frontal
-        tg_alfa_2 = dl / (2 * f)
-        D_front = dl * H / f
-        SD_front = percF * D_front
-        h1 = SD_front / (2 * tg_alfa_2)
-        deltaFront = SD_front * (H / h1 - 1)
-        
-        feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
+        feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {deltaH}, Delta Vertical: {deltaV}")
         
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
         
-        # Verificar se o polígono e a primeira_linha contém exatamente uma feature
-        poligono_features = list(camada.getFeatures()) # dados do Terreno
-        if len(poligono_features) != 1:
-            raise ValueError("A camada deve conter somente um polígono.")
-
-        poligono = poligono_features[0].geometry()
-        vertices = [QgsPointXY(v) for v in poligono.vertices()] # Extrair os vértices do polígono
+        # Verificar se a linha_base contém apenas uma feature
+        linha = list(linha_base.getFeatures())
+        if len(linha) != 1:
+            raise ValueError("A camada Linha Base deve conter somente uma linha.")
         
-        linha_features = list(primeira_linha.getFeatures())
-        if len(linha_features) != 1:
-            raise ValueError("A camada primeira_linha deve conter somente uma linha.")
-
-        # Verifica a geometria da primeira linha
-        linha_geom = linha_features[0].geometry() # Obter a geometria da linha
-        
-        if linha_geom.asMultiPolyline():
-            linha_vertices = linha_geom.asMultiPolyline()[0]  # Se a linha for do tipo poly
-        else:
-            linha_vertices = linha_geom.asPolyline() 
-        
-        # Criar a geometria da linha basee
-        linha_base = QgsGeometry.fromPolylineXY([QgsPointXY(p) for p in linha_vertices])  
-
-        # Verificar se a linha base coincide com um lado do polígono (até a segunda casa decimal)
-        flag = False
-        for i in range(len(vertices) - 1):
-            # Criar a geometria do lado do polígono (em ambas as orientações)
-            lado = QgsGeometry.fromPolylineXY([QgsPointXY(vertices[i]), QgsPointXY(vertices[i + 1])])
-            lado_invertido = QgsGeometry.fromPolylineXY([QgsPointXY(vertices[i + 1]), QgsPointXY(vertices[i])])
-
-            # Comparar se a geometria da linha base é igual ao lado (considerando a inversão também)
-            if lado.equals(linha_base) or lado_invertido.equals(linha_base):
-                flag = True
-                break
-            
-        #feedback.pushInfo(f"Lado {i} - Ponto 1: ({vertices[i].x()}, {vertices[i].y()}) | Ponto 2: ({vertices[i + 1].x()}, {vertices[i + 1].y()})")
-        #feedback.pushInfo(f"Linha base - Ponto 1: ({linha_vertices[0].x()}, {linha_vertices[0].y()}) | Ponto 2: ({linha_vertices[1].x()}, {linha_vertices[1].y()})")
-
-        if not flag:
-            raise ValueError("A camada primeira_linha deve ser um dos lados do terreno.")
-        
-        # Encontrar os pontos extremos de cada lado da linha base (sempre terá 1 ou 2 pontos)
-        ponto_extremo_dir = None
-        ponto_extremo_esq = None
-        dist_max_dir = 0 # float('-inf')
-        dist_max_esq = 0 # float('-inf')
-
-        # Iterar sobre os vértices do polígono
-        ponto1 = QgsPointXY(linha_vertices[0])
-        ponto2 = QgsPointXY(linha_vertices[1])
-
-        for ponto_atual in vertices:
-            # Calcular o produto vetorial para determinar se o ponto está à direita ou à esquerda
-            produto_vetorial = (ponto2.x() - ponto1.x()) * (ponto_atual.y() - ponto1.y()) - (ponto2.y() - ponto1.y()) * (ponto_atual.x() - ponto1.x())
-
-            # Calcular a distância perpendicular do ponto à linha base
-            numerador = abs((ponto2.y() - ponto1.y()) * ponto_atual.x() - (ponto2.x() - ponto1.x()) * ponto_atual.y() + ponto2.x() * ponto1.y() - ponto2.y() * ponto1.x())
-            denominador = math.sqrt((ponto2.y() - ponto1.y())**2 + (ponto2.x() - ponto1.x())**2)
-            dist_perpendicular = numerador / denominador if denominador != 0 else 0
-
-            # Atualizar o ponto extremo à direita (produto vetorial positivo)
-            if produto_vetorial > 0 and dist_perpendicular > dist_max_dir:
-                dist_max_dir = dist_perpendicular
-                ponto_extremo_dir = ponto_atual
-
-            # Atualizar o ponto extremo à esquerda (produto vetorial negativo)
-            elif produto_vetorial < 0 and dist_perpendicular > dist_max_esq:
-                dist_max_esq = dist_perpendicular
-                ponto_extremo_esq = ponto_atual
-
-        # Adicionar os pontos extremos encontrados à lista
-        pontos_extremos = []
-        if ponto_extremo_dir:
-            pontos_extremos.append(ponto_extremo_dir)
-        if ponto_extremo_esq:
-            pontos_extremos.append(ponto_extremo_esq)
-
-        # Criar camada temporária para o(s) ponto(s) oposto(s); a maioria das vezes será um ponto só
-        pontosExtremos_layer = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Extremos', 'memory')
-        pontos_provider = pontosExtremos_layer.dataProvider()
-        pontos_provider.addAttributes([QgsField('id', QVariant.Int)])
-        pontosExtremos_layer.updateFields()
-
-        # Adicionar os pontos extremos à camada temporária
-        for feature_id, ponto in enumerate(pontos_extremos, start=1):
-            if ponto:
-                ponto_feature = QgsFeature()
-                ponto_feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(ponto)))
-                ponto_feature.setAttributes([feature_id])  # ID do ponto
-                pontos_provider.addFeature(ponto_feature)
-        
-        if teste == True:
-            QgsProject.instance().addMapLayer(pontosExtremos_layer)
-        
-        # Criar uma linha estendida sobre a linha base
-        
-         # ponto inicial e final da linha base
-        p1 = linha_vertices[0]
-        p2 = linha_vertices[1]
-        
-        dx = p2.x() - p1.x()
-        dy = p2.y() - p1.y()
-        angulo = math.atan2(dy, dx)
-        
-        extensao_x = (dist_max_esq + dist_max_dir) * math.cos(angulo)
-        extensao_y = (dist_max_esq + dist_max_dir) * math.sin(angulo)
-
-        p1_estendido = QgsPointXY(p1.x() - extensao_x ,p1.y() - extensao_y)
-        p2_estendido = QgsPointXY(p2.x() + extensao_x ,p2.y() + extensao_y)
-        linha_estendida = QgsGeometry.fromPolylineXY([QgsPointXY(p1_estendido), QgsPointXY(p2_estendido)])
-
-        # Criar camada temporária para a linha estendida
-        linhaEstendida_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linha Estendida', 'memory')
-        linha_provider = linhaEstendida_layer.dataProvider()
-        linha_provider.addAttributes([QgsField('id', QVariant.Int)])
-        linhaEstendida_layer.updateFields()
-
-        # Adicionar a linha estendida à camada temporária
-        linha_feature = QgsFeature()
-        linha_feature.setGeometry(linha_estendida)
-        linha_feature.setAttributes([1])  # ID da linha estendida
-        linha_provider.addFeature(linha_feature)
-
-        if teste == True:
-            QgsProject.instance().addMapLayer(linhaEstendida_layer)
-        
-        # Criar linhas Paralelas à linha base até o(s) ponto(s) extremo(s)
+        # Criar linhas Paralelas à linha base
         paralelas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas Paralelas', 'memory')
         paralelas_provider = paralelas_layer.dataProvider()
         paralelas_provider.addAttributes([QgsField('id', QVariant.Int)])
+        paralelas_provider.addAttributes([QgsField('altura', QVariant.Int)])
         paralelas_layer.updateFields()
         
-        # Incluir a linha como a primeira linha paralela
-        primeira_linha_feature = self.parameterAsVectorLayer(parameters, 'primeira_linha', context).getFeature(0)
-        primeira_linha = primeira_linha_feature.geometry()       
+        # Incluir a linha_base como a primeira linha paralela
+        linha = self.parameterAsVectorLayer(parameters, 'linha_base', context).getFeature(0)
+        primeira_linha = linha.geometry()       
         linha_id = 1
-        paralela_feature = QgsFeature()
-        paralela_feature.setGeometry(primeira_linha)
-        paralela_feature.setAttributes([linha_id])
-        paralelas_provider.addFeature(paralela_feature)
+        paralela = QgsFeature()
+        paralela.setGeometry(primeira_linha)
+        paralela.setAttributes([linha_id])
+        paralela.setAttributes([h])
+        paralelas_provider.addFeature(paralela)
+        
+        deslocamento = h + deltaH 
+        # Criar linhas paralelas até atingir a altura H
+        while abs(deslocamento) <= H + 3:
+            linha_id += 1
 
-        pontos_extremos = []
-        if ponto_extremo_dir:  # Se existe o ponto extremo à direita
-            dist = linha_estendida.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_extremo_dir))) if ponto_extremo_dir else 0
-            pontos_extremos.append((dist, 1))  # Distância e sentido para o ponto direito
+            # Deslocamento da linha base para criar a paralela
+            parameters = {
+                'INPUT': linha_base,  # Linha base
+                'DISTANCE': deslocamento,
+                'OUTPUT': 'memory:'
+            }
+
+            result = processing.run("native:offsetline", parameters)
+            linha_paralela_layer = result['OUTPUT']
             
-        if ponto_extremo_esq:  # Se existe o ponto extremo à esquerda
-            dist = linha_estendida.distance(QgsGeometry.fromPointXY(QgsPointXY(ponto_extremo_esq))) if ponto_extremo_esq else 0
-            pontos_extremos.append((dist, -1))  # Distância e sentido para o ponto esquerdo
+            # Obter a geometria da linha paralela
+            feature = next(linha_paralela_layer.getFeatures(), None)
+            linha_geom = feature.geometry() if feature else None
 
-        # Criar as paralelas em um sentido de cada vez
-        for dist, sentido in pontos_extremos:
-            deslocamento = deltaLat * sentido  # Usando a direção positiva ou negativa
-            
-            while abs(deslocamento) <= dist:  # Criar linhas paralelas até o ponto extremo
-                linha_id += 1
+            # Adicionar a paralela à camada
+            paralela = QgsFeature()
+            paralela.setGeometry(linha_geom)
+            paralela.setAttributes([linha_id])
+            paralelas_provider.addFeature(paralela)
+            paralelas_layer.updateExtents()
 
-                # Deslocamento da linha base para criar a paralela
-                parameters = {
-                    'INPUT': linhaEstendida_layer,  # Linha base
-                    'DISTANCE': deslocamento,
-                    'OUTPUT': 'memory:'
-                }
+            # Atualizar a linha base para a próxima paralela
+            #linha_base = linha_paralela_layer
 
-                result = processing.run("native:offsetline", parameters)
-                linha_paralela_layer = result['OUTPUT']
-                
-                # Obter a geometria da linha paralela
-                feature = next(linha_paralela_layer.getFeatures(), None)
-                linha_geom = feature.geometry() if feature else None
-
-                if linha_geom:
-                    # Interseção da linha paralela com o polígono
-                    intersecao_geom = linha_geom.intersection(poligono)
-
-                    # Adicionar a paralela à camada
-                    paralela_feature = QgsFeature()
-                    paralela_feature.setGeometry(intersecao_geom)
-                    paralela_feature.setAttributes([linha_id])
-                    paralelas_provider.addFeature(paralela_feature)
-                    paralelas_layer.updateExtents()
-
-                    # Atualizar a linha base para a próxima paralela
-                    linha_estendida = linha_paralela_layer
-
-                    deslocamento += deltaLat * sentido  # Atualizar o deslocamento
+            deslocamento += deltaH
               
         if teste == True:
             QgsProject.instance().addMapLayer(paralelas_layer)
-
+        """
         # Criar a camada com a união das linhas paralelas
         linhas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas', 'memory')
         linhas_provider = linhas_layer.dataProvider()
@@ -738,14 +575,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                         "latitude", "longitude", "altitude(m)",
                         "heading(deg)", "curvesize(m)", "rotationdir",
                         "gimbalmode", "gimbalpitchangle",
-                        "actiontype1", "actionparam1", "actiontype2", "actionparam2",
-                        "actiontype3", "actionparam3", "actiontype4", "actionparam4",
-                        "actiontype5", "actionparam5", "actiontype6", "actionparam6",
-                        "actiontype7", "actionparam7", "actiontype8", "actionparam8",
-                        "actiontype9", "actionparam9", "actiontype10", "actionparam10",
-                        "actiontype11", "actionparam11", "actiontype12", "actionparam12",
-                        "actiontype13", "actionparam13", "actiontype14", "actionparam14",
-                        "actiontype15", "actionparam15", "altitudemode", "speed(m/s)",
+                        "actiontype1", "actionparam1", "altitudemode", "speed(m/s)",
                         "poi_latitude", "poi_longitude", "poi_altitude(m)", "poi_altitudemode",
                         "photo_timeinterval", "photo_distinterval"]
                 
@@ -762,50 +592,22 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                     data = {
                         "latitude": y_coord,
                         "longitude": x_coord,
-                        "altitude(m)": H, # altura de voo
+                        "altitude(m)": H, # altura do objeto
                         "heading(deg)": 360,
                         "curvesize(m)": 0,
                         "rotationdir": 0,
-                        "gimbalmode": 0,
-                        "gimbalpitchangle": -90,
-                        "actiontype1": -1,
+                        "gimbalmode": 2,
+                        "gimbalpitchangle": 0,
+                        "actiontype1": 1,
                         "actionparam1": 0,
-                        "actiontype2": -1,
-                        "actionparam2": 0,
-                        "actiontype3": -1,
-                        "actionparam3": 0,
-                        "actiontype4": -1,
-                        "actionparam4": 0,
-                        "actiontype5": -1,
-                        "actionparam5": 0,
-                        "actiontype6": -1,
-                        "actionparam6": 0,
-                        "actiontype7": -1,
-                        "actionparam7": 0,
-                        "actiontype8": -1,
-                        "actionparam8": 0,
-                        "actiontype9": -1,
-                        "actionparam9": 0,
-                        "actiontype10": -1,
-                        "actionparam10": 0,
-                        "actiontype11": -1,
-                        "actionparam11": 0,
-                        "actiontype12": -1,
-                        "actionparam12": 0,
-                        "actiontype13": -1,
-                        "actionparam13": 0,
-                        "actiontype14": -1,
-                        "actionparam14": 0,
-                        "actiontype15": -1,
-                        "actionparam15": 0,
-                        "altitudemode": 1,
+                        "altitudemode": 0,
                         "speed(m/s)": 0,
                         "poi_latitude": 0,
                         "poi_longitude": 0,
                         "poi_altitude(m)": 0,
                         "poi_altitudemode": 0,
                         "photo_timeinterval": -1,
-                        "photo_distinterval": deltaFront}
+                        "photo_distinterval": deltaH}
 
                     # Escrever a linha no CSV
                     writer.writerow(data)
@@ -814,15 +616,15 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
 
         # Mensagem de Encerramento
         feedback.pushInfo("")
-        feedback.pushInfo("Plano de Voo Horizontal executado com sucesso.") 
-            
+        feedback.pushInfo("Plano de Voo Vertical executado com sucesso.") 
+        """    
         return {}
         
     def name(self):
-        return 'PlanoVooH'.lower()
+        return 'PlanoVooV'.lower()
 
     def displayName(self):
-        return self.tr('Pontos Fotos - Voo Horizontal')
+        return self.tr('Pontos Fotos - Voo Vertical')
 
     def group(self):
         return self.tr(self.groupId())
@@ -834,16 +636,15 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return PlanoVoo_H()
+        return PlanoVoo_V()
     
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
     
-    texto = "Este algoritmo calcula a sobreposição lateral e frontal de Voo de Drone, \
-            fornecendo uma camada da 'Linha do Voo' e uma camada dos 'Pontos' para Fotos. \
+    texto = "Este algoritmo calcula a 'Linha do Voo' e uma camada dos 'Pontos' para Fotos. \
             Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth. \
             Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS."
-    figura = 'images/PlanoVoo1.jpg'
+    figura = 'images/PlanoVoo2.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">
