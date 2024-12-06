@@ -62,7 +62,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                                                                fileFilter='KML files (*.kml)'))
         
     def processAlgorithm(self, parameters, context, feedback):
-        teste = True # Quando True mostra camadas intermediárias
+        teste = False # Quando True mostra camadas intermediárias
         
         # =====Parâmetros de entrada para variáveis========================
         linha_base = self.parameterAsVectorLayer(parameters, 'linha_base', context)
@@ -222,30 +222,22 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         
         pontoID = 1
         
-        # Criar os pontos na primeira linha na camada 'paralelas_layer'
-        linha = next(paralelas_layer.getFeatures(), None)
-        linha_geom = linha.geometry()
-        
-        ponto = linha_geom.interpolate(0).asPoint()  # Início da linha
-        ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
+        # Obter todas as linhas paralelas
+        linhas = list(paralelas_layer.getFeatures())
 
-        # Inserir o primeiro ponto da linha
-        ponto_feature = QgsFeature()
-        ponto_feature.setFields(campos)
-        ponto_feature.setAttribute("id", pontoID)
-        ponto_feature.setAttribute("latitude", ponto.y())
-        ponto_feature.setAttribute("longitude", ponto.x())
-        ponto_feature.setGeometry(ponto_geom)
-        pontos_provider.addFeature(ponto_feature)
-        
-        pontoID += 1
-        distAtual = deltaH
-        
-        # Inserir os pontos restantes da linha
-        while True:
-            ponto = linha_geom.interpolate(distAtual).asPoint()
-            ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
+        # Criar pontos na primeira linha
+        linha_anterior = linhas[0]
+        linha_anterior_geom = linha_anterior.geometry()
+        comprimento = linha_anterior_geom.length()
+
+        distancias = []  # Lista para armazenar as distâncias dos pontos da primeira linha
+
+        distAtual = 0
+        while distAtual <= comprimento:
+            ponto = linha_anterior_geom.interpolate(distAtual).asPoint()
+            distancias.append(distAtual)  # Armazenar distância para reutilizar nas outras linhas
             
+            ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
             ponto_feature = QgsFeature()
             ponto_feature.setFields(campos)
             ponto_feature.setAttribute("id", pontoID)
@@ -256,9 +248,41 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
             
             pontoID += 1
             distAtual += deltaH
-            
-            if distAtual >= comprimento:
-                break
+
+        # Obter as Latitudes e Longitudes dos pontos da primeira linha
+        pontos_primeira_linha = [f.geometry().asPoint() for f in pontos_fotos.getFeatures()]
+ 
+        # Criar pontos nas demais linhas
+        for i, linha in enumerate(linhas[1:], start=1):
+            linha_geom = linha.geometry()
+            comprimento = linha_geom.length()
+
+            # Alternar o lado inicial
+            inverter = (i % 2 != 0)  # Inverter os pontos em linhas ímpares
+
+            for j, distancia in enumerate(distancias):
+                if distancia > comprimento:
+                    break  # Evitar criar pontos fora da linha atual
+
+                pos = -j - 1 if inverter else j  # Alternar direção dos pontos
+
+                # Obter a geometria do ponto atual na linha
+                ponto = linha_geom.interpolate(distancias[pos]).asPoint()
+                ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
+
+                # Ajustar as latitudes e longitudes com base na posição do ponto da primeira linha
+                latitude, longitude = pontos_primeira_linha[j]
+
+                # Criar o recurso do ponto mantendo a numeração original
+                ponto_feature = QgsFeature()
+                ponto_feature.setFields(campos)
+                ponto_feature.setAttribute("id", pontoID)
+                ponto_feature.setAttribute("latitude", latitude)
+                ponto_feature.setAttribute("longitude", longitude)
+                ponto_feature.setGeometry(ponto_geom)
+                pontos_provider.addFeature(ponto_feature)       
+ 
+                pontoID += 1
 
         # Atualizar a camada
         pontos_fotos.updateExtents()
@@ -291,8 +315,6 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
 
         pontos_fotos.triggerRepaint()
         
-        QgsProject.instance().addMapLayer(pontos_fotos)
-        """
         # ==================================================================================
         # =====Obter a altitude dos pontos das Fotos========================================
         
@@ -300,75 +322,71 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         
         feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
         
-        # Obter as coordenadas extremas da área (em WGS 84)
-        pontoN = float('-inf')  # coordenada máxima (Norte) / inf de inifito
-        pontoS = float('inf')   # coordenada mínima (Sul)
-        pontoW = float('inf')   # coordenada mínima (Oeste)
-        pontoE = float('-inf')  # coordenada máxima (Leste)
-        
-        # Reprojetar Pontos (Fotos) de UTM para 4326; nesse caso EPSG:31983
-        crs_wgs = QgsCoordinateReferenceSystem(4326) # WGS84 que OpenTopography usa
-        
-        # Transformador de coordenadas (UTM -> WGS84)
+        # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
+        crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        for feature in camada.getFeatures():  # Terreno
-            geom = feature.geometry()
-            bounds = geom.boundingBox()  # Limites da geometria em UTM
+        # Obter apenas a primeira linha paralela
+        linha = next(paralelas_layer.getFeatures(), None)
+        linha_geom = linha.geometry()
+        
+        # Determinar o bounding box da linha em WGS 84
+        bounds = linha_geom.boundingBox()
+        ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
+        ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
 
-            # Transformar limites para WGS 84
-            ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
-            ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
+        pontoN = ponto_max.y()
+        pontoS = ponto_min.y()
+        pontoW = ponto_min.x()
+        pontoE = ponto_max.x()
 
-            pontoN = max(pontoN, ponto_max.y())
-            pontoS = min(pontoS, ponto_min.y())
-            pontoW = min(pontoW, ponto_min.x())
-            pontoE = max(pontoE, ponto_max.x())
+        # Certificar que a área do bounding box seja grande o suficiente
+        bbox_area_min = 2.5  # Área mínima em km²
+        bbox_area = (pontoE - pontoW) * (pontoN - pontoS) * 111 * 111  # Aproximação em km²
+        if bbox_area < bbox_area_min:
+            aumento = ((bbox_area_min / bbox_area)**0.5 - 1) / 2
+            ajuste_lat_extra = aumento * (pontoN - pontoS)
+            ajuste_long_extra = aumento * (pontoE - pontoW)
+            pontoN += ajuste_lat_extra
+            pontoS -= ajuste_lat_extra
+            pontoW -= ajuste_long_extra
+            pontoE += ajuste_long_extra
 
-        # Ajustar os limites
-        ajuste_lat = (pontoN - pontoS) * 0.70
-        ajuste_long = (pontoE - pontoW) * 0.70
-
-        pontoN += ajuste_lat
-        pontoS -= ajuste_lat
-        pontoW -= ajuste_long
-        pontoE += ajuste_long    
-
-        # Obter o MDE da área
+        # Obter o DEM da área
         coordenadas = f'{pontoW},{pontoE},{pontoS},{pontoN}'
         area = f"{coordenadas}[EPSG:4326]"
 
         result = processing.run(
-                "OTDEMDownloader:OpenTopography DEM Downloader", {
-                    'DEMs': 7, # 7: Copernicus Global DSM 30m
-                    'Extent': area,
-                    'API_key': apikey,
-                    'OUTPUT': 'TEMPORARY_OUTPUT'})
+            "OTDEMDownloader:OpenTopography DEM Downloader", {
+                'DEMs': 7,  # Copernicus Global DSM 30m
+                'Extent': area,
+                'API_key': apikey,
+                'OUTPUT': 'TEMPORARY_OUTPUT'
+            })
 
         output_path = result['OUTPUT']
         camadaMDE = QgsRasterLayer(output_path, "DEM")
-    
-        # Valor da Altitude
-        prov = pontos_fotos.dataProvider()
-        pontos_fotos.startEditing()
-        
-        # Adicionar um campo para altitude, se não existir
-        if 'alturaVoo' not in [field.name() for field in prov.fields()]:
-            prov.addAttributes([QgsField('alturaVoo', QVariant.Double)])
-            pontos_fotos.updateFields()
 
-         # definir o valor de Z
+        if teste == True:
+            QgsProject.instance().addMapLayer(camadaMDE)
+            
+        pontos_fotos.startEditing()
+
+        # Atualizar as altitudes apenas dos pontos na primeira linha paralela
         for f in pontos_fotos.getFeatures():
-            point = f.geometry().asPoint()
-            
-            # Transformar coordenada para CRS do raster
-            point_wgs = transformador.transform(QgsPointXY(point.x(), point.y()))
-            
-            # Obter o valor de Z do MDE
-            value, result = camadaMDE.dataProvider().sample(point_wgs, 1)  # Resolução = 1
-            if result:
-                f['alturaVoo'] = value + H  # altura de Voo
-                pontos_fotos.updateFeature(f)
+            if linha_geom.distance(f.geometry()) < 1e-6:  # Confirma que o ponto pertence a 1a. linha
+                point = f.geometry().asPoint()
+                
+                # Transformar coordenada do ponto para CRS do raster
+                point_wgs = transformador.transform(QgsPointXY(point.x(), point.y()))
+                
+                # Obter valor de Z do MDE
+                value, result = camadaMDE.dataProvider().sample(QgsPointXY(point_wgs), 1)  # Resolução de amostragem
+                if result:
+                    f['altitude'] = value + h  # Adicionar altura da primeira Linha de Voo
+                    pontos_fotos.updateFeature(f)
+                else:
+                    feedback.pushWarning(f"Falha ao obter altitude para o ponto {f.id()}")
 
         pontos_fotos.commitChanges()
 
@@ -376,7 +394,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         
         feedback.pushInfo("")
         feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
-        
+        """
         #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
         # =========Exportar para o Google Earth Pro (kml)================================================
