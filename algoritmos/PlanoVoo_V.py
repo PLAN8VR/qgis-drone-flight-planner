@@ -156,20 +156,20 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         if teste == True:
             QgsProject.instance().addMapLayer(paralelas_layer)
         
-        # Verificar se existem pelo menos duas linhas na camada paralelas_layer
-        if paralelas_layer.featureCount() < 2:
+        # Criar as ligações entre as linhas paralelas
+        if paralelas_layer.featureCount() < 2: # Verificar se existem pelo menos duas linhas na camada paralelas_layer
             feedback.reportError("É necessário pelo menos duas linhas paralelas para criar as costuras.")
         else:
             # Obter todas as linhas paralelas ordenadas por ID
-            linhas = list(paralelas_layer.getFeatures())
-            linhas.sort(key=lambda f: f['id'])  # Ordenar pelo atributo 'id'
+            linhas_Paralelas = list(paralelas_layer.getFeatures())
+            linhas_Paralelas.sort(key=lambda f: f['id'])  # Ordenar pelo atributo 'id'
             
             # Lista para armazenar todos os vértices em sequência
             vertices_continuos = []
 
             alternar_lado = True  # Alternar entre finais e inícios para adicionar os vértices
 
-            for i, linha_feature in enumerate(linhas):
+            for i, linha_feature in enumerate(linhas_Paralelas):
                 geom = linha_feature.geometry()
 
                 if not geom or geom.isEmpty():
@@ -240,11 +240,10 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         
         pontoID = 1
         
-        linhas = list(paralelas_layer.getFeatures())
         distancias = [i for i in range(0, comprimento + 1, deltaH)]
 
         # Criar pontos para a primeira linha (direção normal, seguindo da origem ao fim)
-        linha1_geom = linhas[0].geometry()
+        linha1_geom = linhas_Paralelas[0].geometry()
         
         for d in distancias:
             if d == comprimento:  # Ajuste para evitar problemas com interpolate
@@ -266,7 +265,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
             pontoID += 1
 
         # Criar pontos nas demais linhas
-        for c, linha in enumerate(linhas[1:], start=2):  # Começar com a segunda linha
+        for c, linha in enumerate(linhas_Paralelas[1:], start=2):  # Começar com a segunda linha
             linha_geom = linha.geometry()
             vertices = linha_geom.asPolyline()
             linha_start = vertices[0]  # Primeiro vértice da linha
@@ -339,13 +338,9 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-        
-        # Obter apenas a primeira linha paralela
-        linha = next(paralelas_layer.getFeatures(), None)
-        linha_geom = linha.geometry()
-        
+        """
         # Determinar o bounding box da linha em WGS 84
-        bounds = linha_geom.boundingBox()
+        bounds = linha1_geom.boundingBox()
         ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
         ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
 
@@ -383,19 +378,25 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
 
         if teste == True:
             QgsProject.instance().addMapLayer(camadaMDE)
-            
-        pontos_fotos.startEditing()
-
+        """
+        camadaMDE = QgsProject.instance().mapLayersByName('DEM')[0]
+        
         # Atualizar as altitudes apenas dos pontos na primeira linha paralela
-        for f in pontos_fotos.getFeatures():
-            if linha_geom.distance(f.geometry()) < 1e-6:  # Confirma que o ponto pertence a 1a. linha
-                point = f.geometry().asPoint()
-                
+        # Filtra os pontos que pertencem à linha 1 e da segunda em diante até n
+        pontos_fotos_1aLinha = [f for f in pontos_fotos.getFeatures() if f["linha"] == 1]
+        pontos_fotos_2aTOn = [f for f in pontos_fotos.getFeatures() if f["linha"] != 1]
+        
+        pontos_fotos.startEditing()
+        
+        for f in pontos_fotos_1aLinha:
+            ponto = f.geometry().asPoint()
+            
+            if linha1_geom.distance(f.geometry()) < 1e-6:  # Confirma que o ponto pertence a 1a. linha
                 # Transformar coordenada do ponto para CRS do raster
-                point_wgs = transformador.transform(QgsPointXY(point.x(), point.y()))
+                ponto_wgs = transformador.transform(QgsPointXY(ponto.x(), ponto.y()))
                 
                 # Obter valor de Z do MDE
-                value, result = camadaMDE.dataProvider().sample(QgsPointXY(point_wgs), 1)  # Resolução de amostragem
+                value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Resolução de amostragem
                 if result:
                     f['altitude'] = value + h  # Adicionar altura da primeira Linha de Voo
                     pontos_fotos.updateFeature(f)
@@ -406,40 +407,41 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
 
         # Colocar Latitude, Longitude e Altitude nos pontos das demais linhas
     
-        # Obter os pontos da primeira linha
+        # Obter os atributos dos pontos da primeira linha
         atributos = ["latitude", "longitude", "altitude"]
         
-        pontos_primeira_linha = []
-        for f in pontos_fotos.getFeatures():
-            if f["linha"] == 1:  # Selecionar apenas os pontos da linha 1
-                ponto_geom = f.geometry().asPoint()
-                valores_atributos = [f[attr] for attr in atributos]
-                pontos_primeira_linha.append((ponto_geom, *valores_atributos))
-            else:
-                break
+        dados_primeira_linha = []
+        for f in pontos_fotos_1aLinha:
+            ponto_geom = f.geometry().asPoint()
+            valores_atributos = [f[attr] for attr in atributos]
+            dados_primeira_linha.append((ponto_geom, *valores_atributos))
         
         # Obter a contagem de pontos na linha 1
-        num_pontos_linha1 = len(pontos_primeira_linha)
+        num_pontos_linha1 = len(dados_primeira_linha)
 
         pontos_fotos.startEditing()
                 
         # Iterar sobre os pontos das linhas a partir da segunda
-        for f in pontos_fotos.getFeatures():
-            linha_atual = f["linha"]
+        linha_atual = None
+        x = 0
+        
+        for f in pontos_fotos_2aTOn:
+            if linha_atual != f["linha"]:
+                x += float(deltaV)
             
-            # Ignorar os pontos da linha 1
-            if linha_atual == 1:
-                continue
+            linha_atual = f["linha"]
 
             # Determinar a ordem de preenchimento com base na alternância
             if linha_atual % 2 == 0:  # Para linhas pares (2, 4, 6, ...)
-                pontos_ordem = list(reversed(pontos_primeira_linha))  # Ordem inversa
+                pontos_ordem = list(reversed(dados_primeira_linha))  # Ordem inversa
             else:  # Para linhas ímpares (3, 5, 7, ...) acompnaha a ordem da primeira
-                pontos_ordem = pontos_primeira_linha  # Ordem direta
+                pontos_ordem = dados_primeira_linha  # Ordem direta
 
             # Determinar o índice correto para o ponto na linha atual
             indice_ponto = (f.id() - 1) % num_pontos_linha1  # Garantir a alternância sequencial
             ponto, latitude, longitude, altitude = pontos_ordem[indice_ponto]
+            
+            altitude = altitude + x
 
             # Atualizar os atributos do ponto atual
             f.setAttribute("latitude", latitude)
