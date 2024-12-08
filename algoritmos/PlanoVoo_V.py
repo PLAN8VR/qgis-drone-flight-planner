@@ -143,8 +143,8 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         camadaMDE = QgsRasterLayer(output_path, "DEM")
 
         QgsProject.instance().addMapLayer(camadaMDE)
-        
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        """
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
         # Criar uma camada Pontos com os deltaH sobre a linha Base e depois empilhar com os deltaH
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
@@ -157,6 +157,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
+        campos.append(QgsField("alturavoo", QVariant.Double))
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
         
@@ -209,6 +210,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                 ponto_feature.setAttribute("latitude", ponto.y())
                 ponto_feature.setAttribute("longitude", ponto.x())
                 ponto_feature.setAttribute("altitude", altura + a)
+                ponto_feature.setAttribute("alturavoo", altura)
                 ponto_feature.setGeometry(ponto_geom)
                 pontos_provider.addFeature(ponto_feature)
 
@@ -250,29 +252,29 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         
         feedback.pushInfo("")
         feedback.pushInfo("Pontos para Fotos concluídos com sucesso!")
-        """
-        pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
-        # =========Exportar para o Google Earth Pro (kml)================================================
+        #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
-        if caminho_kml and caminho_kml.endswith('.kml'): # Verificar se o caminho KML está preenchido
-            # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
-            pontos_reproj = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reprojetados', 'memory') 
-            pontos_reproj.startEditing()
-            pontos_reproj.dataProvider().addAttributes(pontos_fotos.fields())
-            pontos_reproj.updateFields()
+        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
+        
+        # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
+        pontos_reproj = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reprojetados', 'memory') 
+        pontos_reproj.startEditing()
+        pontos_reproj.dataProvider().addAttributes(pontos_fotos.fields())
+        pontos_reproj.updateFields()
 
-            # Reprojetar os pontos
-            for f in pontos_fotos.getFeatures():
-                geom = f.geometry()
-                geom.transform(transformador)
-                reproj = QgsFeature()
-                reproj.setGeometry(geom)
-                reproj.setAttributes(f.attributes())
-                pontos_reproj.addFeature(reproj)
+        # Reprojetar os pontos
+        for f in pontos_fotos.getFeatures():
+            geom = f.geometry()
+            geom.transform(transformador)
+            reproj = QgsFeature()
+            reproj.setGeometry(geom)
+            reproj.setAttributes(f.attributes())
+            pontos_reproj.addFeature(reproj)
 
-            pontos_reproj.commitChanges()
-            
+        pontos_reproj.commitChanges()
+        
+        if caminho_kml and caminho_kml.endswith('.kml'): # Verificar se o caminho KML está preenchido 
             # Configure as opções para gravar o arquivo
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = 'UTF-8'
@@ -287,11 +289,11 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                 feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {caminho_kml}")
             else:
                 feedback.pushInfo(f"Erro ao exportar o arquivo KML: {grava}")
-                
-                #if teste == True:
-                QgsProject.instance().addMapLayer(pontos_reproj)
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
+
+        if teste == True:
+            QgsProject.instance().addMapLayer(pontos_reproj)
         
         # =============L I T C H I==========================================================
         
@@ -312,9 +314,9 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                 if geom.isEmpty():
                     continue
 
-                point = geom.asPoint()
-                x = point.x()
-                y = point.y()
+                ponto = geom.asPoint()
+                x = ponto.x()
+                y = ponto.y()
 
                 f.setAttribute(idx_x, x)
                 f.setAttribute(idx_y, y)
@@ -324,7 +326,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
             pontos_reproj.commitChanges()
 
             # deletar campos desnecessários
-            campos = ['latitude', 'longitude']
+            campos = ['linha', 'latitude', 'longitude']
             
             pontos_reproj.startEditing()
             
@@ -345,12 +347,12 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
             # Adicionar campos de texto em Pontos Reordenados
             addCampo(pontos_reproj, 'xcoord ', QVariant.String) # o espaço é para diferenciar; depois vamos deletar os campos antigos
             addCampo(pontos_reproj, 'ycoord ', QVariant.String)
-            addCampo(pontos_reproj, 'alturaVoo ', QVariant.String)
+            addCampo(pontos_reproj, 'alturavoo ', QVariant.String)
 
             for f in pontos_reproj.getFeatures():
                 x1= str(f['xcoord']).replace(',', '.')
                 x2 = str(f['ycoord']).replace(',', '.')
-                x3 = str(f['alturaVoo']).replace(',', '.')
+                x3 = str(f['alturavoo']).replace(',', '.')
 
                 # Formatar os valores como strings com ponto como separador decimal
                 x1 = "{:.6f}".format(float(x1))
@@ -360,14 +362,14 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                 # Atualizar os valores dos campos de texto
                 f['xcoord '] = x1
                 f['ycoord '] = x2
-                f['alturaVoo '] = x3
+                f['alturavoo '] = x3
 
                 pontos_reproj.updateFeature(f)
 
             pontos_reproj.commitChanges()
 
             # Lista de campos Double a serem removidos de Pontos Reprojetados
-            camposDel = ['xcoord', 'ycoord', 'alturaVoo'] # sem o espaço
+            camposDel = ['xcoord', 'ycoord', 'alturavoo'] # sem o espaço
             
             pontos_reproj.startEditing()
             pontos_reproj.dataProvider().deleteAttributes([pontos_reproj.fields().indexOf(campo) for campo in camposDel if pontos_reproj.fields().indexOf(campo) != -1])
@@ -375,7 +377,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
 
             if teste == True:
                 QgsProject.instance().addMapLayer(pontos_reproj)
-
+            
             # Exportar para o Litch (CSV já preparado)
             # Criar o arquivo CSV
             with open(caminho_csv, mode='w', newline='') as csvfile:
@@ -396,12 +398,13 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                     # Extrair os valores dos campos da camada
                     x_coord = f['xcoord '] 
                     y_coord = f['ycoord ' ]
+                    alturavoo = f['alturavoo ' ]
 
                     # Criar um dicionário de dados para cada linha do CSV
                     data = {
                         "latitude": y_coord,
                         "longitude": x_coord,
-                        "altitude(m)": H, # altura do objeto
+                        "altitude(m)": alturavoo,
                         "heading(deg)": 360,
                         "curvesize(m)": 0,
                         "rotationdir": 0,
@@ -426,7 +429,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         # Mensagem de Encerramento
         feedback.pushInfo("")
         feedback.pushInfo("Plano de Voo Vertical executado com sucesso.") 
-           
+          
         return {}
         
     def name(self):
