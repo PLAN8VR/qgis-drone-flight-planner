@@ -836,6 +836,9 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
     def createInstance(self):
         return PlanoVoo_H()
     
+    def tags(self):
+        return self.tr('Flight Plan,Measure,Topography').split(',')
+    
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
     

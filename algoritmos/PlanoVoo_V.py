@@ -474,13 +474,13 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         return 'PlanoVooV'.lower()
 
     def displayName(self):
-        return self.tr('Pontos Fotos - Voo Vertical')
+        return self.tr('Fachada')
 
     def group(self):
-        return self.tr(self.groupId())
+        return 'Pontos Fotos - Voo Vertical'
 
     def groupId(self):
-        return ''
+        return 'Pontos Fotos - Voo Vertical'
         
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
@@ -488,6 +488,9 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
     def createInstance(self):
         return PlanoVoo_V()
     
+    def tags(self):
+        return self.tr('Flight Plan,Measure,Topography').split(',')
+
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
     

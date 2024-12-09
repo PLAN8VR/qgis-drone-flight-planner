@@ -46,7 +46,7 @@ import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Linha Base de Voo', types=[QgsProcessing.TypeVectorLine]))
+        self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Círculo Base de Voo', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('objeto','Posição do Objeto a ser medido', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Altura do Objeto (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=15))
@@ -66,8 +66,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         teste = False # Quando True mostra camadas intermediárias
         
         # =====Parâmetros de entrada para variáveis========================
-        linha_base = self.parameterAsVectorLayer(parameters, 'linha_base', context)
-        crs = linha_base.crs()
+        circulo_base = self.parameterAsVectorLayer(parameters, 'circulo_base', context)
+        crs = circulo_base.crs()
         
         objeto = self.parameterAsVectorLayer(parameters, 'objeto', context)
 
@@ -84,20 +84,20 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {deltaH}, Delta Vertical: {deltaV}")
         
         # Verificações
-        linha = list(linha_base.getFeatures())
-        if len(linha) != 1:
-            raise ValueError("A camada Linha Base deve conter somente uma linha.")
+        circulo = list(circulo_base.getFeatures())
+        if len(circulo) != 1:
+            raise ValueError("A camada Cículo Base deve conter somente um círculo.")
         
-        linha_base_geom = linha[0].geometry()  # Obter a geometria da linha base
-        
+        circulo_base_geom = circulo[0].geometry()  # Obter a geometria do Círculo base
+        # ???
         # Verificar se delatH é mútiplo do comprimento da Linha Base
-        comprimento = round(linha_base_geom.length()) # como as vezes nao conseguimos um número inteiro na obtenção da Linha Base
+        comprimento = round(circulo_base_geom.length()) # como as vezes nao conseguimos um número inteiro na obtenção da Linha Base
         
         restante = comprimento % deltaH
            
         if restante > 0:
-            raise ValueError(f"O espaçamento horizontal ({deltaH}) não é múltiplo do comprimento total da Linha Base ({comprimento}).")
-        
+            raise ValueError(f"O espaçamento horizontal ({deltaH}) não é múltiplo do comprimento total do Círculo Base ({comprimento}).")
+        # ???
         if objeto.featureCount() != 1: # uma outra forma de checar
             raise ValueError("A camada ponto Objeto deve conter somente um ponto.")
         
@@ -112,7 +112,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         """
         # Determinar o bounding box da linha em WGS 84
-        bounds = linha_base_geom.boundingBox()
+        bounds = circulo_base_geom.boundingBox()
         ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
         ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
 
@@ -152,14 +152,14 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         """
         camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
-        # Criar uma camada Pontos com os deltaH sobre a linha Base e depois empilhar com os deltaH
+        # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
 
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
-        campos.append(QgsField("linha", QVariant.Int))
+        campos.append(QgsField("circulo", QVariant.Int))
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
@@ -172,18 +172,18 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         distancias = [i for i in range(0, comprimento + 1, deltaH)]
         alturas = [i for i in range(h, H + h + 1, deltaV)]
 
-        # Verificar a posição da linha base em relação ao objeto que se quer medir
-        if linha_base_geom.isMultipart():
-            partes = linha_base_geom.asGeometryCollection()
-            linha_base_geom = partes[0]  # Pegue a primeira linha da MultiLineString
+        # Verificar a posição do Círculo base em relação ao objeto que se quer medir
+        if circulo_base_geom.isMultipart():
+            partes = circulo_base_geom.asGeometryCollection()
+            circulo_base_geom = partes[0]  # Pegue o primeiro Círculo
         else:
-            linha_base_geom = linha_base_geom[0].geometry()
+            circulo_base_geom = circulo_base_geom[0].geometry()
         
-        linha = linha_base_geom.asPolyline()
+        circulo = circulo_base_geom.asPolyline()
         
-        # Coordenadas da linha base
-        p1 = linha[0]
-        p2 = linha[-1]
+        # Coordenadas do Círculo Base
+        p1 = circulo[0]
+        p2 = circulo[-1]
         
         # Ângulo em relação ao norte (em graus)
         dx = p2.x() - p1.x()
@@ -193,13 +193,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Calcular a perpendicular (90 graus)
         angulo_perpendicular = (angulo_linha_base + 90) % 360
         
-        # Verificar orientação do ponto em relação à linha base
+        # Verificar orientação do ponto em relação ao Círculo Base
         objeto_feature = objeto.getFeature(0)
         objeto_geom = objeto_feature.geometry()  
         objeto_point = objeto_geom.asPoint()    
        
-        # Verificar orientação do ponto em relação à linha base
-        # Calcular a equação da linha base (Ax + By + C = 0)
+        # Verificar orientação do ponto em relação ao Círculo Base
+        # Calcular a equação do Círculo Base (Ax + By + C = 0)
         A = p2.y() - p1.y()
         B = p1.x() - p2.x()
         C = p2.x() * p1.y() - p1.x() * p2.y()
@@ -216,18 +216,18 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         feedback.pushInfo(f"Ângulo da perpendicular em relação ao Norte: {angulo_perpendicular:.2f}°")
 
         # Criar as carreiras de pontos
-        for linha_idx, altura in enumerate(alturas, start=1):  # Cada altura representa uma "linha"
+        for linha_idx, altura in enumerate(alturas, start=1):  # Cada altura representa um "Círculo"
             # Alternar o sentido
-            if linha_idx % 2 == 0:  # "Linha de vem" (segunda, quarta, ...)
+            if linha_idx % 2 == 0:  # "Círculo de vem" (segunda, quarta, ...)
                 distancias_atual = reversed(distancias)
-            else:  # "Linha de vai" (primeira, terceira, ...)
+            else:  # "Círculo de vai" (primeira, terceira, ...)
                 distancias_atual = distancias
             
             for d in distancias_atual:
                 if d == comprimento:  # Ajuste para evitar problemas com interpolate
                     d -= 0.01
 
-                ponto = linha_base_geom.interpolate(d).asPoint()
+                ponto = circulo_base_geom.interpolate(d).asPoint()
                 ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
                 # Transformar coordenada do ponto para CRS do raster
                 ponto_wgs = transformador.transform(QgsPointXY(ponto.x(), ponto.y()))
@@ -244,7 +244,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 ponto_feature = QgsFeature()
                 ponto_feature.setFields(campos)
                 ponto_feature.setAttribute("id", pontoID)
-                ponto_feature.setAttribute("linha", linha_idx)  # Linha correspondente à altura
+                ponto_feature.setAttribute("circulo", linha_idx)  # Linha correspondente à altura
                 ponto_feature.setAttribute("latitude", ponto.y())
                 ponto_feature.setAttribute("longitude", ponto.x())
                 ponto_feature.setAttribute("altitude", altura + a)
@@ -364,7 +364,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             pontos_reproj.commitChanges()
 
             # deletar campos desnecessários
-            campos = ['linha', 'latitude', 'longitude']
+            campos = ['circulo', 'latitude', 'longitude']
             
             pontos_reproj.startEditing()
             
@@ -438,7 +438,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                     y_coord = f['ycoord ' ]
                     alturavoo = f['alturavoo ' ]
 
-                    # Criar um dicionário de dados para cada linha do CSV
+                    # Criar um dicionário de dados para cada Círculo do CSV
                     data = {
                         "latitude": y_coord,
                         "longitude": x_coord,
@@ -459,7 +459,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                         "photo_timeinterval": -1.0,
                         "photo_distinterval": deltaH}
 
-                    # Escrever a linha no CSV
+                    # Escrever o Círculo no CSV
                     writer.writerow(data)
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
@@ -471,13 +471,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         return {}
         
     def name(self):
-        return 'PlanoVooV'.lower()
+        return 'PlanoVooVC'.lower()
 
     def displayName(self):
-        return self.tr('Pontos Fotos - Voo Vertical')
+        return self.tr('Circular')
 
     def group(self):
-        return self.tr(self.groupId())
+        return 'Pontos Fotos - Voo Vertical'
 
     def groupId(self):
         return 'Pontos Fotos - Voo Vertical'
@@ -488,6 +488,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def createInstance(self):
         return PlanoVoo_V_C()
     
+    def tags(self):
+        return self.tr('Flight Plan,Measure,Topography').split(',')
+
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
     
