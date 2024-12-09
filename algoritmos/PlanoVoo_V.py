@@ -47,6 +47,7 @@ import csv
 class PlanoVoo_V(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Linha Base de Voo', types=[QgsProcessing.TypeVectorLine]))
+        self.addParameter(QgsProcessingParameterVectorLayer('objeto','Posição do Objeto a ser medido', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Altura do Objeto (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=15))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Altura Inicial (m)',
@@ -67,6 +68,8 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         # =====Parâmetros de entrada para variáveis========================
         linha_base = self.parameterAsVectorLayer(parameters, 'linha_base', context)
         crs = linha_base.crs()
+        
+        objeto = self.parameterAsVectorLayer(parameters, 'objeto', context)
 
         H = parameters['altura']
         h = parameters['alturaMin']
@@ -94,6 +97,9 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
            
         if restante > 0:
             raise ValueError(f"O espaçamento horizontal ({deltaH}) não é múltiplo do comprimento total da Linha Base ({comprimento}).")
+        
+        if objeto.featureCount() != 1: # uma outra forma de checar
+            raise ValueError("A camada ponto Objeto deve conter somente um ponto.")
         
         # =====================================================================
         # =====Criar a camada Pontos de Fotos==================================
@@ -166,17 +172,49 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         distancias = [i for i in range(0, comprimento + 1, deltaH)]
         alturas = [i for i in range(h, H + h + 1, deltaV)]
 
-        # Verificar o sentido da linha base para que sempre a Linha de Voo seja criada para cima
-        if linha_base_geom.isMultipart(): # se for QgsWkbTypes.LineString não precisa
+        # Verificar a posição da linha base em relação ao objeto que se quer medir
+        if linha_base_geom.isMultipart():
             partes = linha_base_geom.asGeometryCollection()
             linha_base_geom = partes[0]  # Pegue a primeira linha da MultiLineString
         else:
             linha_base_geom = linha_base_geom[0].geometry()
         
-        # vertices = linha_base_geom.asPolyline()
-        # linha_start = vertices[0]  # Primeiro vértice da linha
-        # linha_end = vertices[-1]   # Último vértice da linha
+        linha = linha_base_geom.asPolyline()
         
+        # Coordenadas da linha base
+        p1 = linha[0]
+        p2 = linha[-1]
+        
+        # Ângulo em relação ao norte (em graus)
+        dx = p2.x() - p1.x()
+        dy = p2.y() - p1.y()
+        angulo_linha_base = math.degrees(math.atan2(dx, dy))
+
+        # Calcular a perpendicular (90 graus)
+        angulo_perpendicular = (angulo_linha_base + 90) % 360
+        
+        # Verificar orientação do ponto em relação à linha base
+        objeto_feature = objeto.getFeature(0)
+        objeto_geom = objeto_feature.geometry()  
+        objeto_point = objeto_geom.asPoint()    
+       
+        # Verificar orientação do ponto em relação à linha base
+        # Calcular a equação da linha base (Ax + By + C = 0)
+        A = p2.y() - p1.y()
+        B = p1.x() - p2.x()
+        C = p2.x() * p1.y() - p1.x() * p2.y()
+
+        # Verificar o sinal ao substituir as coordenadas do ponto de orientação
+        orientacao = A * objeto_point.x() + B * objeto_point.y() + C
+
+        # Ajustar o ângulo da perpendicular com base na orientação
+        if orientacao < 0:
+            angulo_perpendicular += 180
+            angulo_perpendicular %= 360
+
+        feedback.pushInfo(f"Ângulo da linha base: {angulo_linha_base:.2f}°")
+        feedback.pushInfo(f"Ângulo da perpendicular em relação ao Norte: {angulo_perpendicular:.2f}°")
+
         # Criar as carreiras de pontos
         for linha_idx, altura in enumerate(alturas, start=1):  # Cada altura representa uma "linha"
             # Alternar o sentido
@@ -405,12 +443,12 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                         "latitude": y_coord,
                         "longitude": x_coord,
                         "altitude(m)": alturavoo,
-                        "heading(deg)": 360,
+                        "heading(deg)": angulo_perpendicular,
                         "curvesize(m)": 0,
                         "rotationdir": 0,
                         "gimbalmode": 2,
                         "gimbalpitchangle": 0,
-                        "actiontype1": 1,
+                        "actiontype1": 1.0,
                         "actionparam1": 0,
                         "altitudemode": 0,
                         "speed(m/s)": 0,
@@ -418,7 +456,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
                         "poi_longitude": 0,
                         "poi_altitude(m)": 0,
                         "poi_altitudemode": 0,
-                        "photo_timeinterval": -1,
+                        "photo_timeinterval": -1.0,
                         "photo_distinterval": deltaH}
 
                     # Escrever a linha no CSV
