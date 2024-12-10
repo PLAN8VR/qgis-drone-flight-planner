@@ -815,7 +815,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                         "actionparam14": 0,
                         "actiontype15": -1,
                         "actionparam15": 0,
-                        "altitudemode": 1,
+                        "altitudemode": 1, # Above Ground
                         "speed(m/s)": velocidade,
                         "poi_latitude": 0,
                         "poi_longitude": 0,
