@@ -239,70 +239,96 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
-        campos.append(QgsField("circulo", QVariant.Int))
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
         campos.append(QgsField("alturavoo", QVariant.Double))
+        campos.append(QgsField("angulo", QVariant.Double))
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
         
         pontoID = 1
         
-        # Criar as carreiras de pontos
-        features = camada_linha_voo.getFeatures() # Obter a geometria do polígono (camada_linha_voo) e seus vértices
+        # Criar os vértices da primeira carreira de pontos
+        features = camada_linha_voo.getFeatures()
         feature = next(features)  # Obter a primeira e única feature
         polygon_geometry = feature.geometry()
-        vertices = list(polygon_geometry.vertices())
+        vertices = list(polygon_geometry.vertices()) 
+        
+        # Remover o último vértice -  Um polígono fechado, o primeiro e o último vértice têm as mesmas coordenadas
+        vertices = vertices[:-1]
+        
+        # feedback.pushInfo(f"Ponto Incial {i}: {ponto_inicial}     Area {polygon_geometry.area()}")
+        # feedback.pushInfo(f"Vértices: {vertices}")
+        
+        # Garantir que os vértices estejam no sentido horário
+        if polygon_geometry.area() > 0:  # Se a área for positiva, os vértices estão no sentido anti-horário
+            vertices.reverse()
+
+        # feedback.pushInfo(f"Vértices: {vertices}")
         
         # Determinar o ponto inicial
         ponto_inicial_geom = camada_ponto_inicial.getFeatures().__next__().geometry()
-        ponto_inicial_xy = ponto_inicial_geom.asPoint()
+        ponto_inicial = ponto_inicial_geom.asPoint()
+   
+        # Verificar qual vértice o ponto inicial coincide
+        idx_ponto_inicial = None
+        for i, v in enumerate(vertices):
+            if QgsPointXY(v).distance(ponto_inicial) < 1e-6:  # Tolera um pequeno erro de precisão
+                idx_ponto_inicial = i
+                break
+    
+        # feedback.pushInfo(f"IDX: {idx_ponto_inicial}")
         
-        # Localizar o índice do ponto inicial nos vértices
-        idx_ponto_inicial = min(
-            range(len(vertices)),
-            key=lambda i: QgsPointXY(vertices[i]).distance(ponto_inicial_xy)
-        )
+        # Se o ponto inicial está na posição 0 não precisamos fazer nada; só verificar a ordem a seguir
+        if idx_ponto_inicial != 0:
+            vertices_reordenados = vertices[idx_ponto_inicial:] + vertices[:idx_ponto_inicial]
+        else:
+            vertices_reordenados = vertices  # Caso não encontre, mantém a lista original    
+        
+        # for v in vertices_reordenados:
+        #     feedback.pushInfo(f"Vértice {v}")
+        
+        # Criar Ângulo para cada Vértice
+        centroide = circulo_base_geom.centroid().asPoint() # Obter o centro geométrico (centroide) do objeto
 
-        # Reorganizar os vértices para começar no ponto inicial
-        vertices_reorganizados = vertices[idx_ponto_inicial:] + vertices[:idx_ponto_inicial]
+        angulos = []
+        for v in vertices_reordenados:
+            dx = v.x() - centroide.x()
+            dy = v.y() - centroide.y()
+            angulo_rad = math.atan2(dx, dy)  # Ângulo em radianos em relação ao eixo Y 
+            angulo_graus = math.degrees(angulo_rad)  # Converter para graus
+            angulo = (angulo_graus + 180) % 360 # Voltados para o Centro
+            angulos.append(angulo)
 
-        # Garantir o sentido horário
-        if not is_clockwise(vertices_reorganizados):
-            vertices_reorganizados.reverse()
-
+            # Exibir informações no feedback
+            feedback.pushInfo(f"Vértice: {v}, Ângulo: {angulo:.2f}°")
+            
+        # Criar os pontos para as outras linhas de Voo
         for idx, altura in enumerate(alturas, start=1):  # Cada altura corresponde a uma linha de voo
-            # Alternar o sentido (horário/anti-horário) com base no índice da linha
-            if idx % 2 == 0:
-                vertices_atual = list(reversed(vertices_reorganizados))  # Sentido anti-horário
-            else:
-                vertices_atual = vertices_reorganizados  # Sentido horário
-
-            # Criar os pontos para a linha de voo
-            for vertice in vertices_atual:
-                # Criar a geometria do ponto
-                ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(vertice.x(), vertice.y()))
+            for v in vertices_reordenados:
+                ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(v.x(), v.y()))
 
                 # Obter altitude do MDE
-                ponto_wgs = transformador.transform(QgsPointXY(vertice.x(), vertice.y()))
+                ponto_wgs = transformador.transform(QgsPointXY(v.x(), v.y()))
                 value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Amostragem no raster
                 altitude = value if result else 0
 
-                # Criar o recurso do ponto
+                angulo = 0
+                
                 ponto_feature = QgsFeature()
                 ponto_feature.setFields(campos)
                 ponto_feature.setAttribute("id", pontoID)
-                ponto_feature.setAttribute("linha_voo", idx)  # Linha de voo correspondente
-                ponto_feature.setAttribute("latitude", vertice.y())
-                ponto_feature.setAttribute("longitude", vertice.x())
+                ponto_feature.setAttribute("latitude", v.y())
+                ponto_feature.setAttribute("longitude", v.x())
                 ponto_feature.setAttribute("altitude", altura + altitude)
                 ponto_feature.setAttribute("alturavoo", altura)
+                ponto_feature.setAttribute("angulo", angulo)
                 ponto_feature.setGeometry(ponto_geom)
-
                 pontos_provider.addFeature(ponto_feature)
+                
                 pontoID += 1
-        
+
         # Atualizar a camada
         pontos_fotos.updateExtents()
         pontos_fotos.commitChanges()
@@ -341,8 +367,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         feedback.pushInfo("Pontos para Fotos concluídos com sucesso!")
         
         #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
-
-        """
+        
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
@@ -382,7 +407,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         if teste == True:
             QgsProject.instance().addMapLayer(pontos_reproj)
-        
+
         # =============L I T C H I==========================================================
         
         if caminho_csv and caminho_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
@@ -414,7 +439,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             pontos_reproj.commitChanges()
 
             # deletar campos desnecessários
-            campos = ['circulo', 'latitude', 'longitude']
+            campos = ['latitude', 'longitude']
             
             pontos_reproj.startEditing()
             
@@ -493,7 +518,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                         "latitude": y_coord,
                         "longitude": x_coord,
                         "altitude(m)": alturavoo,
-                        "heading(deg)": angulo_perpendicular,
+                        "heading(deg)": angulo,
                         "curvesize(m)": 0,
                         "rotationdir": 0,
                         "gimbalmode": 2,
@@ -517,7 +542,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Mensagem de Encerramento
         feedback.pushInfo("")
         feedback.pushInfo("Plano de Voo Vertical executado com sucesso.") 
-        """  
+        
         return {}
         
     def name(self):
