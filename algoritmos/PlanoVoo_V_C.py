@@ -143,7 +143,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         })
 
         camada_linha_voo.setRenderer(QgsSingleSymbolRenderer(simbologia))  
-        
+
         QgsProject.instance().addMapLayer(camada_linha_voo)
         
         # Determinar o vértice mais próximo ao ponto inicial e depois deslocar
@@ -288,21 +288,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         
         # for v in vertices_reordenados:
         #     feedback.pushInfo(f"Vértice {v}")
-        
-        # Criar Ângulo para cada Vértice
-        centroide = circulo_base_geom.centroid().asPoint() # Obter o centro geométrico (centroide) do objeto
-
-        angulos = []
-        for v in vertices_reordenados:
-            dx = v.x() - centroide.x()
-            dy = v.y() - centroide.y()
-            angulo_rad = math.atan2(dx, dy)  # Ângulo em radianos em relação ao eixo Y 
-            angulo_graus = math.degrees(angulo_rad)  # Converter para graus
-            angulo = (angulo_graus + 180) % 360 # Voltados para o Centro
-            angulos.append(angulo)
-
-            # Exibir informações no feedback
-            feedback.pushInfo(f"Vértice: {v}, Ângulo: {angulo:.2f}°")
             
         # Criar os pontos para as outras linhas de Voo
         for idx, altura in enumerate(alturas, start=1):  # Cada altura corresponde a uma linha de voo
@@ -314,7 +299,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Amostragem no raster
                 altitude = value if result else 0
 
-                angulo = 0
+                # Calcular o ângulo do ponto
+                centroide = circulo_base_geom.centroid().asPoint()  # Obter o centro geométrico do objeto
+                dx = v.x() - centroide.x()
+                dy = v.y() - centroide.y()
+                angulo_rad = math.atan2(dx, dy)          # Ângulo em radianos
+                angulo_graus = math.degrees(angulo_rad)  # Converter para graus
+                angulo = (angulo_graus + 180) % 360      # Inverter o ângulo para que seja para o centro
                 
                 ponto_feature = QgsFeature()
                 ponto_feature.setFields(campos)
@@ -461,28 +452,32 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             addCampo(pontos_reproj, 'xcoord ', QVariant.String) # o espaço é para diferenciar; depois vamos deletar os campos antigos
             addCampo(pontos_reproj, 'ycoord ', QVariant.String)
             addCampo(pontos_reproj, 'alturavoo ', QVariant.String)
+            addCampo(pontos_reproj, 'angulo ', QVariant.String)
 
             for f in pontos_reproj.getFeatures():
                 x1= str(f['xcoord']).replace(',', '.')
                 x2 = str(f['ycoord']).replace(',', '.')
                 x3 = str(f['alturavoo']).replace(',', '.')
+                x4 = str(f['angulo']).replace(',', '.')
 
                 # Formatar os valores como strings com ponto como separador decimal
                 x1 = "{:.6f}".format(float(x1))
                 x2 = "{:.6f}".format(float(x2))
                 x3 = "{:.6f}".format(float(x3))
+                x4 = "{:.6f}".format(float(x4))
 
                 # Atualizar os valores dos campos de texto
                 f['xcoord '] = x1
                 f['ycoord '] = x2
                 f['alturavoo '] = x3
+                f['angulo '] = x4
 
                 pontos_reproj.updateFeature(f)
 
             pontos_reproj.commitChanges()
 
             # Lista de campos Double a serem removidos de Pontos Reprojetados
-            camposDel = ['xcoord', 'ycoord', 'alturavoo'] # sem o espaço
+            camposDel = ['xcoord', 'ycoord', 'alturavoo', 'angulo'] # sem o espaço
             
             pontos_reproj.startEditing()
             pontos_reproj.dataProvider().deleteAttributes([pontos_reproj.fields().indexOf(campo) for campo in camposDel if pontos_reproj.fields().indexOf(campo) != -1])
@@ -512,6 +507,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                     x_coord = f['xcoord '] 
                     y_coord = f['ycoord ' ]
                     alturavoo = f['alturavoo ' ]
+                    angulo = f['angulo ' ]
 
                     # Criar um dicionário de dados para cada Círculo do CSV
                     data = {
