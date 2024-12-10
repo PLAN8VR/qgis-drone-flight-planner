@@ -46,6 +46,16 @@ import csv
 
 class PlanoVoo_H(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
+        diretorio = QgsProject.instance().homePath()
+
+        dirArq = os.path.join(diretorio, 'api_key.txt') # Caminho do arquivo 'ali_key.txt' no mesmo diretório do projeto
+
+        if os.path.exists(dirArq): # Verificar se o arquivo existe
+            with open(dirArq, 'r') as file:    # Ler o conteúdo do arquivo (a chave da API)
+                api_key = file.read().strip()  # Remover espaços extras no início e fim
+        else:
+            api_key = ''
+        
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Terreno do Voo', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','Primeira Linha de Voo', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('h','Altura de Voo',
@@ -66,7 +76,9 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('percF','Percentual de sobreposição Frontal (85% = 0.85)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=0.85))
-        self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue='d0fd2bf40aa8a6225e8cb6a4a1a5faf7'))
+        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
+        self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV para o Litchi',
                                                                fileFilter='CSV files (*.csv)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML para o Google Earth',
@@ -89,6 +101,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         f = parameters['f']
         percL = parameters['percL'] # Lateral
         percF = parameters['percF'] # Frontal
+        velocidade = parameters['velocidade']
         caminho_kml = parameters['saida_kml']
         caminho_csv = parameters['saida_csv']
         
@@ -727,6 +740,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         if teste == True:
             QgsProject.instance().addMapLayer(pontos_reproj)
+        
+        # Formatar os valores como strings com ponto como separador decimal
+        v = str(velocidade).replace(',', '.')
+        velocidade = "{:.6f}".format(float(v))
 
         # Verificar se o caminho CSV está preenchido
         if caminho_csv and caminho_csv.endswith('.csv'):
@@ -799,7 +816,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                         "actiontype15": -1,
                         "actionparam15": 0,
                         "altitudemode": 1,
-                        "speed(m/s)": 0,
+                        "speed(m/s)": velocidade,
                         "poi_latitude": 0,
                         "poi_longitude": 0,
                         "poi_altitude(m)": 0,

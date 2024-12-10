@@ -46,17 +46,29 @@ import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
+        diretorio = QgsProject.instance().homePath()
+
+        dirArq = os.path.join(diretorio, 'api_key.txt') # Caminho do arquivo 'ali_key.txt' no mesmo diretório do projeto
+
+        if os.path.exists(dirArq): # Verificar se o arquivo existe
+            with open(dirArq, 'r') as file:    # Ler o conteúdo do arquivo (a chave da API)
+                api_key = file.read().strip()  # Remover espaços extras no início e fim
+        else:
+            api_key = ''
+        
         self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Círculo Base de Voo', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Posição do Início do Voo', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Altura do Objeto (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=15))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Altura Inicial (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=2))
-        self.addParameter(QgsProcessingParameterNumber('num_partes','Espaçamento Horizontal (em partes do Círculo Base)',
+        self.addParameter(QgsProcessingParameterNumber('num_partes','Espaçamento Horizontal em PARTES do Círculo Base',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=8))
         self.addParameter(QgsProcessingParameterNumber('deltaVertical','Espaçamento Vertical (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3)) 
-        self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue='d0fd2bf40aa8a6225e8cb6a4a1a5faf7'))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
+        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
+        self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV para o Litchi',
                                                                fileFilter='CSV files (*.csv)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML para o Google Earth',
@@ -75,6 +87,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         h = parameters['alturaMin']
         num_partes = parameters['num_partes'] # deltaH será calculado
         deltaV = parameters['deltaVertical']
+        velocidade = parameters['velocidade']
         
         apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
         
@@ -486,6 +499,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             if teste == True:
                 QgsProject.instance().addMapLayer(pontos_reproj)
             
+            # Formatar os valores como strings com ponto como separador decimal
+            v = str(velocidade).replace(',', '.')
+            velocidade = "{:.6f}".format(float(v))
+            
             # Exportar para o Litch (CSV já preparado)
             # Criar o arquivo CSV
             with open(caminho_csv, mode='w', newline='') as csvfile:
@@ -522,7 +539,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                         "actiontype1": 1.0,
                         "actionparam1": 0,
                         "altitudemode": 0,
-                        "speed(m/s)": 0,
+                        "speed(m/s)": velocidade,
                         "poi_latitude": 0,
                         "poi_longitude": 0,
                         "poi_altitude(m)": 0,
