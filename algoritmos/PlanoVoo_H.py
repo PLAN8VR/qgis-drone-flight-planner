@@ -27,9 +27,9 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes, QgsVectorFileWriter
-from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
-from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsProcessingParameterFileDestination, QgsCoordinateReferenceSystem
+from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes, QgsVectorFileWriter, QgsProcessingParameterFolderDestination
+from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterFileDestination
+from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsCoordinateReferenceSystem, QgsProperty
 from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsProcessingParameterBoolean, QgsCoordinateTransform
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
 from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer
@@ -79,10 +79,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=8))
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV para o Litchi',
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML para o Google Earth',
-                                                               fileFilter='KML files (*.kml)'))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML (Google Earth)',
+                                                               fileFilter='CSV files (*.kml)'))
+        #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -102,6 +103,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         percL = parameters['percL'] # Lateral
         percF = parameters['percF'] # Frontal
         velocidade = parameters['velocidade']
+        #caminho_kml = self.parameterAsString(parameters, 'saida_kml', context)
+        #caminho_kml = os.path.join(caminho_kml, 'output.kml')
         caminho_kml = parameters['saida_kml']
         caminho_csv = parameters['saida_csv']
         
@@ -648,8 +651,26 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_reproj.commitChanges()
         
+        # Reprojetar a única linha da camada linha_voo_layer para WGS84 (4326)
+        linha_voo_reproj = QgsVectorLayer('LineString?crs=' + crs_wgs.authid(), 'Linha de Voo Reprojetada', 'memory')
+        linha_voo_reproj.startEditing()
+        linha_voo_reproj.dataProvider().addAttributes(linha_voo_layer.fields())
+        linha_voo_reproj.updateFields()
+
+        # Obter a única linha da camada linha_voo_layer e reprojetar
+        linha_voo_feature = next(linha_voo_layer.getFeatures(), None)  # Obter a primeira (e única) linha
+        if linha_voo_feature:
+            geom = linha_voo_feature.geometry()
+            geom.transform(transformador)  # Transformar a geometria para o CRS de destino
+            reproj = QgsFeature()
+            reproj.setGeometry(geom)
+            reproj.setAttributes(linha_voo_feature.attributes())
+            linha_voo_reproj.addFeature(reproj)
+
+        linha_voo_reproj.commitChanges()
+        
         # Verificar se o caminho KML está preenchido
-        if caminho_kml and caminho_kml.endswith('.kml'):
+        if caminho_kml:
             # Configure as opções para gravar o arquivo
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = 'UTF-8'
@@ -658,8 +679,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             options.crs = crs_wgs
             options.layerOptions = ['ALTITUDE_MODE=absolute'] 
             
-            # Escrever a camada no arquivo KML
-            grava = QgsVectorFileWriter.writeAsVectorFormat(pontos_reproj, caminho_kml, options)
+            # Arquivo KML para os Pontos de Fotos
+            grava_pontos = QgsVectorFileWriter.writeAsVectorFormat(pontos_reproj, caminho_kml, options)
+            
+            # Arquivo KML para a linha de voo
+            #grava_linha = QgsVectorFileWriter.writeAsVectorFormat(linha_voo_reproj, caminho_kml, options)
             
             # linha_voo_layer (não foi feita a exportação, pois o litchi não necessita)
             

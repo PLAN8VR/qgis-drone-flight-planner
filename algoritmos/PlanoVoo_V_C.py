@@ -27,9 +27,9 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes, QgsVectorFileWriter
-from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
-from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsProcessingParameterFileDestination, QgsCoordinateReferenceSystem
+from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes, QgsVectorFileWriter, QgsProcessingParameterFolderDestination
+from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterFileDestination
+from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsCoordinateReferenceSystem, QgsProperty
 from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsProcessingParameterBoolean, QgsCoordinateTransform
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
 from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer, QgsFillSymbol
@@ -69,10 +69,11 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV para o Litchi',
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML para o Google Earth',
-                                                               fileFilter='KML files (*.kml)'))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML (Google Earth)',
+                                                               fileFilter='CSV files (*.kml)'))
+        #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -82,7 +83,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         crs = circulo_base.crs()
         
         ponto_inicial = self.parameterAsVectorLayer(parameters, 'ponto_inicial', context)
-
+        ponto_inicial_move = self.parameterAsVectorLayer(parameters, 'ponto_inicial', context) # ponto inicial precisa ser movido para um vértice da Linha de Voo
+        
         H = parameters['altura']
         h = parameters['alturaMin']
         num_partes = parameters['num_partes'] # deltaH será calculado
@@ -172,27 +174,26 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         # Atualizar o ponto inicial para o vértice mais próximo
         novo_ponto_inicial_geom = QgsGeometry.fromPointXY(vertice_mais_proximo)
-        
-        camada_ponto_inicial = QgsProject.instance().mapLayersByName('Ponto_Inicial_V')[0]
-        camada_ponto_inicial_provider = camada_ponto_inicial.dataProvider()
 
-        camada_ponto_inicial.startEditing()
+        camada_ponto_inicial_provider = ponto_inicial_move.dataProvider()
+
+        ponto_inicial_move.startEditing()
 
         # Atualizar a geometria do ponto inicial para o vértice mais próximo
-        for feature in camada_ponto_inicial.getFeatures():
+        for feature in ponto_inicial_move.getFeatures():
             if feature.geometry().asPoint() == ponto_inicial_xy:
                 # Atualizar a geometria do ponto inicial
                 feature.setGeometry(novo_ponto_inicial_geom)
-                camada_ponto_inicial.updateFeature(feature)  # Salvar a atualização
+                ponto_inicial_move.updateFeature(feature)  # Salvar a atualização
                 break  # Atualizar apenas o primeiro ponto encontrado (ou o correto)
 
-        camada_ponto_inicial.commitChanges()
-        camada_ponto_inicial.triggerRepaint()
+        ponto_inicial_move.commitChanges()
+        ponto_inicial_move.triggerRepaint()
         
         # Determina as alturas das linhas de Voo
         alturas = [i for i in range(h, H + h + 1, deltaV)]
 
-        feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {deltaH}, Delta Vertical: {deltaV}")
+        feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {round(deltaH,2)}, Delta Vertical: {deltaV}")
         
         # =====================================================================
         # Obter o MDE com OpenTopography para depois determinar as altitudes dos Pontos de Foto
@@ -246,7 +247,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         output_path = result['OUTPUT']
         camadaMDE = QgsRasterLayer(output_path, "DEM_Filtrado")
 
-        QgsProject.instance().addMapLayer(camadaMDE)
+        #QgsProject.instance().addMapLayer(camadaMDE)
         
         #camadaMDE = QgsProject.instance().mapLayersByName("DEM_Filtrado")[0]
         
@@ -288,7 +289,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # feedback.pushInfo(f"Vértices: {vertices}")
         
         # Determinar o ponto inicial
-        ponto_inicial_geom = camada_ponto_inicial.getFeatures().__next__().geometry()
+        ponto_inicial_geom = ponto_inicial_move.getFeatures().__next__().geometry()
         ponto_inicial = ponto_inicial_geom.asPoint()
    
         # Verificar qual vértice o ponto inicial coincide
@@ -340,6 +341,18 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 
                 pontoID += 1
 
+        # Atualizar a camada
+        pontos_fotos.updateExtents()
+        pontos_fotos.commitChanges()
+        
+        # Point para PointZ
+        result = processing.run("native:setzvalue", 
+                                {'INPUT':pontos_fotos,
+                                 'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
+                                 'OUTPUT':'TEMPORARY_OUTPUT'})
+        pontos_fotos = result['OUTPUT']
+        pontos_fotos.setName("Pontos Fotos") # Para que nao fique no QGIS com o nome 'Z adicionado'
+        
         # Atualizar a camada
         pontos_fotos.updateExtents()
         pontos_fotos.commitChanges()
@@ -398,7 +411,16 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         pontos_reproj.commitChanges()
         
-        if caminho_kml and caminho_kml.endswith('.kml'): # Verificar se o caminho KML está preenchido 
+        # Point para PointZ
+        result = processing.run("native:setzvalue", 
+                                {'INPUT':pontos_reproj,
+                                 'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
+                                 'OUTPUT':'TEMPORARY_OUTPUT'})
+        pontos_reproj = result['OUTPUT']
+        
+        QgsProject.instance().addMapLayer(pontos_reproj)
+        
+        if caminho_kml: # Verificar se o caminho KML está preenchido 
             # Configure as opções para gravar o arquivo
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = 'UTF-8'
@@ -546,6 +568,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                         "gimbalpitchangle": 0,
                         "actiontype1": 1.0,
                         "actionparam1": 0,
+                        "actiontype2": 1.0,
+                        "actionparam2": 0,
                         "altitudemode": 0,
                         "speed(m/s)": velocidade,
                         "poi_latitude": 0,
