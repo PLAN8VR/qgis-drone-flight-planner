@@ -77,7 +77,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=0.85))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=8))
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV para o Litchi',
                                                                fileFilter='CSV files (*.csv)'))
@@ -534,7 +534,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_fotos.setLabeling(QgsVectorLayerSimpleLabeling(settings))
 
         pontos_fotos.triggerRepaint()
-        #QgsProject.instance().addMapLayer(pontos_fotos)
         
         # ==================================================================================
         # =====Obter a altitude dos pontos das Fotos========================================
@@ -590,7 +589,14 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         output_path = result['OUTPUT']
         camadaMDE = QgsRasterLayer(output_path, "DEM")
-    
+        
+        # Filtrar o MDE com (Relevo / Filtro do MDE) do LFTools
+        result = processing.run(
+            "lftools:demfilter", {'INPUT': camadaMDE,
+                                  'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
+        output_path = result['OUTPUT']
+        camadaMDE = QgsRasterLayer(output_path, "DEM_Filtrado")
+        
         # Valor da Altitude
         prov = pontos_fotos.dataProvider()
         pontos_fotos.startEditing()
@@ -615,6 +621,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_fotos.commitChanges()
 
+        #QgsProject.instance().addMapLayer(camadaMDE)
         QgsProject.instance().addMapLayer(pontos_fotos)
         
         feedback.pushInfo("")
@@ -622,7 +629,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
-        # =========Exportar para o Google Earth Pro (kml)================================================
+        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
+        
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)  
         pontos_reproj = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reprojetados', 'memory') 
         pontos_reproj.startEditing()
@@ -646,11 +654,14 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = 'UTF-8'
             options.driverName = 'KML'
+            options.field_name = 'id'
             options.crs = crs_wgs
             options.layerOptions = ['ALTITUDE_MODE=absolute'] 
             
             # Escrever a camada no arquivo KML
             grava = QgsVectorFileWriter.writeAsVectorFormat(pontos_reproj, caminho_kml, options)
+            
+            # linha_voo_layer (não foi feita a exportação, pois o litchi não necessita)
             
             feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {caminho_kml}")
         else:

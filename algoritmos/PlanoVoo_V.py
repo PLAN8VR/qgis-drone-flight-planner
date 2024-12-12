@@ -123,7 +123,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-        """
+        
         # Determinar o bounding box da linha em WGS 84
         bounds = linha_base_geom.boundingBox()
         ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
@@ -160,11 +160,20 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
 
         output_path = result['OUTPUT']
         camadaMDE = QgsRasterLayer(output_path, "DEM")
+        
+        # Filtrar o MDE com (Relevo / Filtro do MDE) do LFTools
+        result = processing.run(
+            "lftools:demfilter", {'INPUT': camadaMDE,
+                                  'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
+        output_path = result['OUTPUT']
+        camadaMDE = QgsRasterLayer(output_path, "DEM_Filtrado")
 
         QgsProject.instance().addMapLayer(camadaMDE)
-        """
-        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
+        #camadaMDE = QgsProject.instance().mapLayersByName("DEM_Filtrado")[0]
+        
+        # =====================================================================
+        # =====Criar a camada Pontos de Fotos==================================
         # Criar uma camada Pontos com os deltaH sobre a linha Base e depois empilhar com os deltaH
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
@@ -330,6 +339,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = 'UTF-8'
             options.driverName = 'KML'
+            options.field_name = 'id'
             options.crs = crs_wgs
             options.layerOptions = ['ALTITUDE_MODE=absolute'] 
             
