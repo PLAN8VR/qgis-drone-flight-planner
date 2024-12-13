@@ -122,7 +122,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
         
-        # =====Verificações=======================================================
+        # ===== Verificações =====================================================
         # Verificar se o polígono e a primeira_linha contém exatamente uma feature
         poligono_features = list(camada.getFeatures()) # dados do Terreno
         if len(poligono_features) != 1:
@@ -307,7 +307,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_provider.addAttributes([QgsField('id', QVariant.Int)])
         linhaEstendida_layer.updateFields()
 
-        # Adicionar a linha estendida à camada temporária
         linha_feature = QgsFeature()
         linha_feature.setGeometry(linha_estendida)
         linha_feature.setAttributes([1])  # ID da linha estendida
@@ -726,7 +725,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         if teste == True:
             QgsProject.instance().addMapLayer(linha_voo_reproj)
-            
+        
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         
         if caminho_kml: # Verificar se o caminho KML está preenchido 
@@ -897,11 +896,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                         "rotationdir": 0,
                         "gimbalmode": 0,
                         "gimbalpitchangle": -90,
-                        "actiontype1": -1,
-                        "actionparam1": 0,
-                        "actiontype2": -1,
+                        "actiontype1": 0,     # STAY 2 segundos
+                        "actionparam1": 2000,
+                        "actiontype2": 1,     # TAKE_PHOTO
                         "actionparam2": 0,
-                        "actiontype3": -1,
+                        "actiontype3": -1, 
                         "actionparam3": 0,
                         "actiontype4": -1,
                         "actionparam4": 0,
