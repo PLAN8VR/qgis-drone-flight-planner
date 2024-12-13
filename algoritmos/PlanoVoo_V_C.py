@@ -94,7 +94,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
         
-        # Verificações
+        # ===== Verificações =====================================================
         circulo = list(circulo_base.getFeatures())
         if len(circulo) != 1:
             raise ValueError("A camada Cículo Base deve conter somente um círculo.")
@@ -102,7 +102,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         if ponto_inicial.featureCount() != 1: # uma outra forma de checar
             raise ValueError("A camada ponto Inicial deve conter somente um ponto.")
 
-        # Cálculos Iniciais
+        # ===== Cálculos Iniciais ================================================
         circulo_base_geom = circulo[0].geometry()
         
         ponto = list(ponto_inicial.getFeatures())
@@ -115,86 +115,14 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         comprimento_circulo = circulo_base_geom.length()
         deltaH = comprimento_circulo / num_partes
         
-        # Calcular vértices do polígono inscrito
-        pontos = []
-        for i in range(num_partes):
-            angulo = math.radians(360 / num_partes * i)
-            x = centro.x() + raio * math.cos(angulo)
-            y = centro.y() + raio * math.sin(angulo)
-            pontos.append(QgsPointXY(x, y))
-        
-        # Criar geometria do polígono
-        polygon_geometry = QgsGeometry.fromPolygonXY([pontos])
-        
-        # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
-        camada_linha_voo = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Linha de Voo', 'memory')
-        linha_voo_provider = camada_linha_voo.dataProvider()
-
-        # Definir campos
-        campos = QgsFields()
-        campos.append(QgsField("id", QVariant.Int))
-        linha_voo_provider.addAttributes(campos)
-        camada_linha_voo.updateFields()
-
-        camada_linha_voo.startEditing
-        
-        # Adicionar o novo polígono à camada
-        feature = QgsFeature()
-        feature.setGeometry(polygon_geometry)
-        feature.setAttributes([1])  # Atribuindo um valor de ID
-        linha_voo_provider.addFeature(feature)
-
-        # Atualizar a camada
-        camada_linha_voo.updateExtents()
-        camada_linha_voo.commitChanges
-        
-        # Simbologia
-        simbologia = QgsFillSymbol.createSimple({
-            'color': 'transparent',  # Sem preenchimento
-            'outline_color': 'green',  # Contorno verde
-            'outline_width': '0.8'  # Largura do contorno
-        })
-
-        camada_linha_voo.setRenderer(QgsSingleSymbolRenderer(simbologia))  
-
-        QgsProject.instance().addMapLayer(camada_linha_voo)
-        
-        # Determinar o vértice mais próximo ao ponto inicial e depois deslocar
-        ponto_inicial_xy = ponto_inicial_geom.asPoint()
-        menor_distancia = float('inf')
-        vertice_mais_proximo = None
-
-        for vertice in pontos:
-            distancia = math.sqrt((vertice.x() - ponto_inicial_xy.x())**2 + (vertice.y() - ponto_inicial_xy.y())**2)
-            if distancia < menor_distancia:
-                menor_distancia = distancia
-                vertice_mais_proximo = vertice
-
-        # Atualizar o ponto inicial para o vértice mais próximo
-        novo_ponto_inicial_geom = QgsGeometry.fromPointXY(vertice_mais_proximo)
-
-        camada_ponto_inicial_provider = ponto_inicial_move.dataProvider()
-
-        ponto_inicial_move.startEditing()
-
-        # Atualizar a geometria do ponto inicial para o vértice mais próximo
-        for feature in ponto_inicial_move.getFeatures():
-            if feature.geometry().asPoint() == ponto_inicial_xy:
-                # Atualizar a geometria do ponto inicial
-                feature.setGeometry(novo_ponto_inicial_geom)
-                ponto_inicial_move.updateFeature(feature)  # Salvar a atualização
-                break  # Atualizar apenas o primeiro ponto encontrado (ou o correto)
-
-        ponto_inicial_move.commitChanges()
-        ponto_inicial_move.triggerRepaint()
-        
         # Determina as alturas das linhas de Voo
         alturas = [i for i in range(h, H + h + 1, deltaV)]
 
         feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {round(deltaH,2)}, Delta Vertical: {deltaV}")
         
         # =====================================================================
-        # Obter o MDE com OpenTopography para depois determinar as altitudes dos Pontos de Foto
+        # ===== OpenTopography ================================================
+        
         feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
        
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -243,14 +171,113 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             "lftools:demfilter", {'INPUT': camadaMDE,
                                   'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
         output_path = result['OUTPUT']
-        camadaMDE = QgsRasterLayer(output_path, "DEM_Filtrado")
+        camadaMDE = QgsRasterLayer(output_path, "DEM_V")
         """
         #QgsProject.instance().addMapLayer(camadaMDE)
         
-        camadaMDE = QgsProject.instance().mapLayersByName("DEM_Filtrado")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM_V")[0]
         
-        # =====================================================================
-        # =====Criar a camada Pontos de Fotos==================================
+        # ====================================================================
+        # ===== Criar Polígono Circunscrito ==================================
+        
+        # Calcular vértices do polígono inscrito
+        pontos = []
+        for i in range(num_partes):
+            angulo = math.radians(360 / num_partes * i)
+            x = centro.x() + raio * math.cos(angulo)
+            y = centro.y() + raio * math.sin(angulo)
+            pontos.append(QgsPointXY(x, y))
+        
+        # Criar geometria do polígono
+        polygon_geometry = QgsGeometry.fromPolygonXY([pontos])
+        
+        # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
+        camada_linha_voo = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Linha de Voo', 'memory')
+        linha_voo_provider = camada_linha_voo.dataProvider()
+
+        # Definir campos
+        campos = QgsFields()
+        campos.append(QgsField("id", QVariant.Int))
+        campos.append(QgsField("alturavoo", QVariant.Double))
+        linha_voo_provider.addAttributes(campos)
+        camada_linha_voo.updateFields()
+
+        camada_linha_voo.startEditing
+        
+        # Adicionar o novo polígono à camada
+        feature = QgsFeature()
+        feature.setGeometry(polygon_geometry)
+        feature.setAttributes([1, h])
+        linha_voo_provider.addFeature(feature)
+
+        # Criar polígonos paralelos
+        linha_id = 1
+        for altura in alturas:
+            if altura == h:
+                continue
+            
+            deslocamento = altura - min(alturas)  # Calcular o deslocamento relativo
+    
+            # Deslocar o polígono verticalmente
+            resultado_translacao = polygon_geometry.translate(0, deslocamento)
+            
+            poligono_deslocado = resultado_translacao.geometry()
+            
+            # Criar uma feature para o polígono deslocado
+            feature = QgsFeature()
+            feature.setGeometry(poligono_deslocado)
+            feature.setAttributes([linha_id, altura])
+            linha_voo_provider.addFeature(feature)
+            
+            linha_id += 1
+
+        # Atualizar a camada
+        camada_linha_voo.updateExtents()
+        camada_linha_voo.commitChanges
+        
+        # Simbologia
+        simbologia = QgsFillSymbol.createSimple({
+            'color': 'transparent',  # Sem preenchimento
+            'outline_color': 'green',  # Contorno verde
+            'outline_width': '0.8'  # Largura do contorno
+        })
+
+        camada_linha_voo.setRenderer(QgsSingleSymbolRenderer(simbologia))  
+
+        QgsProject.instance().addMapLayer(camada_linha_voo)
+        
+        # ==========================================================================================================
+        # ===== Determinar o vértice mais próximo ao ponto inicial e depois deslocar ===============================
+        ponto_inicial_xy = ponto_inicial_geom.asPoint()
+        menor_distancia = float('inf')
+        vertice_mais_proximo = None
+
+        for vertice in pontos:
+            distancia = math.sqrt((vertice.x() - ponto_inicial_xy.x())**2 + (vertice.y() - ponto_inicial_xy.y())**2)
+            if distancia < menor_distancia:
+                menor_distancia = distancia
+                vertice_mais_proximo = vertice
+
+        # Atualizar o ponto inicial para o vértice mais próximo
+        novo_ponto_inicial_geom = QgsGeometry.fromPointXY(vertice_mais_proximo)
+
+        camada_ponto_inicial_provider = ponto_inicial_move.dataProvider()
+
+        ponto_inicial_move.startEditing()
+
+        # Atualizar a geometria do ponto inicial para o vértice mais próximo
+        for feature in ponto_inicial_move.getFeatures():
+            if feature.geometry().asPoint() == ponto_inicial_xy:
+                # Atualizar a geometria do ponto inicial
+                feature.setGeometry(novo_ponto_inicial_geom)
+                ponto_inicial_move.updateFeature(feature)  # Salvar a atualização
+                break  # Atualizar apenas o primeiro ponto encontrado (ou o correto)
+
+        ponto_inicial_move.commitChanges()
+        ponto_inicial_move.triggerRepaint()
+        
+        # ==========================================================================================
+        # =====Criar a camada Pontos de Fotos=======================================================
         # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
@@ -557,7 +584,14 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                         "latitude", "longitude", "altitude(m)",
                         "heading(deg)", "curvesize(m)", "rotationdir",
                         "gimbalmode", "gimbalpitchangle",
-                        "actiontype1", "actionparam1", "altitudemode", "speed(m/s)",
+                        "actiontype1", "actionparam1", "actiontype2", "actionparam2",
+                        "actiontype3", "actionparam3", "actiontype4", "actionparam4",
+                        "actiontype5", "actionparam5", "actiontype6", "actionparam6",
+                        "actiontype7", "actionparam7", "actiontype8", "actionparam8",
+                        "actiontype9", "actionparam9", "actiontype10", "actionparam10",
+                        "actiontype11", "actionparam11", "actiontype12", "actionparam12",
+                        "actiontype13", "actionparam13", "actiontype14", "actionparam14",
+                        "actiontype15", "actionparam15", "altitudemode", "speed(m/s)",
                         "poi_latitude", "poi_longitude", "poi_altitude(m)", "poi_altitudemode",
                         "photo_timeinterval", "photo_distinterval"]
                 
@@ -582,17 +616,43 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                         "rotationdir": 0,
                         "gimbalmode": 2,
                         "gimbalpitchangle": 0,
-                        "actiontype1": 1.0,
-                        "actionparam1": 0,
-                        "actiontype2": 1.0,
+                        "actiontype1": 0,     # STAY 2 segundos
+                        "actionparam1": 2000,
+                        "actiontype2": 1,     # TAKE_PHOTO
                         "actionparam2": 0,
-                        "altitudemode": 0,
+                        "actiontype3": -1, 
+                        "actionparam3": 0,
+                        "actiontype4": -1,
+                        "actionparam4": 0,
+                        "actiontype5": -1,
+                        "actionparam5": 0,
+                        "actiontype6": -1,
+                        "actionparam6": 0,
+                        "actiontype7": -1,
+                        "actionparam7": 0,
+                        "actiontype8": -1,
+                        "actionparam8": 0,
+                        "actiontype9": -1,
+                        "actionparam9": 0,
+                        "actiontype10": -1,
+                        "actionparam10": 0,
+                        "actiontype11": -1,
+                        "actionparam11": 0,
+                        "actiontype12": -1,
+                        "actionparam12": 0,
+                        "actiontype13": -1,
+                        "actionparam13": 0,
+                        "actiontype14": -1,
+                        "actionparam14": 0,
+                        "actiontype15": -1,
+                        "actionparam15": 0,
+                        "altitudemode": 0, # Above Ground não habilitado
                         "speed(m/s)": velocidade,
                         "poi_latitude": 0,
                         "poi_longitude": 0,
                         "poi_altitude(m)": 0,
                         "poi_altitudemode": 0,
-                        "photo_timeinterval": -1.0,
+                        "photo_timeinterval": -1,
                         "photo_distinterval": deltaH}
 
                     # Escrever o Círculo no CSV

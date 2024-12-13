@@ -32,7 +32,7 @@ from qgis.PyQt.QtGui import QIcon
 import os
 
 from .algoritmos.PlanoVoo_H import PlanoVoo_H
-from .algoritmos.PlanoVoo_V import PlanoVoo_V
+from .algoritmos.PlanoVoo_V_F import PlanoVoo_V_F
 from .algoritmos.PlanoVoo_V_C import PlanoVoo_V_C
 
 class PlanoVooProvider(QgsProcessingProvider):
@@ -44,7 +44,7 @@ class PlanoVooProvider(QgsProcessingProvider):
 
     def loadAlgorithms(self):
         self.addAlgorithm(PlanoVoo_H())
-        self.addAlgorithm(PlanoVoo_V())
+        self.addAlgorithm(PlanoVoo_V_F())
         self.addAlgorithm(PlanoVoo_V_C())
 
     def id(self):

@@ -44,7 +44,7 @@ import csv
 
 # pontos_provider Air 2S (5472 × 3648)
 
-class PlanoVoo_V(QgsProcessingAlgorithm):
+class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         diretorio = QgsProject.instance().homePath()
 
@@ -536,7 +536,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         return {}
         
     def name(self):
-        return 'PlanoVooV'.lower()
+        return 'PlanoVooVF'.lower()
 
     def displayName(self):
         return self.tr('Fachada')
@@ -551,7 +551,7 @@ class PlanoVoo_V(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return PlanoVoo_V()
+        return PlanoVoo_V_F()
     
     def tags(self):
         return self.tr('Flight Plan,Measure,Topography').split(',')
