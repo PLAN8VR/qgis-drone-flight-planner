@@ -79,16 +79,14 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=8))
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML (Google Earth)',
-                                                               fileFilter='CSV files (*.kml)'))
-        #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
         
-        # =====Parâmetros de entrada para variáveis========================
+        # =====Parâmetros de entrada para variáveis==============================
         camada = self.parameterAsVectorLayer(parameters, 'terreno', context)
         crs = camada.crs()
         
@@ -103,12 +101,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         percL = parameters['percL'] # Lateral
         percF = parameters['percF'] # Frontal
         velocidade = parameters['velocidade']
-        #caminho_kml = self.parameterAsString(parameters, 'saida_kml', context)
-        #caminho_kml = os.path.join(caminho_kml, 'output.kml')
-        caminho_kml = parameters['saida_kml']
-        caminho_csv = parameters['saida_csv']
         
-        # =====Cálculo das Sobreposições====================================
+        caminho_kml = parameters['saida_kml']
+        arquivo_csv = parameters['saida_csv']
+        
+        # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
         tg_alfa_2 = dc / (2 * f)
         D_lat = dc * H / f
@@ -125,9 +122,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
         
-        # =====================================================================
-        # ===== Determinação das Linhas de Voo ================================
-        
+        # =====Verificações=======================================================
         # Verificar se o polígono e a primeira_linha contém exatamente uma feature
         poligono_features = list(camada.getFeatures()) # dados do Terreno
         if len(poligono_features) != 1:
@@ -168,6 +163,73 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         if not flag:
             raise ValueError("A camada primeira_linha deve ser um dos lados do terreno.")
+        
+        # =====================================================================
+        # ===== OpenTopography ================================================
+        
+        feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
+        
+        # Obter as coordenadas extremas da área (em WGS 84)
+        pontoN = float('-inf')  # coordenada máxima (Norte) / inf de inifito
+        pontoS = float('inf')   # coordenada mínima (Sul)
+        pontoW = float('inf')   # coordenada mínima (Oeste)
+        pontoE = float('-inf')  # coordenada máxima (Leste)
+        
+        # Reprojetar Pontos (Fotos) de UTM para 4326; nesse caso EPSG:31983
+        crs_wgs = QgsCoordinateReferenceSystem(4326) # WGS84 que OpenTopography usa
+        
+        # Transformador de coordenadas (UTM -> WGS84)
+        transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
+        
+        for feature in camada.getFeatures():  # Terreno
+            geom = feature.geometry()
+            bounds = geom.boundingBox()  # Limites da geometria em UTM
+
+            # Transformar limites para WGS 84
+            ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
+            ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
+
+            pontoN = max(pontoN, ponto_max.y())
+            pontoS = min(pontoS, ponto_min.y())
+            pontoW = min(pontoW, ponto_min.x())
+            pontoE = max(pontoE, ponto_max.x())
+
+        # Ajustar os limites
+        ajuste_lat = (pontoN - pontoS) * 0.70
+        ajuste_long = (pontoE - pontoW) * 0.70
+
+        pontoN += ajuste_lat
+        pontoS -= ajuste_lat
+        pontoW -= ajuste_long
+        pontoE += ajuste_long    
+
+        # Obter o MDE da área
+        coordenadas = f'{pontoW},{pontoE},{pontoS},{pontoN}'
+        area = f"{coordenadas}[EPSG:4326]"
+
+        # result = processing.run(
+        #         "OTDEMDownloader:OpenTopography DEM Downloader", {
+        #             'DEMs': 7, # 7: Copernicus Global DSM 30m
+        #             'Extent': area,
+        #             'API_key': apikey,
+        #             'OUTPUT': 'TEMPORARY_OUTPUT'})
+
+        # output_path = result['OUTPUT']
+        # camadaMDE = QgsRasterLayer(output_path, "DEM")
+        
+        # # Filtrar o MDE com (Relevo / Filtro do MDE) do LFTools
+        # result = processing.run(
+        #     "lftools:demfilter", {'INPUT': camadaMDE,
+        #                           'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
+        # output_path = result['OUTPUT']
+        # camadaMDE = QgsRasterLayer(output_path, "DEM_Filtrado")
+        
+        # QgsProject.instance().addMapLayer(camadaMDE)
+        
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM_H")[0]
+        
+        # =====================================================================
+        # ===== Determinação das Linhas de Voo ================================
         
         # Encontrar os pontos extremos de cada lado da linha base (sempre terá 1 ou 2 pontos)
         ponto_extremo_dir = None
@@ -396,6 +458,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linha de Voo', 'memory')
         linha_voo_provider = linha_voo_layer.dataProvider()
         linha_voo_provider.addAttributes([QgsField('id', QVariant.Int)])
+        linha_voo_provider.addAttributes([QgsField('alturavoo', QVariant.Double)])
         linha_voo_layer.updateFields()
 
         # Obter e ordenar as feições pela ordem dos IDs para garantir
@@ -428,6 +491,34 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Atualizar extensão da camada de resultado
         linha_voo_layer.updateExtents()
         
+        # definir o valor de Z
+        linha_voo_layer.startEditing()
+        
+        for f in linha_voo_layer.getFeatures():
+            linha_geom = f.geometry().asPolyline()
+
+            # Usar o primeiro vértice da linha para obter o valor de Z
+            primeiro_vertice = linha_geom[0]
+            vertice_wgs = transformador.transform(QgsPointXY(primeiro_vertice.x(), primeiro_vertice.y()))
+
+            # Obter o valor de Z do MDE para o primeiro vértice
+            value, result = camadaMDE.dataProvider().sample(vertice_wgs, 1)  # Resolução = 1
+
+            if result:
+                # Atualizar o atributo 'alturavoo' com o valor do MDE + H
+                f['alturavoo'] = value + H
+                linha_voo_layer.updateFeature(f)
+        
+        linha_voo_layer.commitChanges()
+
+        # LineString para PointZ
+        result = processing.run("native:setzvalue", 
+                                {'INPUT':linha_voo_layer,
+                                 'Z_VALUE':QgsProperty.fromExpression('"alturavoo"'),
+                                 'OUTPUT':'TEMPORARY_OUTPUT'})
+        linha_voo_layer = result['OUTPUT']
+        linha_voo_layer.setName("Linha de Voo") # Para que nao fique no QGIS com o nome 'Z adicionado' 
+        
         # Configurar simbologia de seta
         line_symbol = QgsLineSymbol.createSimple({'color': 'blue', 'width': '0.3'})  # Linha base
 
@@ -439,6 +530,35 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_voo_layer.renderer().symbol().appendSymbolLayer(marcador)
         
         QgsProject.instance().addMapLayer(linha_voo_layer)
+        
+        # Reprojetar a única linha da camada linha_voo_layer para WGS84 (4326)
+        linha_voo_reproj = QgsVectorLayer('LineString?crs=' + crs_wgs.authid(), 'Linha de Voo Reprojetada', 'memory')
+        linha_voo_reproj.startEditing()
+        linha_voo_reproj.dataProvider().addAttributes(linha_voo_layer.fields())
+        linha_voo_reproj.updateFields()
+
+        # Obter a única linha da camada linha_voo_layer e reprojetar
+        linha_voo_feature = next(linha_voo_layer.getFeatures(), None)  # Obter a primeira (e única) linha
+        if linha_voo_feature:
+            geom = linha_voo_feature.geometry()
+            geom.transform(transformador)  # Transformar a geometria para o CRS de destino
+            reproj = QgsFeature()
+            reproj.setGeometry(geom)
+            reproj.setAttributes(linha_voo_feature.attributes())
+            linha_voo_reproj.addFeature(reproj)
+
+        linha_voo_reproj.commitChanges()
+        
+        # LineString para PointZ
+        result = processing.run("native:setzvalue", 
+                                {'INPUT':linha_voo_reproj,
+                                 'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
+                                 'OUTPUT':'TEMPORARY_OUTPUT'})
+        linha_voo_reproj = result['OUTPUT']
+        linha_voo_reproj.setName("Linha de Voo Reprojetada") # Para que nao fique no QGIS com o nome 'Z adicionado'
+        
+        if teste == True:
+            QgsProject.instance().addMapLayer(linha_voo_reproj)
         
         # =====================================================================
         # =====Criar a camada Pontos de Fotos==================================
@@ -538,78 +658,16 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_fotos.triggerRepaint()
         
-        # ==================================================================================
-        # =====Obter a altitude dos pontos das Fotos========================================
-        
-        # OpenTopography
-        
-        feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
-        
-        # Obter as coordenadas extremas da área (em WGS 84)
-        pontoN = float('-inf')  # coordenada máxima (Norte) / inf de inifito
-        pontoS = float('inf')   # coordenada mínima (Sul)
-        pontoW = float('inf')   # coordenada mínima (Oeste)
-        pontoE = float('-inf')  # coordenada máxima (Leste)
-        
-        # Reprojetar Pontos (Fotos) de UTM para 4326; nesse caso EPSG:31983
-        crs_wgs = QgsCoordinateReferenceSystem(4326) # WGS84 que OpenTopography usa
-        
-        # Transformador de coordenadas (UTM -> WGS84)
-        transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-        
-        for feature in camada.getFeatures():  # Terreno
-            geom = feature.geometry()
-            bounds = geom.boundingBox()  # Limites da geometria em UTM
-
-            # Transformar limites para WGS 84
-            ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
-            ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
-
-            pontoN = max(pontoN, ponto_max.y())
-            pontoS = min(pontoS, ponto_min.y())
-            pontoW = min(pontoW, ponto_min.x())
-            pontoE = max(pontoE, ponto_max.x())
-
-        # Ajustar os limites
-        ajuste_lat = (pontoN - pontoS) * 0.70
-        ajuste_long = (pontoE - pontoW) * 0.70
-
-        pontoN += ajuste_lat
-        pontoS -= ajuste_lat
-        pontoW -= ajuste_long
-        pontoE += ajuste_long    
-
-        # Obter o MDE da área
-        coordenadas = f'{pontoW},{pontoE},{pontoS},{pontoN}'
-        area = f"{coordenadas}[EPSG:4326]"
-
-        result = processing.run(
-                "OTDEMDownloader:OpenTopography DEM Downloader", {
-                    'DEMs': 7, # 7: Copernicus Global DSM 30m
-                    'Extent': area,
-                    'API_key': apikey,
-                    'OUTPUT': 'TEMPORARY_OUTPUT'})
-
-        output_path = result['OUTPUT']
-        camadaMDE = QgsRasterLayer(output_path, "DEM")
-        
-        # Filtrar o MDE com (Relevo / Filtro do MDE) do LFTools
-        result = processing.run(
-            "lftools:demfilter", {'INPUT': camadaMDE,
-                                  'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
-        output_path = result['OUTPUT']
-        camadaMDE = QgsRasterLayer(output_path, "DEM_Filtrado")
-        
-        # Valor da Altitude
+        # Obter a altitude dos pontos das Fotos
         prov = pontos_fotos.dataProvider()
         pontos_fotos.startEditing()
         
-        # Adicionar um campo para altitude, se não existir
+        # Adicionar um campo para Altura do Voo, se não existir
         if 'alturaVoo' not in [field.name() for field in prov.fields()]:
             prov.addAttributes([QgsField('alturaVoo', QVariant.Double)])
             pontos_fotos.updateFields()
 
-         # definir o valor de Z
+        # definir o valor de Z
         for f in pontos_fotos.getFeatures():
             point = f.geometry().asPoint()
             
@@ -624,6 +682,14 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_fotos.commitChanges()
 
+        # Point para PointZ
+        result = processing.run("native:setzvalue", 
+                                {'INPUT':pontos_fotos,
+                                 'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
+                                 'OUTPUT':'TEMPORARY_OUTPUT'})
+        pontos_fotos = result['OUTPUT']
+        pontos_fotos.setName("Pontos Fotos") # Para que nao fique no QGIS com o nome 'Z adicionado'
+
         #QgsProject.instance().addMapLayer(camadaMDE)
         QgsProject.instance().addMapLayer(pontos_fotos)
         
@@ -632,9 +698,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
-        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
-        
-        # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)  
+        # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reprojetados', 'memory') 
         pontos_reproj.startEditing()
         pontos_reproj.dataProvider().addAttributes(pontos_fotos.fields())
@@ -651,48 +715,60 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_reproj.commitChanges()
         
-        # Reprojetar a única linha da camada linha_voo_layer para WGS84 (4326)
-        linha_voo_reproj = QgsVectorLayer('LineString?crs=' + crs_wgs.authid(), 'Linha de Voo Reprojetada', 'memory')
-        linha_voo_reproj.startEditing()
-        linha_voo_reproj.dataProvider().addAttributes(linha_voo_layer.fields())
-        linha_voo_reproj.updateFields()
-
-        # Obter a única linha da camada linha_voo_layer e reprojetar
-        linha_voo_feature = next(linha_voo_layer.getFeatures(), None)  # Obter a primeira (e única) linha
-        if linha_voo_feature:
-            geom = linha_voo_feature.geometry()
-            geom.transform(transformador)  # Transformar a geometria para o CRS de destino
-            reproj = QgsFeature()
-            reproj.setGeometry(geom)
-            reproj.setAttributes(linha_voo_feature.attributes())
-            linha_voo_reproj.addFeature(reproj)
-
-        linha_voo_reproj.commitChanges()
+        # Point para PointZ
+        result = processing.run("native:setzvalue", 
+                                {'INPUT':pontos_reproj,
+                                 'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
+                                 'OUTPUT':'TEMPORARY_OUTPUT'})
+        pontos_reproj = result['OUTPUT']
+        pontos_reproj.setName("Pontos Reprojetados") # Para que nao fique no QGIS com o nome 'Z adicionado'
         
-        # Verificar se o caminho KML está preenchido
-        if caminho_kml:
+        #if teste == True:
+        QgsProject.instance().addMapLayer(pontos_reproj)
+            
+        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
+        
+        if caminho_kml: # Verificar se o caminho KML está preenchido 
+            # Gravar camada Pontos Fotos
             # Configure as opções para gravar o arquivo
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = 'UTF-8'
             options.driverName = 'KML'
             options.field_name = 'id'
             options.crs = crs_wgs
-            options.layerOptions = ['ALTITUDE_MODE=absolute'] 
+            options.layerName = 'Pontos Fotos'
+            options.layerOptions = ['ALTITUDE_MODE=absolute']
             
-            # Arquivo KML para os Pontos de Fotos
-            grava_pontos = QgsVectorFileWriter.writeAsVectorFormat(pontos_reproj, caminho_kml, options)
+            arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
             
-            # Arquivo KML para a linha de voo
-            #grava_linha = QgsVectorFileWriter.writeAsVectorFormat(linha_voo_reproj, caminho_kml, options)
+            # Escrever a camada no arquivo KML
+            grava = QgsVectorFileWriter.writeAsVectorFormat(pontos_reproj, arquivo_kml, options)
             
-            # linha_voo_layer (não foi feita a exportação, pois o litchi não necessita)
+            if grava == QgsVectorFileWriter.NoError:
+                feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {arquivo_kml}")
+            else:
+                feedback.pushInfo(f"Erro ao exportar o arquivo KML: {grava}")
+                
+            # Gravar camada Linha de Voo
+            options = QgsVectorFileWriter.SaveVectorOptions()
+            options.fileEncoding = 'UTF-8'
+            options.driverName = 'KML'
+            options.field_name = 'id'
+            options.crs = crs_wgs
+            options.layerName = 'Linha de Voo'
+            options.layerOptions = ['ALTITUDE_MODE=absolute']
             
-            feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {caminho_kml}")
+            arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
+            
+            # Escrever a camada no arquivo KML
+            grava = QgsVectorFileWriter.writeAsVectorFormat(linha_voo_layer, arquivo_kml, options)
+            
+            if grava == QgsVectorFileWriter.NoError:
+                feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {arquivo_kml}")
+            else:
+                feedback.pushInfo(f"Erro ao exportar o arquivo KML: {grava}")
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
-        
-        if teste == True:
-            QgsProject.instance().addMapLayer(pontos_reproj)
             
         # =============L I T C H I==========================================================
 
@@ -781,10 +857,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         velocidade = "{:.6f}".format(float(v))
 
         # Verificar se o caminho CSV está preenchido
-        if caminho_csv and caminho_csv.endswith('.csv'):
+        if arquivo_csv and arquivo_csv.endswith('.csv'):
             # Exportar para o Litch (CSV já preparado)
             # Criar o arquivo CSV
-            with open(caminho_csv, mode='w', newline='') as csvfile:
+            with open(arquivo_csv, mode='w', newline='') as csvfile:
                 # Definir os cabeçalhos do arquivo CSV
                 fieldnames = [
                         "latitude", "longitude", "altitude(m)",

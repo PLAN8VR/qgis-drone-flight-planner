@@ -69,11 +69,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_kml', 'Arquivo de Saída KML (Google Earth)',
-                                                               fileFilter='CSV files (*.kml)'))
-        #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -94,7 +92,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
         
         caminho_kml = parameters['saida_kml']
-        caminho_csv = parameters['saida_csv']
+        arquivo_csv = parameters['saida_csv']
         
         # Verificações
         circulo = list(circulo_base.getFeatures())
@@ -202,7 +200,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-        
+        """
         # Determinar o bounding box da linha em WGS 84
         bounds = circulo_base_geom.boundingBox()
         ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
@@ -246,10 +244,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                                   'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
         output_path = result['OUTPUT']
         camadaMDE = QgsRasterLayer(output_path, "DEM_Filtrado")
-
+        """
         #QgsProject.instance().addMapLayer(camadaMDE)
         
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM_Filtrado")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM_Filtrado")[0]
         
         # =====================================================================
         # =====Criar a camada Pontos de Fotos==================================
@@ -353,10 +351,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         pontos_fotos = result['OUTPUT']
         pontos_fotos.setName("Pontos Fotos") # Para que nao fique no QGIS com o nome 'Z adicionado'
         
-        # Atualizar a camada
-        pontos_fotos.updateExtents()
-        pontos_fotos.commitChanges()
-        
         # Simbologia
         simbolo = QgsMarkerSymbol.createSimple({'color': 'blue', 'size': '3'})
         renderer = QgsSingleSymbolRenderer(simbolo)
@@ -392,8 +386,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         
         #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
-        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
-        
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reprojetados', 'memory') 
         pontos_reproj.startEditing()
@@ -417,34 +409,58 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                                  'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
                                  'OUTPUT':'TEMPORARY_OUTPUT'})
         pontos_reproj = result['OUTPUT']
+        pontos_reproj.setName("Pontos Reprojetados") # Para que nao fique no QGIS com o nome 'Z adicionado'
         
-        QgsProject.instance().addMapLayer(pontos_reproj)
+        if teste == True:
+            QgsProject.instance().addMapLayer(pontos_reproj)
+        
+        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         
         if caminho_kml: # Verificar se o caminho KML está preenchido 
+            # Gravar camada Pontos Fotos
             # Configure as opções para gravar o arquivo
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = 'UTF-8'
             options.driverName = 'KML'
             options.field_name = 'id'
             options.crs = crs_wgs
-            options.layerOptions = ['ALTITUDE_MODE=absolute'] 
+            options.layerName = 'Pontos Fotos'
+            options.layerOptions = ['ALTITUDE_MODE=absolute']
+            
+            arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
             
             # Escrever a camada no arquivo KML
-            grava = QgsVectorFileWriter.writeAsVectorFormat(pontos_reproj, caminho_kml, options)
+            grava = QgsVectorFileWriter.writeAsVectorFormat(pontos_reproj, arquivo_kml, options)
             
             if grava == QgsVectorFileWriter.NoError:
-                feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {caminho_kml}")
+                feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {arquivo_kml}")
+            else:
+                feedback.pushInfo(f"Erro ao exportar o arquivo KML: {grava}")
+                
+            # Gravar camada Linha de Voo
+            options = QgsVectorFileWriter.SaveVectorOptions()
+            options.fileEncoding = 'UTF-8'
+            options.driverName = 'KML'
+            options.field_name = 'id'
+            options.crs = crs_wgs
+            options.layerName = 'Linha de Voo'
+            options.layerOptions = ['ALTITUDE_MODE=absolute']
+            
+            arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
+            
+            # Escrever a camada no arquivo KML
+            grava = QgsVectorFileWriter.writeAsVectorFormat(camada_linha_voo, arquivo_kml, options)
+            
+            if grava == QgsVectorFileWriter.NoError:
+                feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {arquivo_kml}")
             else:
                 feedback.pushInfo(f"Erro ao exportar o arquivo KML: {grava}")
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
 
-        if teste == True:
-            QgsProject.instance().addMapLayer(pontos_reproj)
-
         # =============L I T C H I==========================================================
         
-        if caminho_csv and caminho_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
+        if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             # Definir novos campos xcoord e ycoord com coordenadas geográficas
             pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
             pontos_reproj.updateFields()
@@ -535,7 +551,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             
             # Exportar para o Litch (CSV já preparado)
             # Criar o arquivo CSV
-            with open(caminho_csv, mode='w', newline='') as csvfile:
+            with open(arquivo_csv, mode='w', newline='') as csvfile:
                 # Definir os cabeçalhos do arquivo CSV
                 fieldnames = [
                         "latitude", "longitude", "altitude(m)",
