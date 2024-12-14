@@ -23,7 +23,7 @@
 """
 
 __author__ = 'Prof Cazaroli e Leandro França'
-__date__ = '2024-11-05'
+__date__ = '2024-12-02'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
@@ -37,6 +37,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QColor, QFont, QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
+from algoritmos.Funcs import obter_DEM
 import processing
 import os
 import math
@@ -111,6 +112,12 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         if objeto.featureCount() != 1: # uma outra forma de checar
             raise ValueError("A camada ponto Objeto deve conter somente um ponto.")
         
+        # Determina as alturas das linhas de Voo
+        alturas = [i for i in range(h, H + h + 1, deltaV)]
+        
+        # Determina as distâncias nas linhas de Voo
+        distancias = [i for i in range(0, comprimento + 1, deltaH)]
+        
         feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {deltaH}, Delta Vertical: {deltaV}")
         
         # =====================================================================
@@ -122,51 +129,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-        """
-        # Determinar o bounding box da linha em WGS 84
-        bounds = linha_base_geom.boundingBox()
-        ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
-        ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
-
-        pontoN = ponto_max.y()
-        pontoS = ponto_min.y()
-        pontoW = ponto_min.x()
-        pontoE = ponto_max.x()
-
-        # Certificar que a área do bounding box seja grande o suficiente
-        bbox_area_min = 2.5  # Área mínima em km²
-        bbox_area = (pontoE - pontoW) * (pontoN - pontoS) * 111 * 111  # Aproximação em km²
-        if bbox_area < bbox_area_min:
-            aumento = ((bbox_area_min / bbox_area)**0.5 - 1) / 2
-            ajuste_lat_extra = aumento * (pontoN - pontoS)
-            ajuste_long_extra = aumento * (pontoE - pontoW)
-            pontoN += ajuste_lat_extra
-            pontoS -= ajuste_lat_extra
-            pontoW -= ajuste_long_extra
-            pontoE += ajuste_long_extra
-
-        # Obter o DEM da área
-        coordenadas = f'{pontoW},{pontoE},{pontoS},{pontoN}'
-        area = f"{coordenadas}[EPSG:4326]"
-
-        result = processing.run(
-            "OTDEMDownloader:OpenTopography DEM Downloader", {
-                'DEMs': 7,  # Copernicus Global DSM 30m
-                'Extent': area,
-                'API_key': apikey,
-                'OUTPUT': 'TEMPORARY_OUTPUT'
-            })
-
-        output_path = result['OUTPUT']
-        camadaMDE = QgsRasterLayer(output_path, "DEM")
         
-        # Filtrar o MDE com (Relevo / Filtro do MDE) do LFTools
-        result = processing.run(
-            "lftools:demfilter", {'INPUT': camadaMDE,
-                                  'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
-        output_path = result['OUTPUT']
-        camadaMDE = QgsRasterLayer(output_path, "DEM_VF")
-        """
+        camadaMDE = obter_DEM(linha_base_geom, transformador, apikey, feedback)
+        
         #QgsProject.instance().addMapLayer(camadaMDE)
         
         camadaMDE = QgsProject.instance().mapLayersByName("DEM_VF")[0]
@@ -220,9 +185,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             # Criar a linha com os vértices
             if len(verticesLinha) > 1:
                 linhaFeature = QgsFeature()
-                linhaFeature.setFields(camposLinha)
+                linhaFeature.setFields(campos)
                 linhaFeature.setAttribute("id", linhaID)
-                linhaFeature.setAttribute("linha", linha_idx)
+                linhaFeature.setAttribute("alturavoo", altura)
                 linhaFeature.setGeometry(QgsGeometry.fromPolyline(verticesLinha))
                 linhavoo_provider.addFeature(linhaFeature)
 
@@ -259,9 +224,6 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         pontos_fotos.updateFields()
         
         pontoID = 1
-        
-        distancias = [i for i in range(0, comprimento + 1, deltaH)]
-        alturas = [i for i in range(h, H + h + 1, deltaV)]
 
         # Verificar a posição da linha base em relação ao objeto que se quer medir
         if linha_base_geom.isMultipart():
@@ -454,7 +416,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
             
             # Escrever a camada no arquivo KML
-            grava = QgsVectorFileWriter.writeAsVectorFormat(camada_linha_voo, arquivo_kml, options)
+            grava = QgsVectorFileWriter.writeAsVectorFormat(camadaLinhaVoo, arquivo_kml, options)
             
             if grava == QgsVectorFileWriter.NoError:
                 feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {arquivo_kml}")
