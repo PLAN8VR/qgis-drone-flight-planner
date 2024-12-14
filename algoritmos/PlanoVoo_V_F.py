@@ -76,7 +76,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
         
-        # =====Parâmetros de entrada para variáveis========================
+        # ===== Parâmetros de entrada para variáveis =========================================================
         linha_base = self.parameterAsVectorLayer(parameters, 'linha_base', context)
         crs = linha_base.crs()
         
@@ -93,9 +93,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
         
-        feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {deltaH}, Delta Vertical: {deltaV}")
-        
-        # Verificações
+        # ===== Verificações ===================================================================================
         linha = list(linha_base.getFeatures())
         if len(linha) != 1:
             raise ValueError("A camada Linha Base deve conter somente uma linha.")
@@ -113,8 +111,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         if objeto.featureCount() != 1: # uma outra forma de checar
             raise ValueError("A camada ponto Objeto deve conter somente um ponto.")
         
+        feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {deltaH}, Delta Vertical: {deltaV}")
+        
         # =====================================================================
-        # =====Criar a camada Pontos de Fotos==================================
+        # ===== OpenTopography ================================================
         
         # Obter a Altitude dos pontos das Fotos com OpenTopography
         feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
@@ -122,7 +122,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-        
+        """
         # Determinar o bounding box da linha em WGS 84
         bounds = linha_base_geom.boundingBox()
         ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
@@ -165,14 +165,84 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             "lftools:demfilter", {'INPUT': camadaMDE,
                                   'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
         output_path = result['OUTPUT']
-        camadaMDE = QgsRasterLayer(output_path, "DEM_Filtrado")
+        camadaMDE = QgsRasterLayer(output_path, "DEM_VF")
+        """
+        #QgsProject.instance().addMapLayer(camadaMDE)
+        
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM_VF")[0]
+        
+        # =============================================================================================
+        # ===== Criar Linhas de Voo ===================================================================
+        camadaLinhaVoo = QgsVectorLayer('LineStirng?crs=' + crs.authid(), 'Linha de Voo', 'memory')
+        linhavoo_provider = camadaLinhaVoo.dataProvider()
 
-        QgsProject.instance().addMapLayer(camadaMDE)
+        # Definir campos
+        campos = QgsFields()
+        campos.append(QgsField("id", QVariant.Int))
+        campos.append(QgsField("alturavoo", QVariant.Double))
+        linhavoo_provider.addAttributes(campos)
+        camadaLinhaVoo.updateFields()
         
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM_Filtrado")[0]
+        linhaID = 1
         
-        # =====================================================================
-        # =====Criar a camada Pontos de Fotos==================================
+        # Criar as linhas de voo com elevação
+        for linha_idx, altura in enumerate(alturas, start=1):  # Cada altura representa uma "linha"
+            verticesLinha = []
+
+            # Alternar o sentido da linha
+            if linha_idx % 2 == 0:  # "Linha de vem" (segunda, quarta, ...)
+                distancias_atual = reversed(distancias)
+            else:  # "Linha de vai" (primeira, terceira, ...)
+                distancias_atual = distancias
+
+            for d in distancias_atual:
+                if d == comprimento:  # Ajuste para evitar problemas com interpolate
+                    d -= 0.01
+
+                # Interpolar o ponto ao longo da linha base
+                ponto = linha_base_geom.interpolate(d).asPoint()
+                ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
+                
+                # Transformar coordenada do ponto para CRS do raster
+                ponto_wgs = transformador.transform(QgsPointXY(ponto.x(), ponto.y()))
+
+                # Obter valor de Z do MDE
+                value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Resolução de amostragem
+                if result:
+                    a = value
+                else:
+                    feedback.pushWarning(f"Falha ao obter altitude para o ponto em distância {d}")
+                    a = 0
+
+                # Adicionar o ponto com elevação (x, y, z)
+                verticesLinha.append(QgsPoint(ponto.x(), ponto.y(), altura + a))
+
+            # Criar a linha com os vértices
+            if len(verticesLinha) > 1:
+                linhaFeature = QgsFeature()
+                linhaFeature.setFields(camposLinha)
+                linhaFeature.setAttribute("id", linhaID)
+                linhaFeature.setAttribute("linha", linha_idx)
+                linhaFeature.setGeometry(QgsGeometry.fromPolyline(verticesLinha))
+                linhavoo_provider.addFeature(linhaFeature)
+
+                linhaID += 1
+
+        # Atualizar a camada
+        camadaLinhaVoo.updateExtents()
+        camadaLinhaVoo.commitChanges()
+        
+        # Simbologia para a camada de linhas
+        simboloLinha = QgsLineSymbol.createSimple({'color': 'red', 'width': '0.5'})
+        rendererLinha = QgsSingleSymbolRenderer(simboloLinha)
+        camadaLinhaVoo.setRenderer(rendererLinha)
+
+        # Adicionar a camada ao projeto
+        QgsProject.instance().addMapLayer(camadaLinhaVoo)
+
+        # =============================================================================================
+        # ===== Criar a camada Pontos de Fotos ========================================================
+    
         # Criar uma camada Pontos com os deltaH sobre a linha Base e depois empilhar com os deltaH
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
@@ -219,7 +289,6 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         objeto_geom = objeto_feature.geometry()  
         objeto_point = objeto_geom.asPoint()    
        
-        # Verificar orientação do ponto em relação à linha base
         # Calcular a equação da linha base (Ax + By + C = 0)
         A = p2.y() - p1.y()
         B = p1.x() - p2.x()
@@ -489,7 +558,14 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                         "latitude", "longitude", "altitude(m)",
                         "heading(deg)", "curvesize(m)", "rotationdir",
                         "gimbalmode", "gimbalpitchangle",
-                        "actiontype1", "actionparam1", "altitudemode", "speed(m/s)",
+                        "actiontype1", "actionparam1", "actiontype2", "actionparam2",
+                        "actiontype3", "actionparam3", "actiontype4", "actionparam4",
+                        "actiontype5", "actionparam5", "actiontype6", "actionparam6",
+                        "actiontype7", "actionparam7", "actiontype8", "actionparam8",
+                        "actiontype9", "actionparam9", "actiontype10", "actionparam10",
+                        "actiontype11", "actionparam11", "actiontype12", "actionparam12",
+                        "actiontype13", "actionparam13", "actiontype14", "actionparam14",
+                        "actiontype15", "actionparam15", "altitudemode", "speed(m/s)",
                         "poi_latitude", "poi_longitude", "poi_altitude(m)", "poi_altitudemode",
                         "photo_timeinterval", "photo_distinterval"]
                 
@@ -513,15 +589,42 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                         "rotationdir": 0,
                         "gimbalmode": 2,
                         "gimbalpitchangle": 0,
-                        "actiontype1": 1.0,
-                        "actionparam1": 0,
-                        "altitudemode": 0,
+                        "actiontype1": 0,     # STAY 2 segundos
+                        "actionparam1": 2000,
+                        "actiontype2": 1,     # TAKE_PHOTO
+                        "actiontype3": -1, 
+                        "actionparam3": 0,
+                        "actiontype4": -1,
+                        "actionparam4": 0,
+                        "actiontype5": -1,
+                        "actionparam5": 0,
+                        "actiontype6": -1,
+                        "actionparam6": 0,
+                        "actiontype7": -1,
+                        "actionparam7": 0,
+                        "actiontype8": -1,
+                        "actionparam8": 0,
+                        "actiontype9": -1,
+                        "actionparam9": 0,
+                        "actiontype10": -1,
+                        "actionparam10": 0,
+                        "actiontype11": -1,
+                        "actionparam11": 0,
+                        "actiontype12": -1,
+                        "actionparam12": 0,
+                        "actiontype13": -1,
+                        "actionparam13": 0,
+                        "actiontype14": -1,
+                        "actionparam14": 0,
+                        "actiontype15": -1,
+                        "actionparam15": 0,
+                        "altitudemode": 0, # Above Ground não habilitado
                         "speed(m/s)": velocidade,
                         "poi_latitude": 0,
                         "poi_longitude": 0,
                         "poi_altitude(m)": 0,
                         "poi_altitudemode": 0,
-                        "photo_timeinterval": -1.0,
+                        "photo_timeinterval": -1,
                         "photo_distinterval": deltaH}
 
                     # Escrever a linha no CSV

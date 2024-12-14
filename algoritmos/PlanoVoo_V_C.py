@@ -76,7 +76,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
         
-        # =====Parâmetros de entrada para variáveis========================
+        # ===== Parâmetros de entrada para variávei s==========================================
         circulo_base = self.parameterAsVectorLayer(parameters, 'circulo_base', context)
         crs = circulo_base.crs()
         
@@ -94,7 +94,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
         
-        # ===== Verificações =====================================================
+        # ===== Verificações =================================================================
         circulo = list(circulo_base.getFeatures())
         if len(circulo) != 1:
             raise ValueError("A camada Cículo Base deve conter somente um círculo.")
@@ -123,6 +123,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # =====================================================================
         # ===== OpenTopography ================================================
         
+        # Obter a Altitude dos pontos das Fotos com OpenTopography
         feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
        
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -171,11 +172,11 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             "lftools:demfilter", {'INPUT': camadaMDE,
                                   'KERNEL':0,'OUTPUT':'TEMPORARY_OUTPUT','OPEN':False})
         output_path = result['OUTPUT']
-        camadaMDE = QgsRasterLayer(output_path, "DEM_V")
+        camadaMDE = QgsRasterLayer(output_path, "DEM_VC")
         """
         #QgsProject.instance().addMapLayer(camadaMDE)
         
-        camadaMDE = QgsProject.instance().mapLayersByName("DEM_V")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM_VC")[0]
         
         # ====================================================================
         # ===== Criar Polígono Circunscrito ==================================
@@ -204,29 +205,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         camada_linha_voo.startEditing
         
-        # Adicionar o novo polígono à camada
-        feature = QgsFeature()
-        feature.setGeometry(polygon_geometry)
-        feature.setAttributes([1, h])
-        linha_voo_provider.addFeature(feature)
-
-        # Criar polígonos paralelos
+        # Adicionar polígonos com alturas diferentes
         linha_id = 1
+        
         for altura in alturas:
-            if altura == h:
-                continue
-            
-            deslocamento = altura - min(alturas)  # Calcular o deslocamento relativo
-    
-            # Deslocar o polígono verticalmente
-            resultado_translacao = polygon_geometry.translate(0, deslocamento)
-            
-            poligono_deslocado = resultado_translacao.geometry()
-            
-            # Criar uma feature para o polígono deslocado
             feature = QgsFeature()
-            feature.setGeometry(poligono_deslocado)
-            feature.setAttributes([linha_id, altura])
+            feature.setGeometry(polygon_geometry)  # Reutilizar a mesma geometria
+            feature.setAttributes([linha_id, altura])  # Atribuir ID e altura
             linha_voo_provider.addFeature(feature)
             
             linha_id += 1
@@ -278,6 +263,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         
         # ==========================================================================================
         # =====Criar a camada Pontos de Fotos=======================================================
+        
         # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
