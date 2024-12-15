@@ -27,17 +27,17 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsWkbTypes, QgsVectorFileWriter, QgsProcessingParameterFolderDestination
-from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterFileDestination
-from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsCoordinateReferenceSystem, QgsProperty
-from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsProcessingParameterBoolean, QgsCoordinateTransform
-from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
+from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsProcessingParameterFolderDestination, QgsProcessingParameterFileDestination
+from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
+from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsCoordinateReferenceSystem
+from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsCoordinateTransform
+from qgis.core import QgsVectorLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
 from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QColor, QFont, QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import obter_DEM, gerar_KML, gerar_CSV
+from .Funcs import obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84
 import processing
 import os
 import math
@@ -167,9 +167,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         # =====================================================================
         # ===== OpenTopography ================================================
-        
-        # Obter a Altitude dos pontos das Fotos com OpenTopography
-        feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
        
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
@@ -443,6 +440,54 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Atualizar extensão da camada de resultado
         linha_voo_layer.updateExtents()
         
+        # Obter a altura mais alta de 'pontos_fotos'
+        maior_altura = None
+
+        for f in pontos_fotos.getFeatures():
+            # Obter o valor de 'alturavoo' para cada ponto
+            alturavoo = f['alturavoo']
+            
+            # Atualizar a maior altura, se necessário
+            if maior_altura is None or alturavoo > maior_altura:
+                maior_altura = alturavoo
+        
+        linha_voo_layer.startEditing()
+        
+        for f in linha_voo_layer.getFeatures():
+            f['alturavoo'] = maior_altura
+            linha_voo_layer.updateFeature(f)
+        
+        linha_voo_layer.commitChanges()
+
+        # LineString para LineStringZ
+        linha_voo_layer = set_Z_value(linha_voo_layer, z_field="alturavoo")
+        
+        # Configurar simbologia de seta
+        line_symbol = QgsLineSymbol.createSimple({'color': 'blue', 'width': '0.3'})  # Linha base
+
+        seta = QgsMarkerSymbol.createSimple({'name': 'arrow', 'size': '5', 'color': 'blue', 'angle': '90'})
+
+        marcador = QgsMarkerLineSymbolLayer()
+        marcador.setInterval(30)  # Define o intervalo entre as setas (marcadores)
+        marcador.setSubSymbol(seta)
+        linha_voo_layer.renderer().symbol().appendSymbolLayer(marcador)
+
+        # ===== LINHA DE VOO =============================
+        QgsProject.instance().addMapLayer(linha_voo_layer)
+        
+        # Reprojetar linha_voo_layer para WGS84 (4326)
+        linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
+        
+        # LineString para LineStringZ
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude")
+        
+        if teste == True:
+            QgsProject.instance().addMapLayer(linha_voo_reproj)
+        
+        # ===== Final Linha de Voo ============================================
+        # =====================================================================
+        
+        
         # =====================================================================
         # =====Criar a camada Pontos de Fotos==================================
         
@@ -538,12 +583,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_fotos.commitChanges()
 
         # Point para PointZ
-        result = processing.run("native:setzvalue", 
-                                {'INPUT':pontos_fotos,
-                                 'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
-                                 'OUTPUT':'TEMPORARY_OUTPUT'})
-        pontos_fotos = result['OUTPUT']
-        pontos_fotos.setName("Pontos Fotos") # Para que nao fique no QGIS com o nome 'Z adicionado'
+        pontos_fotos = set_Z_value(pontos_fotos, z_field="altitude")
 
         # Simbologia
         simbolo = QgsMarkerSymbol.createSimple({'color': 'blue', 'size': '3'})
@@ -573,111 +613,26 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         pontos_fotos.triggerRepaint()
 
-        #QgsProject.instance().addMapLayer(camadaMDE)
+        # ===== PONTOS FOTOS ==========================
         QgsProject.instance().addMapLayer(pontos_fotos)
-        
-        feedback.pushInfo("")
-        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
         
         #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
         
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
-        pontos_reproj = QgsVectorLayer('Point?crs=' + crs_wgs.authid(), 'Pontos Reprojetados', 'memory') 
-        pontos_reproj.startEditing()
-        pontos_reproj.dataProvider().addAttributes(pontos_fotos.fields())
-        pontos_reproj.updateFields()
-
-        # Reprojetar os pontos
-        for f in pontos_fotos.getFeatures():
-            geom = f.geometry()
-            geom.transform(transformador)
-            reproj = QgsFeature()
-            reproj.setGeometry(geom)
-            reproj.setAttributes(f.attributes())
-            pontos_reproj.addFeature(reproj)
-
-        pontos_reproj.commitChanges()
+        pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
         
         # Point para PointZ
-        result = processing.run("native:setzvalue", 
-                                {'INPUT':pontos_reproj,
-                                 'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
-                                 'OUTPUT':'TEMPORARY_OUTPUT'})
-        pontos_reproj = result['OUTPUT']
-        pontos_reproj.setName("Pontos Reprojetados") # Para que nao fique no QGIS com o nome 'Z adicionado'
+        pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
         
         if teste == True:
             QgsProject.instance().addMapLayer(pontos_reproj)
-            
-        # ====== Ponto Z na Linha de Voo ====================================================
         
-        # Obter a altura mais alta de 'pontos_fotos'
-        maior_altura = None
-
-        for f in pontos_fotos.getFeatures():
-            # Obter o valor de 'alturavoo' para cada ponto
-            alturavoo = f['alturavoo']
-            
-            # Atualizar a maior altura, se necessário
-            if maior_altura is None or alturavoo > maior_altura:
-                maior_altura = alturavoo
+        feedback.pushInfo("")
+        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
         
-        linha_voo_layer.startEditing()
+        # ===== Final Pontos Fotos ============================================
+        # =====================================================================
         
-        for f in linha_voo_layer.getFeatures():
-            f['alturavoo'] = maior_altura
-            linha_voo_layer.updateFeature(f)
-        
-        linha_voo_layer.commitChanges()
-
-        # LineString para PointZ
-        result = processing.run("native:setzvalue", 
-                                {'INPUT':linha_voo_layer,
-                                 'Z_VALUE':QgsProperty.fromExpression('"alturavoo"'),
-                                 'OUTPUT':'TEMPORARY_OUTPUT'})
-        linha_voo_layer = result['OUTPUT']
-        linha_voo_layer.setName("Linha de Voo") # Para que nao fique no QGIS com o nome 'Z adicionado' 
-        
-        # Configurar simbologia de seta
-        line_symbol = QgsLineSymbol.createSimple({'color': 'blue', 'width': '0.3'})  # Linha base
-
-        seta = QgsMarkerSymbol.createSimple({'name': 'arrow', 'size': '5', 'color': 'blue', 'angle': '90'})
-
-        marcador = QgsMarkerLineSymbolLayer()
-        marcador.setInterval(30)  # Define o intervalo entre as setas (marcadores)
-        marcador.setSubSymbol(seta)
-        linha_voo_layer.renderer().symbol().appendSymbolLayer(marcador)
-        
-        QgsProject.instance().addMapLayer(linha_voo_layer)
-        
-        # Reprojetar a única linha da camada linha_voo_layer para WGS84 (4326)
-        linha_voo_reproj = QgsVectorLayer('LineString?crs=' + crs_wgs.authid(), 'Linha de Voo Reprojetada', 'memory')
-        linha_voo_reproj.startEditing()
-        linha_voo_reproj.dataProvider().addAttributes(linha_voo_layer.fields())
-        linha_voo_reproj.updateFields()
-
-        # Obter a única linha da camada linha_voo_layer e reprojetar
-        linha_voo_feature = next(linha_voo_layer.getFeatures(), None)  # Obter a primeira (e única) linha
-        if linha_voo_feature:
-            geom = linha_voo_feature.geometry()
-            geom.transform(transformador)  # Transformar a geometria para o CRS de destino
-            reproj = QgsFeature()
-            reproj.setGeometry(geom)
-            reproj.setAttributes(linha_voo_feature.attributes())
-            linha_voo_reproj.addFeature(reproj)
-
-        linha_voo_reproj.commitChanges()
-        
-        # LineString para PointZ
-        result = processing.run("native:setzvalue", 
-                                {'INPUT':linha_voo_reproj,
-                                 'Z_VALUE':QgsProperty.fromExpression('"altitude"'),
-                                 'OUTPUT':'TEMPORARY_OUTPUT'})
-        linha_voo_reproj = result['OUTPUT']
-        linha_voo_reproj.setName("Linha de Voo Reprojetada") # Para que nao fique no QGIS com o nome 'Z adicionado'
-        
-        if teste == True:
-            QgsProject.instance().addMapLayer(linha_voo_reproj)
         
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         

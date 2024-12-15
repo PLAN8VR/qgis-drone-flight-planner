@@ -27,12 +27,15 @@ __date__ = '2024-12-02'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback
-from qgis.core import QgsProject, QgsRasterLayer, QgsField, QgsPointXY, QgsVectorFileWriter, QVariant
+from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes
+from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsField, QgsPointXY, QgsVectorFileWriter, QVariant
 import processing
 import csv
 
 def obter_DEM(tipo_voo, geometria, transformador, apikey, feedback=None, bbox_area_min=2.5):
+   # Obter a Altitude dos pontos das Fotos com OpenTopography
+   feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
+   
    # Obter as coordenadas extremas da área (em WGS 84)
    pontoN = float('-inf')  # coordenada máxima (Norte) / inf de inifito
    pontoS = float('inf')   # coordenada mínima (Sul)
@@ -336,3 +339,40 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H
 def addCampo(camada, field_name, field_type):
       camada.dataProvider().addAttributes([QgsField(field_name, field_type)])
       camada.updateFields()
+      
+def set_Z_value(camada, z_field):
+    result = processing.run("native:setzvalue", {
+        'INPUT': camada,
+        'Z_VALUE': QgsProperty.fromExpression(f'"{z_field}"'),
+        'OUTPUT': 'TEMPORARY_OUTPUT'
+    })
+    
+    output_layer = result['OUTPUT']
+    output_layer.setName(camada.name())
+    
+    return output_layer
+ 
+def reprojeta_camada_WGS84(camada, crs_wgs, transformador):
+   geometry_type = camada.geometryType()
+   
+   camada_reproj = QgsVectorLayer(
+        f"{'Point' if geometry_type == 0 else 'LineString'}?crs={crs_wgs.authid()}",
+        f"{camada.name()}_Reprojetada",
+        "memory")
+    
+   camada_reproj.startEditing()
+   camada_reproj.dataProvider().addAttributes(camada.fields())
+   camada_reproj.updateFields()
+
+   # Reprojetar feições
+   for f in camada.getFeatures():
+      geom = f.geometry()
+      geom.transform(transformador)
+      reproj = QgsFeature()
+      reproj.setGeometry(geom)
+      reproj.setAttributes(f.attributes())
+      camada_reproj.addFeature(reproj)
+
+   camada_reproj.commitChanges()
+   
+   return camada_reproj
