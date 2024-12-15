@@ -606,17 +606,17 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         if caminho_kml: # Verificar se o caminho KML está preenchido 
             arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
-            gerar_KML(pontos_reproj, arquivo_kml, nome="Pontos Fotos", crs_wgs, feedback=feedback)
+            gerar_KML(pontos_reproj, arquivo_kml, "Pontos Fotos", crs_wgs)
             
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
-            gerar_KML(linha_voo_reproj, arquivo_kml, nome="Linha de Voo", crs_wgs, feedback=feedback)
+            gerar_KML(linha_voo_reproj, arquivo_kml, "Linha de Voo", crs_wgs)
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
             
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, deltaFront, angulo=0, H, feedback=feedback)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, deltaFront, 0, H)
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
 

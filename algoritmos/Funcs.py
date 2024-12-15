@@ -28,7 +28,8 @@ __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes
-from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsField, QgsPointXY, QgsVectorFileWriter, QVariant
+from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsField, QgsPointXY, QgsVectorFileWriter
+from PyQt5.QtCore import QVariant
 import processing
 import csv
 
@@ -116,7 +117,7 @@ def obter_DEM(tipo_voo, geometria, transformador, apikey, feedback=None, bbox_ar
    
    return camadaMDE
  
-def gerar_KML(camada, arquivo_kml, nome, crs_wgs, feedback=None):
+def gerar_KML(camada, arquivo_kml, nome, crs_wgs):
    # Configuração das opções para gravar o arquivo
    options = QgsVectorFileWriter.SaveVectorOptions()
    options.fileEncoding = 'UTF-8'
@@ -128,10 +129,6 @@ def gerar_KML(camada, arquivo_kml, nome, crs_wgs, feedback=None):
 
    # Escrever a camada no arquivo KML
    grava = QgsVectorFileWriter.writeAsVectorFormat(camada, arquivo_kml, options)
-
-   # Mensagens de feedback
-   if feedback is None:
-      feedback = QgsProcessingFeedback()
 
    if grava == QgsVectorFileWriter.NoError:
       feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {arquivo_kml}")
