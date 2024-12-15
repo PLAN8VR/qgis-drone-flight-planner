@@ -148,17 +148,17 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         polygon_geometry = QgsGeometry.fromPolygonXY([pontos])
         
         # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
-        camada_linha_voo = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Linha de Voo', 'memory')
-        linha_voo_provider = camada_linha_voo.dataProvider()
+        camadaLinhaVoo = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Linha de Voo', 'memory')
+        linha_voo_provider = camadaLinhaVoo.dataProvider()
 
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
         campos.append(QgsField("alturavoo", QVariant.Double))
         linha_voo_provider.addAttributes(campos)
-        camada_linha_voo.updateFields()
+        camadaLinhaVoo.updateFields()
 
-        camada_linha_voo.startEditing
+        camadaLinhaVoo.startEditing
         
         # Adicionar polígonos com alturas diferentes
         linha_id = 1
@@ -172,17 +172,20 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             linha_id += 1
 
         # Atualizar a camada
-        camada_linha_voo.updateExtents()
-        camada_linha_voo.commitChanges
+        camadaLinhaVoo.updateExtents()
+        camadaLinhaVoo.commitChanges()
+        
+        # Polygon para PolygonZ
+        camadaLinhaVoo = set_Z_value(camadaLinhaVoo, z_field="alturavoo")
         
         # Simbologia
-        simbologiaLinhaVoo("VC", camada_linha_voo)
+        simbologiaLinhaVoo("VC", camadaLinhaVoo)
 
         # ===== LINHA DE VOO ==============================
-        QgsProject.instance().addMapLayer(camada_linha_voo)
+        QgsProject.instance().addMapLayer(camadaLinhaVoo)
         
         # Reprojetar linha_voo_layer para WGS84 (4326)
-        linhas_voo_reproj = reprojeta_camada_WGS84(camada_linha_voo, crs_wgs, transformador)
+        linhas_voo_reproj = reprojeta_camada_WGS84(camadaLinhaVoo, crs_wgs, transformador)
         
         # LineString para LineStringZ
         linhas_voo_reproj = set_Z_value(linhas_voo_reproj, z_field="altitude")
@@ -245,7 +248,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         pontoID = 1
         
         # Criar os vértices da primeira carreira de pontos
-        features = camada_linha_voo.getFeatures()
+        features = camadaLinhaVoo.getFeatures()
         feature = next(features)  # Obter a primeira e única feature
         polygon_geometry = feature.geometry()
         vertices = list(polygon_geometry.vertices()) 
@@ -336,8 +339,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Point para PointZ
         pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
         
-        if teste == True:
-            QgsProject.instance().addMapLayer(pontos_reproj)
+        #if teste == True:
+        QgsProject.instance().addMapLayer(pontos_reproj)
             
         feedback.pushInfo("")
         feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")

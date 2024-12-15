@@ -259,7 +259,6 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H
          
          if tipo_voo == "H":
             alturavoo = H
-            angulo = 360
             gimbal = 0
             angulo_gimbal = -90
             above_ground = 1 # Above Ground habilitado
@@ -272,14 +271,13 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H
          for f in pontos_reproj.getFeatures():
             # Extrair os valores dos campos da camada
             x_coord = f['xcoord '] 
-            y_coord = f['ycoord ' ]
+            y_coord = f['ycoord ']
             
             if tipo_voo == "VF":
-               alturavoo = f['alturavoo ' ]
-               angulo = 0
-            if tipo_voo == "VC":
-               alturavoo = f['alturavoo ' ]
-               angulo = f['angulo ' ]
+               alturavoo = f['alturavoo ']
+            elif tipo_voo == "VC":
+               alturavoo = f['alturavoo ']
+               angulo = f['angulo ']
                
             # Criar um dicionário de dados para cada item do CSV
             data = {

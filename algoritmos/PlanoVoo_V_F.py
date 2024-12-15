@@ -134,9 +134,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         
         # =============================================================================================
         # ===== Criar Linhas de Voo ===================================================================
-        camadaLinhaVoo = QgsVectorLayer('LineStirng?crs=' + crs.authid(), 'Linha de Voo', 'memory')
+        camadaLinhaVoo = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linha de Voo', 'memory')
         linhavoo_provider = camadaLinhaVoo.dataProvider()
-
+        
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
@@ -177,7 +177,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
                 # Adicionar o ponto com elevação (x, y, z)
                 verticesLinha.append(QgsPoint(ponto.x(), ponto.y(), altura + a))
-
+            
             # Criar a linha com os vértices
             if len(verticesLinha) > 1:
                 linhaFeature = QgsFeature()
@@ -188,20 +188,20 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                 linhavoo_provider.addFeature(linhaFeature)
 
                 linhaID += 1
-
+        
         # Atualizar a camada
         camadaLinhaVoo.updateExtents()
-        camadaLinhaVoo.commitChanges()
+        camadaLinhaVoo.commitChanges()   
         
         # LineString para LineStringZ
         camadaLinhaVoo = set_Z_value(camadaLinhaVoo, z_field="alturavoo")
         
         # Simbologia
         simbologiaLinhaVoo("VF", camadaLinhaVoo)
-
+        
         # ===== LINHA DE VOO ============================
         QgsProject.instance().addMapLayer(camadaLinhaVoo)
-
+        
         # Reprojetar linha_voo_layer para WGS84 (4326)
         linhas_voo_reproj = reprojeta_camada_WGS84(camadaLinhaVoo, crs_wgs, transformador)
         
@@ -217,11 +217,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # =============================================================================================
         # ===== Criar a camada Pontos de Fotos ========================================================
-    
+        
         # Criar uma camada Pontos com os deltaH sobre a linha Base e depois empilhar com os deltaH
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
-
+        
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))

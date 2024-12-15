@@ -622,7 +622,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, deltaFront, 0, H)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, deltaFront, 360, H)
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
 
