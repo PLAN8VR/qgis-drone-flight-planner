@@ -27,14 +27,13 @@ __date__ = '2024-12-02'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsProcessingParameterFolderDestination
+from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsCoordinateReferenceSystem
+from qgis.core import QgsProcessingParameterFolderDestination, QgsProcessingParameterFileDestination
 from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
-from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsCoordinateReferenceSystem, QgsProcessingParameterFileDestination
-from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsCoordinateTransform
+from qgis.core import QgsPalLayerSettings, QgsCoordinateTransform
 from qgis.core import QgsVectorLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
-from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtGui import QColor, QFont, QIcon
+from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from .Funcs import obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
@@ -127,11 +126,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
+        # camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
         
-        QgsProject.instance().addMapLayer(camadaMDE)
+        # QgsProject.instance().addMapLayer(camadaMDE)
         
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
         # =============================================================================================
         # ===== Criar Linhas de Voo ===================================================================
@@ -204,13 +203,13 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         QgsProject.instance().addMapLayer(camadaLinhaVoo)
 
         # Reprojetar linha_voo_layer para WGS84 (4326)
-        linha_voo_reproj = reprojeta_camada_WGS84(camadaLinhaVoo, crs_wgs, transformador)
+        linhas_voo_reproj = reprojeta_camada_WGS84(camadaLinhaVoo, crs_wgs, transformador)
         
         # LineString para LineStringZ
-        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude")
+        linhas_voo_reproj = set_Z_value(linhas_voo_reproj, z_field="altitude")
         
         if teste == True:
-            QgsProject.instance().addMapLayer(linha_voo_reproj)
+            QgsProject.instance().addMapLayer(linhas_voo_reproj)
         
         # ===== Final Linha de Voo ============================================
         # =====================================================================
@@ -352,10 +351,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         
         if caminho_kml: # Verificar se o caminho KML está preenchido 
             arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
-            gerar_KML(pontos_reproj, arquivo_kml, "Pontos Fotos", crs_wgs)
+            gerar_KML(pontos_reproj, arquivo_kml, "Pontos Fotos", crs_wgs, feedback)
             
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
-            gerar_KML(linhas_reproj, arquivo_kml, "Linha de Voo", crs_wgs)
+            gerar_KML(linhas_voo_reproj, arquivo_kml, "Linha de Voo", crs_wgs, feedback)
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
         
@@ -366,7 +365,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
 
-        # Mensagem de Encerramento
+        # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("Plano de Voo Vertical de Fachada executado com sucesso.") 
           

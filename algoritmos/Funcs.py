@@ -27,8 +27,10 @@ __date__ = '2024-12-02'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes
-from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsField, QgsPointXY, QgsVectorFileWriter
+from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes, QgsTextBufferSettings
+from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsField, QgsPointXY, QgsVectorFileWriter, QgsPalLayerSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling
+from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer, QgsFillSymbol
+from qgis.PyQt.QtGui import QColor, QFont
 from PyQt5.QtCore import QVariant
 import processing
 import csv
@@ -117,7 +119,7 @@ def obter_DEM(tipo_voo, geometria, transformador, apikey, feedback=None, bbox_ar
    
    return camadaMDE
  
-def gerar_KML(camada, arquivo_kml, nome, crs_wgs):
+def gerar_KML(camada, arquivo_kml, nome, crs_wgs, feedback=None):
    # Configuração das opções para gravar o arquivo
    options = QgsVectorFileWriter.SaveVectorOptions()
    options.fileEncoding = 'UTF-8'
@@ -352,10 +354,16 @@ def set_Z_value(camada, z_field):
 def reprojeta_camada_WGS84(camada, crs_wgs, transformador):
    geometry_type = camada.geometryType()
    
-   camada_reproj = QgsVectorLayer(
-        f"{'Point' if geometry_type == 0 else 'LineString'}?crs={crs_wgs.authid()}",
-        f"{camada.name()}_Reprojetada",
-        "memory")
+   # Criar camada reprojetada com base no tipo de geometria
+   if geometry_type == QgsWkbTypes.PointGeometry:
+      tipo_geometria = "Point"
+   elif geometry_type == QgsWkbTypes.LineGeometry:
+      tipo_geometria = "LineString"
+   elif geometry_type == QgsWkbTypes.PolygonGeometry:
+      tipo_geometria = "Polygon"
+   
+   # Criar a nova camada reprojetada em memória
+   camada_reproj = QgsVectorLayer(f"{tipo_geometria}?crs={crs_wgs.authid()}", f"{camada.name()}_Reprojetada", "memory")
     
    camada_reproj.startEditing()
    camada_reproj.dataProvider().addAttributes(camada.fields())

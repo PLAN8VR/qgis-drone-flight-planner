@@ -27,14 +27,13 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsProcessingParameterFolderDestination, QgsProcessingParameterFileDestination
+from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsCoordinateReferenceSystem
+from qgis.core import QgsProcessingParameterFolderDestination, QgsProcessingParameterFileDestination
 from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
-from qgis.core import QgsTextFormat, QgsTextBufferSettings, QgsCoordinateReferenceSystem
-from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsCoordinateTransform
+from qgis.core import QgsPalLayerSettings, QgsCoordinateTransform
 from qgis.core import QgsVectorLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
-from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtGui import QColor, QFont, QIcon
+from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from .Funcs import obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
@@ -121,7 +120,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         h1 = SD_front / (2 * tg_alfa_2)
         deltaFront = SD_front * (H / h1 - 1)
         
-        feedback.pushInfo(f"Delta Lateral: {deltaLat}, Delta Frontal: {deltaFront}")
+        feedback.pushInfo(f"Delta Lateral: {round(deltaLat,2)}, Delta Frontal: {round(deltaFront,2)}")
         
         # ===== Verificações =====================================================
         # Verificar se o polígono e a primeira_linha contém exatamente uma feature
@@ -172,11 +171,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        camadaMDE = obter_DEM("H", camada, transformador, apikey, feedback)
+        # camadaMDE = obter_DEM("H", camada, transformador, apikey, feedback)
         
-        QgsProject.instance().addMapLayer(camadaMDE)
+        # QgsProject.instance().addMapLayer(camadaMDE)
         
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
@@ -440,44 +439,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Atualizar extensão da camada de resultado
         linha_voo_layer.updateExtents()
         
-        # Obter a altura mais alta de 'pontos_fotos'
-        maior_altura = None
-
-        for f in pontos_fotos.getFeatures():
-            # Obter o valor de 'alturavoo' para cada ponto
-            alturavoo = f['alturavoo']
-            
-            # Atualizar a maior altura, se necessário
-            if maior_altura is None or alturavoo > maior_altura:
-                maior_altura = alturavoo
+        # o final da Linha de Voo será feito no final da criação dos Pontos de Fotos,
+        # pois precisamos da altura mais alta dos Pontos para atribuir à Linha de Voo
         
-        linha_voo_layer.startEditing()
-        
-        for f in linha_voo_layer.getFeatures():
-            f['alturavoo'] = maior_altura
-            linha_voo_layer.updateFeature(f)
-        
-        linha_voo_layer.commitChanges()
-
-        # LineString para LineStringZ
-        linha_voo_layer = set_Z_value(linha_voo_layer, z_field="alturavoo")
-        
-        # Configurar simbologia de seta
-        simbologiaLinhaVoo("H", linha_voo_layer)
-
-        # ===== LINHA DE VOO =============================
-        QgsProject.instance().addMapLayer(linha_voo_layer)
-        
-        # Reprojetar linha_voo_layer para WGS84 (4326)
-        linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
-        
-        # LineString para LineStringZ
-        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude")
-        
-        if teste == True:
-            QgsProject.instance().addMapLayer(linha_voo_reproj)
-        
-        # ===== Final Linha de Voo ============================================
+        # =====  Final Parcial Linha de Voo ===================================
         # =====================================================================
         
         
@@ -530,7 +495,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             distAtual += deltaFront
             
             if distAtual > (distVoo):  # Evitar extrapolação além do comprimento da linha
-                feedback.pushInfo(f"Dist. Atual: {distAtual}, Dist. Voo: {distVoo}")
+                feedback.pushInfo(f"Dist. Atual: {round(distAtual,2)}, Dist. Voo: {round(distVoo,2)}")
                 break
             
             ponto = geom_linha.interpolate(distAtual).asPoint()
@@ -595,21 +560,62 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         if teste == True:
             QgsProject.instance().addMapLayer(pontos_reproj)
         
-        feedback.pushInfo("")
-        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
-        
         # ===== Final Pontos Fotos ============================================
         # =====================================================================
         
+        # ===== Terminando a Linha de Voo =====================================
+        # =====================================================================
+        # Obter a altura mais alta de 'pontos_fotos'
+        maior_altura = None
+
+        for f in pontos_fotos.getFeatures():
+            # Obter o valor de 'alturavoo' para cada ponto
+            alturavoo = f['alturavoo']
+            
+            # Atualizar a maior altura, se necessário
+            if maior_altura is None or alturavoo > maior_altura:
+                maior_altura = alturavoo
+        
+        linha_voo_layer.startEditing()
+        
+        for f in linha_voo_layer.getFeatures():
+            f['alturavoo'] = maior_altura
+            linha_voo_layer.updateFeature(f)
+        
+        linha_voo_layer.commitChanges()
+
+        # LineString para LineStringZ
+        linha_voo_layer = set_Z_value(linha_voo_layer, z_field="alturavoo")
+        
+        # Configurar simbologia de seta
+        simbologiaLinhaVoo("H", linha_voo_layer)
+
+        # ===== LINHA DE VOO =============================
+        QgsProject.instance().addMapLayer(linha_voo_layer)
+        
+        # Reprojetar linha_voo_layer para WGS84 (4326)
+        linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
+        
+        # LineString para LineStringZ
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude")
+        
+        if teste == True:
+            QgsProject.instance().addMapLayer(linha_voo_reproj)
+        
+        # ===== Final Linha de Voo ============================================
+        # =====================================================================
+        
+        feedback.pushInfo("")
+        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
         
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         
         if caminho_kml: # Verificar se o caminho KML está preenchido 
             arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
-            gerar_KML(pontos_reproj, arquivo_kml, "Pontos Fotos", crs_wgs)
+            gerar_KML(pontos_reproj, arquivo_kml, "Pontos Fotos", crs_wgs, feedback)
             
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
-            gerar_KML(linha_voo_reproj, arquivo_kml, "Linha de Voo", crs_wgs)
+            gerar_KML(linha_voo_reproj, arquivo_kml, "Linha de Voo", crs_wgs, feedback)
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
             
@@ -620,7 +626,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
 
-        # Mensagem de Encerramento
+        # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("Plano de Voo Horizontal executado com sucesso.") 
             
