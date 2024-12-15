@@ -376,3 +376,55 @@ def reprojeta_camada_WGS84(camada, crs_wgs, transformador):
    camada_reproj.commitChanges()
    
    return camada_reproj
+
+def simbologiaLinhaVoo(tipo_voo, camada):
+   if tipo_voo == "H":
+      line_symbol = QgsLineSymbol.createSimple({'color': 'blue', 'width': '0.3'})  # Linha base
+
+      seta = QgsMarkerSymbol.createSimple({'name': 'arrow', 'size': '5', 'color': 'blue', 'angle': '90'})
+
+      marcador = QgsMarkerLineSymbolLayer()
+      marcador.setInterval(30)  # Define o intervalo entre as setas (marcadores)
+      marcador.setSubSymbol(seta)
+      
+      camada.renderer().symbol().appendSymbolLayer(marcador)
+   elif tipo_voo == "VC" or tipo_voo == "VF":
+      simbologia = QgsFillSymbol.createSimple({
+            'color': 'transparent',    # Sem preenchimento
+            'outline_color': 'green',  # Contorno verde
+            'outline_width': '0.8'     # Largura do contorno
+        })
+      
+      camada.setRenderer(QgsSingleSymbolRenderer(simbologia))
+        
+   return
+
+def simbologiaPontos(camada):
+   simbolo = QgsMarkerSymbol.createSimple({'color': 'blue', 'size': '3'})
+   renderer = QgsSingleSymbolRenderer(simbolo)
+   camada.setRenderer(renderer)
+
+   # Rótulos
+   settings = QgsPalLayerSettings()
+   settings.fieldName = "id"
+   settings.isExpression = True
+   settings.enabled = True
+
+   textoF = QgsTextFormat()
+   textoF.setFont(QFont("Arial", 10, QFont.Bold))
+   textoF.setSize(10)
+
+   bufferS = QgsTextBufferSettings()
+   bufferS.setEnabled(True)
+   bufferS.setSize(1)  # Tamanho do buffer em milímetros
+   bufferS.setColor(QColor("white"))  # Cor do buffer
+
+   textoF.setBuffer(bufferS)
+   settings.setFormat(textoF)
+
+   camada.setLabelsEnabled(True)
+   camada.setLabeling(QgsVectorLayerSimpleLabeling(settings))
+
+   camada.triggerRepaint()
+   
+   return

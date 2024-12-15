@@ -37,7 +37,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QColor, QFont, QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84
+from .Funcs import obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
 import processing
 import os
 import math
@@ -177,13 +177,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         camada_linha_voo.commitChanges
         
         # Simbologia
-        simbologia = QgsFillSymbol.createSimple({
-            'color': 'transparent',  # Sem preenchimento
-            'outline_color': 'green',  # Contorno verde
-            'outline_width': '0.8'  # Largura do contorno
-        })
-
-        camada_linha_voo.setRenderer(QgsSingleSymbolRenderer(simbologia))  
+        simbologiaLinhaVoo("VC", camada_linha_voo)
 
         # ===== LINHA DE VOO ==============================
         QgsProject.instance().addMapLayer(camada_linha_voo)
@@ -330,32 +324,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         pontos_fotos = set_Z_value(pontos_fotos, z_field="altitude")
         
         # Simbologia
-        simbolo = QgsMarkerSymbol.createSimple({'color': 'blue', 'size': '3'})
-        renderer = QgsSingleSymbolRenderer(simbolo)
-        pontos_fotos.setRenderer(renderer)
-
-        # Rótulos
-        settings = QgsPalLayerSettings()
-        settings.fieldName = "id"
-        settings.isExpression = True
-        settings.enabled = True
-
-        textoF = QgsTextFormat()
-        textoF.setFont(QFont("Arial", 10, QFont.Bold))
-        textoF.setSize(10)
-
-        bufferS = QgsTextBufferSettings()
-        bufferS.setEnabled(True)
-        bufferS.setSize(1)  # Tamanho do buffer em milímetros
-        bufferS.setColor(QColor("white"))  # Cor do buffer
-
-        textoF.setBuffer(bufferS)
-        settings.setFormat(textoF)
-
-        pontos_fotos.setLabelsEnabled(True)
-        pontos_fotos.setLabeling(QgsVectorLayerSimpleLabeling(settings))
-
-        pontos_fotos.triggerRepaint()
+        simbologiaPontos(pontos_fotos)
         
         # ===== PONTOS FOTOS ==========================
         QgsProject.instance().addMapLayer(pontos_fotos)

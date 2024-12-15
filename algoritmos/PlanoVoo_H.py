@@ -37,7 +37,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QColor, QFont, QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84
+from .Funcs import obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
 import processing
 import os
 import math
@@ -463,14 +463,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_voo_layer = set_Z_value(linha_voo_layer, z_field="alturavoo")
         
         # Configurar simbologia de seta
-        line_symbol = QgsLineSymbol.createSimple({'color': 'blue', 'width': '0.3'})  # Linha base
-
-        seta = QgsMarkerSymbol.createSimple({'name': 'arrow', 'size': '5', 'color': 'blue', 'angle': '90'})
-
-        marcador = QgsMarkerLineSymbolLayer()
-        marcador.setInterval(30)  # Define o intervalo entre as setas (marcadores)
-        marcador.setSubSymbol(seta)
-        linha_voo_layer.renderer().symbol().appendSymbolLayer(marcador)
+        simbologiaLinhaVoo("H", linha_voo_layer)
 
         # ===== LINHA DE VOO =============================
         QgsProject.instance().addMapLayer(linha_voo_layer)
@@ -586,32 +579,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_fotos = set_Z_value(pontos_fotos, z_field="altitude")
 
         # Simbologia
-        simbolo = QgsMarkerSymbol.createSimple({'color': 'blue', 'size': '3'})
-        renderer = QgsSingleSymbolRenderer(simbolo)
-        pontos_fotos.setRenderer(renderer)
-
-        # Rótulos
-        settings = QgsPalLayerSettings()
-        settings.fieldName = "id"
-        settings.isExpression = True
-        settings.enabled = True
-
-        textoF = QgsTextFormat()
-        textoF.setFont(QFont("Arial", 10, QFont.Bold))
-        textoF.setSize(10)
-
-        bufferS = QgsTextBufferSettings()
-        bufferS.setEnabled(True)
-        bufferS.setSize(1)  # Tamanho do buffer em milímetros
-        bufferS.setColor(QColor("white"))  # Cor do buffer
-
-        textoF.setBuffer(bufferS)
-        settings.setFormat(textoF)
-
-        pontos_fotos.setLabelsEnabled(True)
-        pontos_fotos.setLabeling(QgsVectorLayerSimpleLabeling(settings))
-
-        pontos_fotos.triggerRepaint()
+        simbologiaPontos(pontos_fotos)
 
         # ===== PONTOS FOTOS ==========================
         QgsProject.instance().addMapLayer(pontos_fotos)
