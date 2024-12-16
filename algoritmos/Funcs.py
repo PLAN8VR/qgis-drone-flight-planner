@@ -259,14 +259,14 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H
          
          if tipo_voo == "H":
             alturavoo = H
-            gimbal = 0
+            mode_gimbal = 2
             angulo_gimbal = -90
             above_ground = 1 # Above Ground habilitado
          else:
-            gimbal = 2
+            mode_gimbal = 0
             angulo_gimbal = 0
             above_ground = 0 # Above Ground não habilitado
-
+         
          # Ler os dados da camada Pontos
          for f in pontos_reproj.getFeatures():
             # Extrair os valores dos campos da camada
@@ -287,7 +287,7 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H
                "heading(deg)": angulo,
                "curvesize(m)": 0,
                "rotationdir": 0,
-               "gimbalmode": gimbal,
+               "gimbalmode": mode_gimbal,
                "gimbalpitchangle": angulo_gimbal,
                "actiontype1": 0,     # STAY 2 segundos
                "actionparam1": 2000,

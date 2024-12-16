@@ -339,8 +339,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Point para PointZ
         pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
         
-        #if teste == True:
-        QgsProject.instance().addMapLayer(pontos_reproj)
+        if teste == True:
+            QgsProject.instance().addMapLayer(pontos_reproj)
             
         feedback.pushInfo("")
         feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
