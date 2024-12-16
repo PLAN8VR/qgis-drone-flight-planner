@@ -352,10 +352,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         
         if caminho_kml: # Verificar se o caminho KML está preenchido 
             arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
-            gerar_KML(pontos_reproj, arquivo_kml, "Pontos Fotos", crs_wgs, feedback)
+            gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
             
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
-            gerar_KML(linhas_voo_reproj, arquivo_kml, "Linha de Voo", crs_wgs, feedback)
+            gerar_KML(linhas_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
        

@@ -119,16 +119,20 @@ def obter_DEM(tipo_voo, geometria, transformador, apikey, feedback=None, bbox_ar
    
    return camadaMDE
  
-def gerar_KML(camada, arquivo_kml, nome, crs_wgs, feedback=None):
+def gerar_KML(camada, arquivo_kml, crs_wgs, feedback=None):
    # Configuração das opções para gravar o arquivo
    options = QgsVectorFileWriter.SaveVectorOptions()
-   options.fileEncoding = 'UTF-8'
+   options.fileEncoding = 'utf-8'
+   options.destCRS = crs_wgs
    options.driverName = 'KML'
-   options.field_name = 'id'
-   options.crs = crs_wgs
-   options.layerName = nome
+   options.includeZ = True
    options.layerOptions = ['ALTITUDE_MODE=absolute']
 
+   # Selecionar apenas o campo 'id' para exportação
+   field_names = [field.name() for field in camada.fields()]
+   fields_to_export = ['id']
+   options.attributes = [field_names.index(f) for f in fields_to_export if f in field_names]
+        
    # Escrever a camada no arquivo KML
    grava = QgsVectorFileWriter.writeAsVectorFormat(camada, arquivo_kml, options)
 
