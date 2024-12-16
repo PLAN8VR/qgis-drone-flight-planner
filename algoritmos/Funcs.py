@@ -29,9 +29,10 @@ __revision__ = '$Format:%H$'
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes, QgsTextBufferSettings
 from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsField, QgsPointXY, QgsVectorFileWriter, QgsPalLayerSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling
-from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer, QgsFillSymbol
+from qgis.core import QgsApplication, QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer, QgsFillSymbol
 from qgis.PyQt.QtGui import QColor, QFont
 from PyQt5.QtCore import QVariant
+import qgis.utils
 import processing
 import csv
 
@@ -120,19 +121,43 @@ def obter_DEM(tipo_voo, geometria, transformador, apikey, feedback=None, bbox_ar
    return camadaMDE
  
 def gerar_KML(camada, arquivo_kml, crs_wgs, feedback=None):
+   campos = [field.name() for field in camada.fields()]
+   
+   result = processing.run("kmltools:exportkmz", {
+         'InputLayer': camada,
+         'NameField': 'id',                     # Campo para o nome das feições no KML
+         'UseGoogleIcon': 1,                    # Ícone padrão do Google Earth
+         'AltitudeInterpretation': 1,           # Interpretar altitude
+         'AltitudeMode': 2,                     # Altitude absoluta
+         'AltitudeModeField': '',
+         'AltitudeField': 'altitude',           # Campo com o valor Z
+         'AltitudeAddend': 0,                   # Adicionar valor extra à altitude
+         'OutputKmz': arquivo_kml,              # Arquivo de saída
+         'LineWidthFactor': 2,                  # Define a largura das linhas no KML
+         'UseDescBR': True,                     # Usar descrição em formato brasileiro
+         'DateStampField': '',
+         'TimeStampField': '',
+         'DateBeginField': '',
+         'TimeBeginField': '',
+         'DateEndField': '',
+         'TimeEndField': ''
+   }, feedback=feedback)
+   
+   feedback.pushInfo(f"KML exportado com sucesso para: {arquivo_kml}")
+   
+   return result
+
+   """
    # Configuração das opções para gravar o arquivo
    options = QgsVectorFileWriter.SaveVectorOptions()
-   options.fileEncoding = 'utf-8'
-   options.destCRS = crs_wgs
+   options.fileEncoding = 'UTF-8'
+   options.crs = crs_wgs
    options.driverName = 'KML'
    options.includeZ = True
-   options.layerOptions = ['ALTITUDE_MODE=absolute']
-
-   # Selecionar apenas o campo 'id' para exportação
-   field_names = [field.name() for field in camada.fields()]
-   fields_to_export = ['id']
-   options.attributes = [field_names.index(f) for f in fields_to_export if f in field_names]
-        
+   #options.fieldName = 'id'
+   options.altitudemode = 'absolute'
+   #options.layerOptions = ['ALTITUDE_MODE=absolute']
+   
    # Escrever a camada no arquivo KML
    grava = QgsVectorFileWriter.writeAsVectorFormat(camada, arquivo_kml, options)
 
@@ -140,9 +165,9 @@ def gerar_KML(camada, arquivo_kml, crs_wgs, feedback=None):
       feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {arquivo_kml}")
    else:
       feedback.pushInfo(f"Erro ao exportar o arquivo KML: {grava}")
-      
+   
    return {}
-
+   """
 def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H):
     # Definir novos campos xcoord e ycoord com coordenadas geográficas
    pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
@@ -435,3 +460,19 @@ def simbologiaPontos(camada):
    camada.triggerRepaint()
    
    return
+
+def verificar_plugins(lista_plugins, feedback=None):
+    # Obter a lista de todos os plugins instalados
+    plugins_instalados = qgis.utils.plugins.keys()
+    
+    plugins_nao_instalados = [plugin for plugin in lista_plugins if plugin not in plugins_instalados]
+    
+    resultados = {}
+    
+    # Se houver plugins não instalados, levantar erro
+    if plugins_nao_instalados:
+       raise Exception(f"Os seguintes plugins não estão instalados: {', '.join(plugins_nao_instalados)}")
+    else:
+       feedback.pushInfo(f"Todos os plugins estão instalados: {lista_plugins}")
+    
+    return

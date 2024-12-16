@@ -123,6 +123,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         feedback.pushInfo(f"Delta Lateral: {round(deltaLat,2)}, Delta Frontal: {round(deltaFront,2)}")
         
         # ===== Verificações =====================================================
+        
+        # Verificar se os plugins estão instalados
+        plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]  
+        verificar_plugins(plugins_verificar, feedback)
+        
         # Verificar se o polígono e a primeira_linha contém exatamente uma feature
         poligono_features = list(camada.getFeatures()) # dados do Terreno
         if len(poligono_features) != 1:
@@ -610,7 +615,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         
-        if caminho_kml: # Verificar se o caminho KML está preenchido 
+        # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
+        if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml): 
             arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
             gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
             

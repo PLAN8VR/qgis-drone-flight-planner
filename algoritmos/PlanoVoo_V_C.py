@@ -36,7 +36,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
+from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
 import processing
 import os
 import math
@@ -95,6 +95,12 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         arquivo_csv = parameters['saida_csv']
         
         # ===== Verificações =================================================================
+        
+        # Verificar se os plugins estão instalados
+        plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]  
+        verificar_plugins(plugins_verificar, feedback)
+        
+        # Verificar as Geometrias
         circulo = list(circulo_base.getFeatures())
         if len(circulo) != 1:
             raise ValueError("A camada Cículo Base deve conter somente um círculo.")
@@ -102,11 +108,28 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         if ponto_inicial.featureCount() != 1: # uma outra forma de checar
             raise ValueError("A camada ponto Inicial deve conter somente um ponto.")
 
-        # ===== Cálculos Iniciais ================================================
+        # Verificar se o Ponto está sobre o círculo
         circulo_base_geom = circulo[0].geometry()
         
-        ponto = list(ponto_inicial.getFeatures())
-        ponto_inicial_geom = ponto[0].geometry()
+        ponto = next(ponto_inicial.getFeatures())
+        ponto_inicial_geom = ponto.geometry()
+        
+        centro = circulo_base_geom.centroid().asPoint()     # Centro do círculo
+        raio = circulo_base_geom.boundingBox().width() / 2  # Aproximação do raio (assumindo círculo perfeito)
+        
+        ponto = ponto_inicial_geom.asPoint() # Obter as coordenadas do ponto
+
+        distancia = ponto.distance(centro)   # Calcular a distância entre o ponto e o centro do círculo
+
+        tolerancia = 0.001  # Tolerância para verificar se está sobre o círculo
+
+        # Verificar se o ponto está sobre o círculo
+        if abs(distancia - raio) <= tolerancia:
+            feedback.pushInfo("O ponto inicial está sobre o círculo.")
+        else:
+            raise ValueError("O ponto inicial não está sobre o círculo.")
+
+        # ===== Cálculos Iniciais ================================================
 
         # Cálculo do deltaH
         bounding_box = circulo_base_geom.boundingBox()
@@ -350,7 +373,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         
-        if caminho_kml: # Verificar se o caminho KML está preenchido 
+        # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
+        if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml): 
             arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
             gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
             

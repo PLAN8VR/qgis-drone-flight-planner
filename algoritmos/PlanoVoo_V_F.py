@@ -94,6 +94,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         arquivo_csv = parameters['saida_csv']
         
         # ===== Verificações ===================================================================================
+        
+        # Verificar se os plugins estão instalados
+        plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]  
+        verificar_plugins(plugins_verificar, feedback)
+        
         linha = list(linha_base.getFeatures())
         if len(linha) != 1:
             raise ValueError("A camada Linha Base deve conter somente uma linha.")
@@ -349,7 +354,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         
-        if caminho_kml: # Verificar se o caminho KML está preenchido 
+        # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
+        if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml): 
             arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
             gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
             
