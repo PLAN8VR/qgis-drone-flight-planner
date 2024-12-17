@@ -352,42 +352,54 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # ===== Linha de Voo com Altitudes para o Google Earth Pro ============
         # =====================================================================
         
-        # Determinar as altitudes baseado nos Pontos
+        # Obter as altitudes médias por linha de voo
+        
+        # Ordena os registros pelo campo 'alturavoo'
+        features = sorted(pontos_fotos.getFeatures(), key=lambda f: f['alturavoo'])
+    
+        current_alturavoo = None  # Valor atual de alturavoo
+        soma_altitude = 0         # Soma das altitudes para a etapa atual
+        contador = 0              # Contador de registros para a etapa atual
+        medias = []               # Lista para armazenar as médias
+    
+        # Iterar pelas features da camada de polígonos (linha de voo)
+        for f in features:
+            alturavoo = f['alturavoo']  # Valor de alturavoo
+            altitude = f['altitude']   # Valor de altitude
 
+            # Se alturavoo mudou, calcula a média da etapa anterior
+            if alturavoo != current_alturavoo and current_alturavoo is not None:
+                media = soma_altitude / contador
+                medias.append((current_alturavoo, media))  # Armazena média
+                
+                # Reinicia para a próxima etapa
+                soma_altitude = 0
+                contador = 0
+            
+            # Atualiza valores para a etapa atual
+            current_alturavoo = alturavoo
+            soma_altitude += altitude
+            contador += 1
+        
+        # calcula a última altura, pois sai do looping antes (apenas quando há uma mudança de valor em alturavoo)
+        media = soma_altitude / contador
+        medias.append((current_alturavoo, media))
+        
         # Obter o índice do campo 'altitude_media' (ajuste conforme necessário)
         idx_altitude = linha_voo_layer.fields().indexFromName('altitude')
         
-        tolerancia = 0.0001
-        
-        # Iterar pelas features da camada de polígonos (linha de voo)
-        for f in linha_voo_layer.getFeatures():
-            geometria_linha = f.geometry()
-            lista_vertices = list(geometria_linha.vertices())  # Extrai os vértices da linha de voo (polígono)
-
-            # Criar a lista de vértices com os valores de Z (altitude)
-            altitudes = []
-            for ponto in lista_vertices:
-                for f_pontos in pontos_fotos.getFeatures():
-                    geom_ponto = f_pontos.geometry()
-                    ponto_ponto = geom_ponto.asPoint()
-                    
-                    if abs(ponto.x() - ponto_ponto.x()) < tolerancia and abs(ponto.y() - ponto_ponto.y()) < tolerancia:
-                        z = f_pontos['altitude']
-                        altitudes.append(z)
-                        break  # Encontramos a altitude correspondente ao ponto
-
-            # Calcular a altitude média
-            media_altitude = sum(altitudes) / len(altitudes)
-
-            feedback.pushInfo(f"Altitudes    =>    {altitudes}     Média   {media_altitude}")
-            # Atualizar a camada com a nova altitude
-            linha_voo_layer.dataProvider().changeAttributeValues({f.id(): {idx_altitude: media_altitude}})
+        linha_voo_layer.startEditing()
+          
+        for i, f in enumerate(linha_voo_layer.getFeatures()):
+            if i < len(medias):  # Garantir que há médias suficientes
+                _, m = medias[i]
+                linha_voo_layer.dataProvider().changeAttributeValues({f.id(): {idx_altitude: m}})
         
         linha_voo_layer.triggerRepaint()  # Redesenhar a camada para refletir as alterações
         linha_voo_layer.updateFields()    # Atualizar os campos da camada
         linha_voo_layer.updateExtents()   # Atualizar a extensão da camada
         linha_voo_layer.commitChanges()   
-            
+        
         # Reprojetar linha_voo_layer para WGS84 (4326)
         linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)  
         
@@ -414,7 +426,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
             
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
-            gerar_KML(linhas_voo_reproj, arquivo_kml, crs_wgs, feedback)
+            gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
             feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
        

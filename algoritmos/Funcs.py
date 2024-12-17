@@ -147,7 +147,7 @@ def gerar_KML(camada, arquivo_kml, crs_wgs, feedback=None):
    
    return result
 
-   """
+   """ Não leva para Google Earth Pro com a identificação dos IDs e não vai altitude mode = absolute
    # Configuração das opções para gravar o arquivo
    options = QgsVectorFileWriter.SaveVectorOptions()
    options.fileEncoding = 'UTF-8'
