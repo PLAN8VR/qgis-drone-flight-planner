@@ -170,18 +170,19 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Criar geometria do polígono
         polygon_geometry = QgsGeometry.fromPolygonXY([pontos])
         
-        # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
-        camadaLinhaVoo = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Linha de Voo', 'memory')
-        linha_voo_provider = camadaLinhaVoo.dataProvider()
+        # Criar uma camada Polígono que será a Linha de Voo
+        linha_voo_layer = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Linha de Voo', 'memory')
+        linha_voo_provider = linha_voo_layer.dataProvider()
 
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
+        campos.append(QgsField("altitude", QVariant.Double))
         campos.append(QgsField("alturavoo", QVariant.Double))
         linha_voo_provider.addAttributes(campos)
-        camadaLinhaVoo.updateFields()
+        linha_voo_layer.updateFields()
 
-        camadaLinhaVoo.startEditing
+        linha_voo_layer.startEditing
         
         # Adicionar polígonos com alturas diferentes
         linha_id = 1
@@ -189,35 +190,20 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         for altura in alturas:
             feature = QgsFeature()
             feature.setGeometry(polygon_geometry)  # Reutilizar a mesma geometria
-            feature.setAttributes([linha_id, altura])  # Atribuir ID e altura
+            feature.setAttributes([linha_id, 0, altura])  # Atribuir ID e alturavoo
             linha_voo_provider.addFeature(feature)
             
             linha_id += 1
 
         # Atualizar a camada
-        camadaLinhaVoo.updateExtents()
-        camadaLinhaVoo.commitChanges()
+        linha_voo_layer.updateExtents()
+        linha_voo_layer.commitChanges()
         
-        # Polygon para PolygonZ
-        camadaLinhaVoo = set_Z_value(camadaLinhaVoo, z_field="alturavoo")
+        # o final da Linha de Voo será feito no final da criação dos Pontos de Fotos,
+        # pois precisamos da altura mais alta dos Pontos para atribuir à Linha de Voo
         
-        # Simbologia
-        simbologiaLinhaVoo("VC", camadaLinhaVoo)
-
-        # ===== LINHA DE VOO ==============================
-        QgsProject.instance().addMapLayer(camadaLinhaVoo)
-        
-        # Reprojetar linha_voo_layer para WGS84 (4326)
-        linhas_voo_reproj = reprojeta_camada_WGS84(camadaLinhaVoo, crs_wgs, transformador)
-        
-        # LineString para LineStringZ
-        linhas_voo_reproj = set_Z_value(linhas_voo_reproj, z_field="altitude")
-        
-        if teste == True:
-            QgsProject.instance().addMapLayer(linhas_voo_reproj)
-        
-        # ===== Final Linha de Voo ============================================
-        # =====================================================================
+        # ===== Final Parcial Linha de Voo (precisa ainda colocar altitudes) ============
+        # ===============================================================================
         
         
         # ==========================================================================================================
@@ -271,7 +257,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         pontoID = 1
         
         # Criar os vértices da primeira carreira de pontos
-        features = camadaLinhaVoo.getFeatures()
+        features = linha_voo_layer.getFeatures()
         feature = next(features)  # Obter a primeira e única feature
         polygon_geometry = feature.geometry()
         vertices = list(polygon_geometry.vertices()) 
@@ -347,29 +333,78 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         
         # Point para PointZ
         pontos_fotos = set_Z_value(pontos_fotos, z_field="altitude")
-        
-        # Simbologia
-        simbologiaPontos(pontos_fotos)
-        
-        # ===== PONTOS FOTOS ==========================
-        QgsProject.instance().addMapLayer(pontos_fotos)
 
-        #pontos_fotos = QgsProject.instance().mapLayersByName("Pontos Fotos")[0]
-        
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
         
         # Point para PointZ
         pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
         
-        if teste == True:
-            QgsProject.instance().addMapLayer(pontos_reproj)
+        # Simbologia
+        simbologiaPontos(pontos_reproj)
             
-        feedback.pushInfo("")
-        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
+        # ===== PONTOS FOTOS ==========================
+        QgsProject.instance().addMapLayer(pontos_reproj)
         
         # ===== Final Pontos Fotos ============================================
         # =====================================================================
+        
+        # ===== Linha de Voo com Altitudes para o Google Earth Pro ============
+        # =====================================================================
+        
+        # Determinar as altitudes baseado nos Pontos
+
+        # Obter o índice do campo 'altitude_media' (ajuste conforme necessário)
+        idx_altitude = linha_voo_layer.fields().indexFromName('altitude')
+        
+        tolerancia = 0.0001
+        
+        # Iterar pelas features da camada de polígonos (linha de voo)
+        for f in linha_voo_layer.getFeatures():
+            geometria_linha = f.geometry()
+            lista_vertices = list(geometria_linha.vertices())  # Extrai os vértices da linha de voo (polígono)
+
+            # Criar a lista de vértices com os valores de Z (altitude)
+            altitudes = []
+            for ponto in lista_vertices:
+                for f_pontos in pontos_fotos.getFeatures():
+                    geom_ponto = f_pontos.geometry()
+                    ponto_ponto = geom_ponto.asPoint()
+                    
+                    if abs(ponto.x() - ponto_ponto.x()) < tolerancia and abs(ponto.y() - ponto_ponto.y()) < tolerancia:
+                        z = f_pontos['altitude']
+                        altitudes.append(z)
+                        break  # Encontramos a altitude correspondente ao ponto
+
+            # Calcular a altitude média
+            media_altitude = sum(altitudes) / len(altitudes)
+
+            feedback.pushInfo(f"Altitudes    =>    {altitudes}     Média   {media_altitude}")
+            # Atualizar a camada com a nova altitude
+            linha_voo_layer.dataProvider().changeAttributeValues({f.id(): {idx_altitude: media_altitude}})
+        
+        linha_voo_layer.triggerRepaint()  # Redesenhar a camada para refletir as alterações
+        linha_voo_layer.updateFields()    # Atualizar os campos da camada
+        linha_voo_layer.updateExtents()   # Atualizar a extensão da camada
+        linha_voo_layer.commitChanges()   
+            
+        # Reprojetar linha_voo_layer para WGS84 (4326)
+        linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)  
+        
+        # Polygon para PolygonZ
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude")
+        
+        # Configurar simbologia de seta
+        simbologiaLinhaVoo("VC", linha_voo_reproj)
+        
+        # ===== LINHA DE VOO ==============================
+        QgsProject.instance().addMapLayer(linha_voo_reproj)
+        
+        # ===== Final Linha de Voo ============================================
+        # =====================================================================
+        
+        feedback.pushInfo("")
+        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
         
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
         

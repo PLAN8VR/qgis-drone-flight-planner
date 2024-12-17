@@ -390,7 +390,7 @@ def reprojeta_camada_WGS84(camada, crs_wgs, transformador):
       tipo_geometria = "Polygon"
    
    # Criar a nova camada reprojetada em memória
-   camada_reproj = QgsVectorLayer(f"{tipo_geometria}?crs={crs_wgs.authid()}", f"{camada.name()}_Reprojetada", "memory")
+   camada_reproj = QgsVectorLayer(f"{tipo_geometria}?crs={crs_wgs.authid()}", f"{camada.name()}", "memory")
     
    camada_reproj.startEditing()
    camada_reproj.dataProvider().addAttributes(camada.fields())
