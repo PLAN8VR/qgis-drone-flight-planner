@@ -662,15 +662,26 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
     
-    texto = "Este algoritmo calcula a sobreposição lateral e frontal de Voo de Drone, \
+    texto = "Este algoritmo calcula a sobreposição lateral e frontal para um Voo de Drone, \
             fornecendo uma camada da 'Linha do Voo' e uma camada dos 'Pontos' para Fotos. \
             Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth. \
-            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS."
-    figura = 'images/PlanoVoo1.jpg'
+            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML. \
+            Dados: \
+            1. Área a ser levantada (um pouco maior) \
+            2. Uma linha de Início do Voo (sobre a Área - tem que ser um lado) \
+            3. Dados do Drone \
+            4. Altura do Voo (m) \
+            5. Velocidade do Voo (m/s) \
+            6. Chave API do Open Topography \
+            7. Caminho para gravar os KML \
+            8. Arquivo para gravar o CSV para o Litchi"
+    figura1 = 'images/PlanoVoo1.jpg'
+    figura2 = 'images/PlanoVooH.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">
-                      <img src="'''+ os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figura) +'''">
+                      <img src="'''+ os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figura1) +'''">
+                      <img src="'''+ os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figura2) +'''">
                       </div>
                       <div align="right">
                       <p align="right">
