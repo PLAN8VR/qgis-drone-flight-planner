@@ -252,7 +252,7 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H
 
    # Lista de campos Double a serem removidos de Pontos Reprojetados
    if tipo_voo == "H" or tipo_voo == "VF":
-      camposDel = ['xcoord', 'ycoord', 'alturaVoo'] # sem o espaço
+      camposDel = ['xcoord', 'ycoord', 'alturavoo'] # sem o espaço
    elif tipo_voo == "VC":
       camposDel = ['xcoord', 'ycoord', 'alturavoo', 'angulo']
       

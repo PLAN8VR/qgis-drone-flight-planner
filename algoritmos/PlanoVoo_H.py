@@ -412,7 +412,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linha de Voo', 'memory')
         linha_voo_provider = linha_voo_layer.dataProvider()
         linha_voo_provider.addAttributes([QgsField('id', QVariant.Int)])
-        linha_voo_provider.addAttributes([QgsField('altitude_media', QVariant.Double)])
+        linha_voo_provider.addAttributes([QgsField('alturavoo', QVariant.Double)])
         linha_voo_layer.updateFields()
 
         # Obter e ordenar as feições pela ordem dos IDs para garantir
@@ -464,6 +464,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         campos.append(QgsField("id", QVariant.Int))
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
+        campos.append(QgsField("altitude", QVariant.Double))
+        campos.append(QgsField("alturavoo", QVariant.Double))
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
 
@@ -525,11 +527,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Obter a altitude dos pontos das Fotos
         prov = pontos_fotos.dataProvider()
         pontos_fotos.startEditing()
-        
-        # Adicionar um campo para Altura do Voo, se não existir
-        if 'alturaVoo' not in [field.name() for field in prov.fields()]:
-            prov.addAttributes([QgsField('alturaVoo', QVariant.Double)])
-            pontos_fotos.updateFields()
 
         # definir o valor de Z
         for f in pontos_fotos.getFeatures():
@@ -541,19 +538,20 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             # Obter o valor de Z do MDE
             value, result = camadaMDE.dataProvider().sample(point_wgs, 1)  # Resolução = 1
             if result:
-                f['alturaVoo'] = value + H  # altura de Voo
+                f['altitude'] = value
+                f['alturavoo'] = value + H  # altura de Voo
                 pontos_fotos.updateFeature(f)
 
         pontos_fotos.commitChanges()
 
         # Point para PointZ
-        pontos_fotos = set_Z_value(pontos_fotos, z_field="altitude")
+        pontos_fotos = set_Z_value(pontos_fotos, z_field="alturavoo")
         
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
         
         # Point para PointZ
-        pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
+        pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
         
         # Simbologia
         simbologiaPontos(pontos_reproj)
@@ -574,7 +572,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         for feature in pontos_fotos.getFeatures():
             geom = feature.geometry()
             ponto = geom.asPoint()
-            z = feature['alturaVoo']
+            z = feature['alturavoo']
             ponto_z = QgsPoint(ponto.x(), ponto.y(), z)  # Criar ponto com Z (altitude)
             lista_vertices.append(ponto_z)
 
@@ -601,7 +599,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)  
 
         # LineString para LineStringZ
-        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude_media")
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
         
         # Configurar simbologia de seta
         simbologiaLinhaVoo("H", linha_voo_reproj)
