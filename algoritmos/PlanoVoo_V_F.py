@@ -131,11 +131,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        # camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
+        camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
         
-        # QgsProject.instance().addMapLayer(camadaMDE)
+        QgsProject.instance().addMapLayer(camadaMDE)
         
-        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        # camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
         # =============================================================================================
         # ===== Criar Linhas de Voo ===================================================================
