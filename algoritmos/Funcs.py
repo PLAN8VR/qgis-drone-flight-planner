@@ -420,13 +420,18 @@ def simbologiaLinhaVoo(tipo_voo, camada):
       marcador.setSubSymbol(seta)
       
       camada.renderer().symbol().appendSymbolLayer(marcador)
-   elif tipo_voo == "VC" or tipo_voo == "VF":
+   elif tipo_voo == "VC":
       simbologia = QgsFillSymbol.createSimple({
             'color': 'transparent',    # Sem preenchimento
             'outline_color': 'green',  # Contorno verde
             'outline_width': '0.8'     # Largura do contorno
         })
-      
+      camada.setRenderer(QgsSingleSymbolRenderer(simbologia))
+   elif tipo_voo == "VF":
+      simbologia = QgsLineSymbol.createSimple({
+            'color': 'green',        # Cor da linha
+            'width': '0.8'           # Largura da linha
+         })
       camada.setRenderer(QgsSingleSymbolRenderer(simbologia))
         
    return

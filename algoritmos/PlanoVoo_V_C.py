@@ -76,7 +76,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
         
-        # ===== Parâmetros de entrada para variávei s==========================================
+        # ===== Parâmetros de entrada para variáveis ==========================================
         circulo_base = self.parameterAsVectorLayer(parameters, 'circulo_base', context)
         crs = circulo_base.crs()
         
