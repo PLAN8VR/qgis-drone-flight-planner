@@ -456,7 +456,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML
             Dados:
             1. Círculo Base de Voo
-            2. Um Ponto para indicar o Início do Voo (tem que ser sobre o Círculo)
+            2. Um Ponto para indicar o Início do Voo (determina o início do Voo e deve ser próximo ao Círculo)
             3. Altura do Objeto (m)
             4. Altura Inicial do Voo (m)
             5. Número de partes que se quer dividir o Círculo (Determina o espaçamento Horizontal - Mínimo de 4 partes)
@@ -466,7 +466,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             9. Caminho para gravar os KML
             10 Arquivo para gravar o CSV para o Litchi
             """
-    figura = 'images/PlanoVooVC.jpg'
+    figura = 'images/VooVC1.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">

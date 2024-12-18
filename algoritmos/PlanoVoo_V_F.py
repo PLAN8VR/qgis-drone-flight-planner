@@ -456,7 +456,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML
             Dados:
             1. Linha Base de Voo
-            2. Um Ponto para indicar de que lado da Linha Base o objeto está \
+            2. Um Ponto para indicar de que lado da Linha Base o objeto está
             3. Altura do Objeto (m)
             4. Altura Inicial do Voo (m)
             5. Espaçamento Horizontal (m)
@@ -466,7 +466,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             9. Caminho para gravar os KML
             10 Arquivo para gravar o CSV para o Litchi
             """
-    figura = 'images/PlanoVooVF.jpg'
+    figura = 'images/VooVF1.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">

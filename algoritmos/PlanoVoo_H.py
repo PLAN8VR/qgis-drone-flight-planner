@@ -684,7 +684,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
             Dados necessários:
             1. Área a ser levantada (um pouco maior)
-            2. Uma linha de Início do Voo (sobre a Área - tem que ser um lado)
+            2. Uma linha de Início do Voo (criar próximo ao lado que ser quer iniciar o Voo)
             3. Dados do Drone
             4. Altura do Voo (m)
             5. Velocidade do Voo (m/s)
@@ -692,8 +692,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             7. Caminho para gravar os KML
             8. Arquivo para gravar o CSV para o Litchi
             """
-    figura1 = 'images/PlanoVoo1.jpg'
-    figura2 = 'images/PlanoVooH.jpg'
+    figura1 = 'images/VooH1.jpg'
+    figura2 = 'images/VooH2.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">
