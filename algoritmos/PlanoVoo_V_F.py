@@ -99,35 +99,31 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]  
         verificar_plugins(plugins_verificar, feedback)
         
-        # Verificar Tipo das Geometrias
-        if linha_base.geometryType() != QgsWkbTypes.LineGeometry:
-            raise ValueError("A Linha de referência deve ser uma Linha.")
-            
-        if objeto.geometryType() != QgsWkbTypes.PointGeometry:
-            raise ValueError("O local do Objeto deve ser um Ponto.")
-        
         # Verificar as Geometrias
         linha = list(linha_base.getFeatures())
         if len(linha) != 1:
-            raise ValueError("A camada Linha Base deve conter somente uma linha.")
+            raise ValueError("Linha Base deve conter somente uma linha.")
+        
+        if objeto.featureCount() != 1: # uma outra forma de checar
+            raise ValueError("Objeto deve conter somente um ponto.")
         
         linha_base_geom = linha[0].geometry()  # Obter a geometria da linha base
         
         # Verificar se delatH é mútiplo do comprimento da Linha Base
-        comprimento = round(linha_base_geom.length()) # como as vezes nao conseguimos um número inteiro na obtenção da Linha Base
+        tolerancia = 0.005 # Tolerância de 0,5 cm (0,005 metros)
+
+        comprimento = round(linha_base_geom.length(), 2) # arredondado para 2 casas decimais
         
         restante = comprimento % deltaH
            
-        if restante > 0:
+        if restante > tolerancia:
             raise ValueError(f"O espaçamento horizontal ({deltaH}) não é múltiplo do comprimento total da Linha Base ({comprimento}).")
-        
-        if objeto.featureCount() != 1: # uma outra forma de checar
-            raise ValueError("A camada ponto Objeto deve conter somente um ponto.")
         
         # Determina as alturas das linhas de Voo
         alturas = [i for i in range(h, H + h + 1, deltaV)]
         
         # Determina as distâncias nas linhas de Voo
+        comprimento = int(comprimento)
         distancias = [i for i in range(0, comprimento + 1, deltaH)]
         
         feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {deltaH}, Delta Vertical: {deltaV}")
@@ -139,11 +135,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
+        # camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
         
-        QgsProject.instance().addMapLayer(camadaMDE)
+        # QgsProject.instance().addMapLayer(camadaMDE)
         
-        # camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
         # =============================================================================================
         # ===== Criar Linhas de Voo ===================================================================

@@ -100,44 +100,21 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]  
         verificar_plugins(plugins_verificar, feedback)
         
-        # Verificar Tipo das Geometrias
-        if circulo_base.geometryType() != QgsWkbTypes.PolygonGeometry:
-            raise ValueError("O Círculo Base deve ser um Polígono.")
-            
-        if ponto_inicial.geometryType() != QgsWkbTypes.PointGeometry:
-            raise ValueError("O Ponto Inicial deve ser um Ponto.")
-        
         # Verificar as Geometrias
         circulo = list(circulo_base.getFeatures())
         if len(circulo) != 1:
-            raise ValueError("A camada Cículo Base deve conter somente um círculo.")
+            raise ValueError("Cículo Base deve conter somente um círculo.")
         
         if ponto_inicial.featureCount() != 1: # uma outra forma de checar
-            raise ValueError("A camada ponto Inicial deve conter somente um ponto.")
+            raise ValueError("Ponto Inicial deve conter somente um ponto.")
 
-        # Verificar se o Ponto está sobre o círculo
+        # ===== Cálculos Iniciais ================================================
+
         circulo_base_geom = circulo[0].geometry()
         
         ponto = next(ponto_inicial.getFeatures())
         ponto_inicial_geom = ponto.geometry()
         
-        centro = circulo_base_geom.centroid().asPoint()     # Centro do círculo
-        raio = circulo_base_geom.boundingBox().width() / 2  # Aproximação do raio (assumindo círculo perfeito)
-        
-        ponto = ponto_inicial_geom.asPoint() # Obter as coordenadas do ponto
-
-        distancia = ponto.distance(centro)   # Calcular a distância entre o ponto e o centro do círculo
-
-        tolerancia = 0.001  # Tolerância para verificar se está sobre o círculo
-
-        # Verificar se o ponto está sobre o círculo
-        if abs(distancia - raio) <= tolerancia:
-            feedback.pushInfo("O ponto inicial está sobre o círculo.")
-        else:
-            raise ValueError("O ponto inicial não está sobre o círculo.")
-
-        # ===== Cálculos Iniciais ================================================
-
         # Cálculo do deltaH
         bounding_box = circulo_base_geom.boundingBox()
         centro = bounding_box.center()
@@ -157,11 +134,11 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        camadaMDE = obter_DEM("VC", circulo_base_geom, transformador, apikey, feedback)
+        # camadaMDE = obter_DEM("VC", circulo_base_geom, transformador, apikey, feedback)
         
-        QgsProject.instance().addMapLayer(camadaMDE)
+        # QgsProject.instance().addMapLayer(camadaMDE)
         
-        # camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
         # ====================================================================
         # ===== Criar Polígono Circunscrito ==================================

@@ -128,13 +128,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]  
         verificar_plugins(plugins_verificar, feedback)
         
-        # Verificar Tipo das Geometrias
-        if area_layer.geometryType() != QgsWkbTypes.PolygonGeometry:
-            raise ValueError("A Área deve ser um Polígono.")
-            
-        if primeira_linha.geometryType() != QgsWkbTypes.LineGeometry:
-            raise ValueError("A Primeira Linha deve ser uma Linha.")
-        
         # Verificar se o polígono e a primeira_linha contém exatamente uma feature
         poligono_features = list(area_layer.getFeatures()) # dados do Terreno
         if len(poligono_features) != 1:
