@@ -30,7 +30,7 @@ __revision__ = '$Format:%H$'
 from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingParameterFolderDestination, QgsProcessingParameterFileDestination
 from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
-from qgis.core import QgsPalLayerSettings, QgsCoordinateTransform
+from qgis.core import QgsPalLayerSettings, QgsCoordinateTransform, QgsSpatialIndex, edit
 from qgis.core import QgsVectorLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
@@ -87,8 +87,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         teste = False # Quando True mostra camadas intermediárias
         
         # =====Parâmetros de entrada para variáveis==============================
-        camada = self.parameterAsVectorLayer(parameters, 'terreno', context)
-        crs = camada.crs()
+        area_layer = self.parameterAsVectorLayer(parameters, 'terreno', context)
+        crs = area_layer.crs()
         
         primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
 
@@ -128,46 +128,21 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]  
         verificar_plugins(plugins_verificar, feedback)
         
+        # Verificar Tipo das Geometrias
+        if area_layer.geometryType() != QgsWkbTypes.PolygonGeometry:
+            raise ValueError("A Área deve ser um Polígono.")
+            
+        if primeira_linha.geometryType() != QgsWkbTypes.LineGeometry:
+            raise ValueError("A Primeira Linha deve ser uma Linha.")
+        
         # Verificar se o polígono e a primeira_linha contém exatamente uma feature
-        poligono_features = list(camada.getFeatures()) # dados do Terreno
+        poligono_features = list(area_layer.getFeatures()) # dados do Terreno
         if len(poligono_features) != 1:
-            raise ValueError("A camada deve conter somente um polígono.")
-
-        poligono = poligono_features[0].geometry()
-        vertices = [QgsPointXY(v) for v in poligono.vertices()] # Extrair os vértices do polígono
+            raise ValueError("A Área deve conter somente um polígono.")
         
         linha_features = list(primeira_linha.getFeatures())
         if len(linha_features) != 1:
-            raise ValueError("A camada primeira_linha deve conter somente uma linha.")
-
-        # Verifica a geometria da primeira linha
-        linha_geom = linha_features[0].geometry() # Obter a geometria da linha
-        
-        if linha_geom.asMultiPolyline():
-            linha_vertices = linha_geom.asMultiPolyline()[0]  # Se a linha for do tipo poly
-        else:
-            linha_vertices = linha_geom.asPolyline() 
-        
-        # Criar a geometria da linha basee
-        linha_base = QgsGeometry.fromPolylineXY([QgsPointXY(p) for p in linha_vertices])  
-
-        # Verificar se a linha base coincide com um lado do polígono (até a segunda casa decimal)
-        flag = False
-        for i in range(len(vertices) - 1):
-            # Criar a geometria do lado do polígono (em ambas as orientações)
-            lado = QgsGeometry.fromPolylineXY([QgsPointXY(vertices[i]), QgsPointXY(vertices[i + 1])])
-            lado_invertido = QgsGeometry.fromPolylineXY([QgsPointXY(vertices[i + 1]), QgsPointXY(vertices[i])])
-
-            # Comparar se a geometria da linha base é igual ao lado (considerando a inversão também)
-            if lado.equals(linha_base) or lado_invertido.equals(linha_base):
-                flag = True
-                break
-            
-        #feedback.pushInfo(f"Lado {i} - Ponto 1: ({vertices[i].x()}, {vertices[i].y()}) | Ponto 2: ({vertices[i + 1].x()}, {vertices[i + 1].y()})")
-        #feedback.pushInfo(f"Linha base - Ponto 1: ({linha_vertices[0].x()}, {linha_vertices[0].y()}) | Ponto 2: ({linha_vertices[1].x()}, {linha_vertices[1].y()})")
-
-        if not flag:
-            raise ValueError("A camada primeira_linha deve ser um dos lados do terreno.")
+            raise ValueError("A Primeira Linha deve conter somente uma linha.")
         
         # =====================================================================
         # ===== OpenTopography ================================================
@@ -176,14 +151,61 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        camadaMDE = obter_DEM("H", camada, transformador, apikey, feedback)
+        # camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
         
-        QgsProject.instance().addMapLayer(camadaMDE)
+        # QgsProject.instance().addMapLayer(camadaMDE)
         
-        # camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+
+        # ================================================================================
+        # ===== Ajuste da linha sobre um lado do polígono ================================
+        
+        poligono_features = next(area_layer.getFeatures())
+        linha_features = next(primeira_linha.getFeatures())
+        
+        poligono_geom = poligono_features.geometry()
+        linha_geom = linha_features.geometry()
+
+        if poligono_geom.asMultiPolygon():
+            p = poligono_geom.asMultiPolygon()[0][0]
+        else:
+            p = poligono_geom.asPolygon()[0]
+        
+        bordas = [(p[i], p[i + 1]) for i in range(len(p) - 1)]
+
+        # Encontrar a aresta mais próxima da linha
+        min_distancia = float('inf')
+        closest_borda = None
+
+        for v1, v2 in bordas:
+            borda_geom = QgsGeometry.fromPolylineXY([v1, v2])
+            distancia = borda_geom.shortestLine(linha_geom).length()
+            
+            if distancia < min_distancia:
+                min_distancia = distancia
+                closest_borda = borda_geom
+        
+        # Atualizar a geometria na camada da linha
+        new_line_geom = QgsGeometry.fromPolylineXY(closest_borda.asPolyline())
+        
+        with edit(primeira_linha):
+            primeira_linha.changeGeometry(linha_features.id(), new_line_geom)
 
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
+        
+        linha_features = next(primeira_linha.getFeatures())
+        linha_geom = linha_features.geometry()
+        
+        vertices = [QgsPointXY(v) for v in poligono_geom.vertices()] # Extrair os vértices do polígono
+
+        if linha_geom.asMultiPolyline():
+            linha_vertices = linha_geom.asMultiPolyline()[0]  # Se a linha for do tipo poly
+        else:
+            linha_vertices = linha_geom.asPolyline() 
+
+        # Criar a geometria da linha basee
+        linha_base = QgsGeometry.fromPolylineXY([QgsPointXY(p) for p in linha_vertices])
         
         # Encontrar os pontos extremos de cada lado da linha base (sempre terá 1 ou 2 pontos)
         ponto_extremo_dir = None
@@ -248,8 +270,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         dy = p2.y() - p1.y()
         angulo = math.atan2(dy, dx)
         
-        extensao_x = (dist_max_esq + dist_max_dir) * math.cos(angulo)
-        extensao_y = (dist_max_esq + dist_max_dir) * math.sin(angulo)
+        extensao_x = (dist_max_esq + dist_max_dir) * math.cos(angulo) * 3 # multiplicando por 3 para os casos de escolher um lado mais curto
+        extensao_y = (dist_max_esq + dist_max_dir) * math.sin(angulo) * 3
 
         p1_estendido = QgsPointXY(p1.x() - extensao_x ,p1.y() - extensao_y)
         p2_estendido = QgsPointXY(p2.x() + extensao_x ,p2.y() + extensao_y)
@@ -316,7 +338,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
                 if linha_geom:
                     # Interseção da linha paralela com o polígono
-                    intersecao_geom = linha_geom.intersection(poligono)
+                    intersecao_geom = linha_geom.intersection(poligono_geom)
 
                     # Adicionar a paralela à camada
                     paralela_feature = QgsFeature()
@@ -473,7 +495,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         geom_linha = linha_voo.geometry() # Obter a geometria da linha
 
         # Obter a geometria do polígono a partir da camada
-        poligono_feature = next(camada.getFeatures())  # Assumindo que a camada contém apenas um polígono
+        poligono_feature = next(area_layer.getFeatures())  # Assumindo que a camada contém apenas um polígono
         poligono_geom = poligono_feature.geometry()  # Geometria do polígono
 
         # Criar um buffer com tolerância de 3 metros
@@ -662,19 +684,21 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
     
-    texto = "Este algoritmo calcula a sobreposição lateral e frontal para um Voo de Drone, \
-            fornecendo uma camada da 'Linha do Voo' e uma camada dos 'Pontos' para Fotos. \
-            Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth. \
-            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML. \
-            Dados: \
-            1. Área a ser levantada (um pouco maior) \
-            2. Uma linha de Início do Voo (sobre a Área - tem que ser um lado) \
-            3. Dados do Drone \
-            4. Altura do Voo (m) \
-            5. Velocidade do Voo (m/s) \
-            6. Chave API do Open Topography \
-            7. Caminho para gravar os KML \
-            8. Arquivo para gravar o CSV para o Litchi"
+    texto = """Este algoritmo calcula a sobreposição lateral e frontal para um Voo de Drone,
+            fornecendo uma camada da 'Linha do Voo' e uma camada dos 'Pontos' para Fotos.
+            Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth.
+            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML.
+
+            Dados necessários:
+            1. Área a ser levantada (um pouco maior)
+            2. Uma linha de Início do Voo (sobre a Área - tem que ser um lado)
+            3. Dados do Drone
+            4. Altura do Voo (m)
+            5. Velocidade do Voo (m/s)
+            6. Chave API do Open Topography
+            7. Caminho para gravar os KML
+            8. Arquivo para gravar o CSV para o Litchi
+            """
     figura1 = 'images/PlanoVoo1.jpg'
     figura2 = 'images/PlanoVooH.jpg'
 
