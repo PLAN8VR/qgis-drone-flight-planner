@@ -110,9 +110,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         linha_base_geom = linha[0].geometry()  # Obter a geometria da linha base
         
         # Verificar se delatH é mútiplo do comprimento da Linha Base
-        tolerancia = 0.005 # Tolerância de 0,5 cm (0,005 metros)
+        tolerancia = 0.01 # Tolerância de 1 metro
 
-        comprimento = round(linha_base_geom.length(), 2) # arredondado para 2 casas decimais
+        comprimento = int(linha_base_geom.length()) # pegando a linha com comprimento inteiro
         
         restante = comprimento % deltaH
            
@@ -135,11 +135,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        # camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
+        camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
         
-        # QgsProject.instance().addMapLayer(camadaMDE)
+        #QgsProject.instance().addMapLayer(camadaMDE)
         
-        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
         # =============================================================================================
         # ===== Criar Linhas de Voo ===================================================================
@@ -369,7 +369,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         media = soma_altitude / contador
         medias.append((current_alturavoo, media))
         
-        # Obter o índice do campo 'altitude_media' (ajuste conforme necessário)
+        # Obter o índice do campo 'altitude_media'
         idx_altitude = linha_voo_layer.fields().indexFromName('altitude')
         
         linha_voo_layer.startEditing()

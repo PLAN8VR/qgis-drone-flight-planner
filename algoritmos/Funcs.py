@@ -168,6 +168,7 @@ def gerar_KML(camada, arquivo_kml, crs_wgs, feedback=None):
    
    return {}
    """
+   
 def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H):
     # Definir novos campos xcoord e ycoord com coordenadas geográficas
    pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])

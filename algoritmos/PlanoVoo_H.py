@@ -144,11 +144,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        # camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
+        camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
         
-        # QgsProject.instance().addMapLayer(camadaMDE)
+        #QgsProject.instance().addMapLayer(camadaMDE)
         
-        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
         # ================================================================================
         # ===== Ajuste da linha sobre um lado do polígono ================================
@@ -565,7 +565,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
         
-        # Point para PointZ
+        # Reprojetar a camada para WGS 84
         pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
         
         # Simbologia
