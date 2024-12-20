@@ -144,46 +144,101 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
+        # camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
         
-        #QgsProject.instance().addMapLayer(camadaMDE)
+        # QgsProject.instance().addMapLayer(camadaMDE)
         
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
         # ================================================================================
         # ===== Ajuste da linha sobre um lado do polígono ================================
         
         poligono_features = next(area_layer.getFeatures())
-        linha_features = next(primeira_linha.getFeatures())
-        
         poligono_geom = poligono_features.geometry()
+        
+        linha_features = next(primeira_linha.getFeatures())
         linha_geom = linha_features.geometry()
 
-        if poligono_geom.asMultiPolygon():
-            p = poligono_geom.asMultiPolygon()[0][0]
+        # Verificar se o polígono é multipart ou simples
+        if poligono_geom.isMultipart():
+            p = poligono_geom.asMultiPolygon()[0][0]  # Primeiro polígono
         else:
-            p = poligono_geom.asPolygon()[0]
-        
+            p = poligono_geom.asPolygon()[0]  # Polígono simples
+
+        # Criar lista de arestas (pares de vértices consecutivos)
         bordas = [(p[i], p[i + 1]) for i in range(len(p) - 1)]
 
-        # Encontrar a aresta mais próxima da linha
-        min_distancia = float('inf')
-        closest_borda = None
+        # Encontrar o ponto inicial da linha
+        if linha_geom.isMultipart():
+            linha_base = linha_geom.asMultiPolyline()[0]  # Primeira linha em multipart
+        else:
+            linha_base = linha_geom.asPolyline()  # Linha simples
+
+        # Calcular direção da linha base (comparar o ponto inicial e final)
+        x1_base, y1_base = linha_base[0]
+        x2_base, y2_base = linha_base[-1]
+
+        direcao_base = 'direita' if x2_base > x1_base or (x2_base == x1_base and y2_base > y1_base) else 'esquerda'
+
+        # Verificar se a linha base coincide com algum lado do polígono
+        linha_base_geom = QgsGeometry.fromPolylineXY(linha_base)
+        
+        tolerancia = 0.01
+        coincide_com_borda = False
 
         for v1, v2 in bordas:
             borda_geom = QgsGeometry.fromPolylineXY([v1, v2])
-            distancia = borda_geom.shortestLine(linha_geom).length()
-            
-            if distancia < min_distancia:
-                min_distancia = distancia
-                closest_borda = borda_geom
-        
-        # Atualizar a geometria na camada da linha
-        new_line_geom = QgsGeometry.fromPolylineXY(closest_borda.asPolyline())
-        
-        with edit(primeira_linha):
-            primeira_linha.changeGeometry(linha_features.id(), new_line_geom)
 
+            # Calcular a distância entre a linha base e a borda
+            distancia = borda_geom.shortestLine(linha_geom).length()
+    
+            # Verificar se a linha base coincide com a borda
+            if distancia <= tolerancia:
+                coincide_com_borda = True
+                break
+
+        if not coincide_com_borda:
+            # Encontrar a aresta mais próxima da linha
+            min_distancia = float('inf')
+            closest_borda = None
+
+            for v1, v2 in bordas:
+                borda_geom = QgsGeometry.fromPolylineXY([v1, v2])
+                distancia = borda_geom.shortestLine(linha_geom).length()
+                
+                if distancia < min_distancia:
+                    min_distancia = distancia
+                    closest_borda = borda_geom
+            
+            # Atualizar a posição da Linha Base
+            nova_linha_geom = QgsGeometry.fromPolylineXY(closest_borda.asPolyline())
+
+            with edit(primeira_linha):
+                primeira_linha.changeGeometry(linha_features.id(), nova_linha_geom)
+            
+            # Encontrar o ponto inicial da linha deslocada
+            linha_features = next(primeira_linha.getFeatures())
+            linha_geom = linha_features.geometry()
+            
+            if linha_geom.isMultipart():
+                linha_base = linha_geom.asMultiPolyline()[0]  # Primeira linha em multipart
+            else:
+                linha_base = linha_geom.asPolyline()  # Linha simples
+
+            # Calcular a direção da linha deslocada
+            x1, y1 = linha_base[0]
+            x2, y2 = linha_base[-1]
+
+            direcao_deslocada = 'direita' if x2 > x1 or (x2 == x1 and y2 > y1) else 'esquerda'
+            
+            # Inverter a linha deslocada se as direções forem diferentes
+            if direcao_base != direcao_deslocada:
+                # Inverter a linha deslocada
+                nova_linha_geom_invertida = QgsGeometry.fromPolylineXY(list(reversed(nova_linha_geom.asPolyline())))
+
+                with edit(primeira_linha):
+                    primeira_linha.changeGeometry(linha_features.id(), nova_linha_geom_invertida)
+        
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
         
@@ -197,7 +252,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         else:
             linha_vertices = linha_geom.asPolyline() 
 
-        # Criar a geometria da linha basee
+        # Criar a geometria da linha base
         linha_base = QgsGeometry.fromPolylineXY([QgsPointXY(p) for p in linha_vertices])
         
         # Encontrar os pontos extremos de cada lado da linha base (sempre terá 1 ou 2 pontos)
