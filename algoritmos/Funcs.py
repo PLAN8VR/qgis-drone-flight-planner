@@ -473,8 +473,6 @@ def verificar_plugins(lista_plugins, feedback=None):
     
     plugins_nao_instalados = [plugin for plugin in lista_plugins if plugin not in plugins_instalados]
     
-    resultados = {}
-    
     # Se houver plugins não instalados, levantar erro
     if plugins_nao_instalados:
        raise Exception(f"Os seguintes plugins não estão instalados: {', '.join(plugins_nao_instalados)}")
