@@ -84,7 +84,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                                fileFilter='CSV files (*.csv)'))
         
     def processAlgorithm(self, parameters, context, feedback):
-        teste = False # Quando True mostra camadas intermediárias
+        teste = True # Quando True mostra camadas intermediárias
         
         # =====Parâmetros de entrada para variáveis==============================
         area_layer = self.parameterAsVectorLayer(parameters, 'terreno', context)
@@ -144,9 +144,9 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        # camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
+        #camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
         
-        # QgsProject.instance().addMapLayer(camadaMDE)
+        #QgsProject.instance().addMapLayer(camadaMDE)
         
         camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
@@ -516,7 +516,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_voo_layer.updateExtents()
         
         # o final da Linha de Voo será feito no final da criação dos Pontos de Fotos,
-        # pois precisamos da altura mais alta dos Pontos para atribuir à Linha de Voo
+        # pois precisamos da altura média dos Pontos para atribuir à Linha de Voo
         
         # ===== Final Parcial Linha de Voo (precisa ainda colocar altitude média) =======
         # ===============================================================================
