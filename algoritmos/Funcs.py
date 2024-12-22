@@ -296,7 +296,18 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, tempo, delta, an
             mode_gimbal = 0
             angulo_gimbal = 0
             above_ground = 0 # Above Ground não habilitado
-         
+            
+         if tempo == 0:
+            x1 = 1          # TAKE_PHOTO
+            x2 = 0
+            x3 = -1
+            x4 = 0
+         else:
+            x1 = 0          # STAY n segundos
+            x2 = tempo*1000 
+            x3 = 1          # TAKE_PHOTO
+            x4 = 0
+            
          # Ler os dados da camada Pontos
          for f in pontos_reproj.getFeatures():
             # Extrair os valores dos campos da camada
@@ -319,10 +330,10 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, tempo, delta, an
                "rotationdir": 0,
                "gimbalmode": mode_gimbal,
                "gimbalpitchangle": angulo_gimbal,
-               "actiontype1": 0,     # STAY 2 segundos
-               "actionparam1": tempo*1000,
-               "actiontype2": 1,     # TAKE_PHOTO
-               "actionparam2": 0,
+               "actiontype1": x1,     
+               "actionparam1": x2,
+               "actiontype2": x3,
+               "actionparam2": x4,
                "actiontype3": -1, 
                "actionparam3": 0,
                "actiontype4": -1,
