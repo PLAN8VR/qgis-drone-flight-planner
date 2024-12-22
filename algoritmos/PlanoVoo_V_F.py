@@ -272,8 +272,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                 ponto_feature.setAttribute("linha", idx)  # Linha correspondente à altura
                 ponto_feature.setAttribute("latitude", ponto.y())
                 ponto_feature.setAttribute("longitude", ponto.x())
-                ponto_feature.setAttribute("altitude", a)
-                ponto_feature.setAttribute("alturavoo", a + float(altura))
+                ponto_feature.setAttribute("altitude", a + float(altura))
+                ponto_feature.setAttribute("alturavoo", float(altura))
                 ponto_feature.setGeometry(ponto_geom)
                 pontos_provider.addFeature(ponto_feature)
 
@@ -311,7 +311,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
-        campos.append(QgsField("alturavoo", QVariant.Double))
+        campos.append(QgsField("altitude", QVariant.Double))
         linhavoo_provider.addAttributes(campos)
         linha_voo_layer.updateFields()
         
@@ -332,8 +332,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
             # Processar as feições da linha atual
             for f in pontos_filtrados:
-                alturavoo = f['alturavoo']
-                soma_altitude += alturavoo
+                altitude = f['altitude']
+                soma_altitude += altitude
                 contador += 1
                 geometria_pontos.append(f.geometry().asPoint())
 
@@ -344,7 +344,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             nova_linha_voo = QgsFeature()
             nova_linha_voo.setFields(linha_voo_layer.fields())
             nova_linha_voo.setAttribute("id", linha_atual)
-            nova_linha_voo.setAttribute("alturavoo", media)
+            nova_linha_voo.setAttribute("altitude", media)
 
             # Criar a geometria da linha de voo
             nova_linha_voo.setGeometry(QgsGeometry.fromPolylineXY(geometria_pontos))
@@ -358,7 +358,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)  
         
         # Polygon para PolygonZ
-        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude")
         
         # Configurar simbologia de seta
         simbologiaLinhaVoo("VF", linha_voo_reproj)
