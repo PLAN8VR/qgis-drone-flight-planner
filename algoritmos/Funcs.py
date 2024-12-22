@@ -169,7 +169,7 @@ def gerar_KML(camada, arquivo_kml, crs_wgs, feedback=None):
    return {}
    """
    
-def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H):
+def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, tempo, delta, angulo, H):
     # Definir novos campos xcoord e ycoord com coordenadas geográficas
    pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
    pontos_reproj.updateFields()
@@ -320,7 +320,7 @@ def gerar_CSV(tipo_voo, pontos_reproj, arquivo_csv, velocidade, delta, angulo, H
                "gimbalmode": mode_gimbal,
                "gimbalpitchangle": angulo_gimbal,
                "actiontype1": 0,     # STAY 2 segundos
-               "actionparam1": 2000,
+               "actionparam1": tempo*1000,
                "actiontype2": 1,     # TAKE_PHOTO
                "actionparam2": 0,
                "actiontype3": -1, 
@@ -480,3 +480,8 @@ def verificar_plugins(lista_plugins, feedback=None):
        feedback.pushInfo(f"Todos os plugins estão instalados: {lista_plugins}")
     
     return
+ 
+def calculaDistancia_Linha_Ponto(linha_geom, ponto_geom):
+   distancia = linha_geom.distance(ponto_geom)
+
+   return distancia

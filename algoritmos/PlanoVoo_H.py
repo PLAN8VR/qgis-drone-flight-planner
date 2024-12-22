@@ -58,27 +58,28 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Terreno do Voo', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','Primeira Linha de Voo', types=[QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterNumber('h','Altura de Voo',
+        self.addParameter(QgsProcessingParameterNumber('H','Altura de Voo (m)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=50,defaultValue=100))
+        self.addParameter(QgsProcessingParameterNumber('dc','Drone: Tamanho do Sensor Horizontal (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=50,defaultValue=100))
-        self.addParameter(QgsProcessingParameterNumber('dc','Tamanho do Sensor Horizontal (m)',
+                                                       minValue=0,defaultValue=13.2e-3)) # igual p/o Phantom 4 Pro e Air 2S (5472 × 3648)
+        self.addParameter(QgsProcessingParameterNumber('dl','Drone: Tamanho do Sensor Vertical (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=13.2e-3)) # igual p/o Phantom 4 Pro (5472 × 3648)
-        self.addParameter(QgsProcessingParameterNumber('dl','Tamanho do Sensor Vertical (m)',
+                                                       minValue=0,defaultValue=8.8e-3)) # igual p/o Phantom 4 Pro e Air 2S (5472 × 3648)
+        self.addParameter(QgsProcessingParameterNumber('f','Drone: Distância Focal (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=8.8e-3)) # igual p/o Phantom 4 Pro
-        self.addParameter(QgsProcessingParameterNumber('f','Distância Focal (m)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=8.38e-3)) # Phantom 4 Pro é f = 9e-3
+                                                       minValue=0,defaultValue=8.38e-3)) # Para o Air 2S - Phantom 4 Pro é f = 9e-3
         self.addParameter(QgsProcessingParameterNumber('percL','Percentual de sobreposição Lateral (75% = 0.75)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=0.75))
         self.addParameter(QgsProcessingParameterNumber('percF','Percentual de sobreposição Frontal (85% = 0.85)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=0.85))
-        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=8))
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=8))
+        self.addParameter(QgsProcessingParameterNumber('tempo','Tempo para esperar para obter a Foto (s)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=0))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
@@ -94,33 +95,17 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
 
-        H = parameters['h']
+        H = parameters['H']
         dc = parameters['dc']
         dl = parameters['dl']
         f = parameters['f']
         percL = parameters['percL'] # Lateral
         percF = parameters['percF'] # Frontal
         velocidade = parameters['velocidade']
+        tempo = parameters['tempo']
         
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
-        
-        # =====Cálculo das Sobreposições=========================================
-        # Distância das linhas de voo paralelas - Espaçamento Lateral
-        tg_alfa_2 = dc / (2 * f)
-        D_lat = dc * H / f
-        SD_lat = percL * D_lat
-        h1 = SD_lat / (2 * tg_alfa_2)
-        deltaLat = SD_lat * (H / h1 - 1)
-
-        # Espaçamento Frontal entre as fotografias- Espaçamento Frontal
-        tg_alfa_2 = dl / (2 * f)
-        D_front = dl * H / f
-        SD_front = percF * D_front
-        h1 = SD_front / (2 * tg_alfa_2)
-        deltaFront = SD_front * (H / h1 - 1)
-        
-        feedback.pushInfo(f"Delta Lateral: {round(deltaLat,2)}, Delta Frontal: {round(deltaFront,2)}")
         
         # ===== Verificações =====================================================
         
@@ -136,6 +121,23 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_features = list(primeira_linha.getFeatures())
         if len(linha_features) != 1:
             raise ValueError("A Primeira Linha deve conter somente uma linha.")
+        
+         # =====Cálculo das Sobreposições=========================================
+        # Distância das linhas de voo paralelas - Espaçamento Lateral
+        tg_alfa_2 = dc / (2 * f)
+        D_lat = dc * H / f
+        SD_lat = percL * D_lat
+        h1 = SD_lat / (2 * tg_alfa_2)
+        deltaLat = SD_lat * (H / h1 - 1)
+
+        # Espaçamento Frontal entre as fotografias- Espaçamento Frontal
+        tg_alfa_2 = dl / (2 * f)
+        D_front = dl * H / f
+        SD_front = percF * D_front
+        h1 = SD_front / (2 * tg_alfa_2)
+        deltaFront = SD_front * (H / h1 - 1)
+        
+        feedback.pushInfo(f"Delta Lateral: {round(deltaLat,2)}, Delta Frontal: {round(deltaFront,2)}")
         
         # =====================================================================
         # ===== OpenTopography ================================================
@@ -698,7 +700,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, deltaFront, 360, H)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H)
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
 

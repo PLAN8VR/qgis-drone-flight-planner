@@ -66,9 +66,11 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=8))
         self.addParameter(QgsProcessingParameterNumber('deltaVertical','Espaçamento Vertical (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
-        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=3))
+        self.addParameter(QgsProcessingParameterNumber('tempo','Tempo para esperar para obter a Foto (s)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=2))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
@@ -88,6 +90,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         num_partes = parameters['num_partes'] # deltaH será calculado
         deltaV = parameters['deltaVertical']
         velocidade = parameters['velocidade']
+        tempo = parameters['tempo']
         
         apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
         
@@ -417,7 +420,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # =============L I T C H I==========================================================
         
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("VC", pontos_reproj, arquivo_csv, velocidade, deltaH, 0, H)
+            gerar_CSV("VC", pontos_reproj, arquivo_csv, velocidade, tempo, deltaH, 0, H)
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
 

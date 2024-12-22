@@ -36,10 +36,11 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
+from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto
 import processing
 import os
 import math
+import numpy as np
 import csv
 
 # pontos_provider Air 2S (5472 × 3648)
@@ -59,20 +60,33 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Linha Base de Voo', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterVectorLayer('objeto','Posição do Objeto a ser medido', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Altura do Objeto (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=15))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=15))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Altura Inicial (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=2))
-        self.addParameter(QgsProcessingParameterNumber('deltaHorizontal','Espaçamento Horizontal (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=5))
-        self.addParameter(QgsProcessingParameterNumber('deltaVertical','Espaçamento Vertical (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3)) 
-        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=2))
+        self.addParameter(QgsProcessingParameterNumber('dc','Drone: Tamanho do Sensor Horizontal (m)',
+                                                       type=QgsProcessingParameterNumber.Double,
+                                                       minValue=0,defaultValue=13.2e-3)) # igual p/o Phantom 4 Pro e Air 2S (5472 × 3648)
+        self.addParameter(QgsProcessingParameterNumber('dl','Drone: Tamanho do Sensor Vertical (m)',
+                                                       type=QgsProcessingParameterNumber.Double,
+                                                       minValue=0,defaultValue=8.8e-3)) # igual p/o Phantom 4 Pro e Air 2S (5472 × 3648)
+        self.addParameter(QgsProcessingParameterNumber('f','Drone: Distância Focal (m)',
+                                                       type=QgsProcessingParameterNumber.Double,
+                                                       minValue=0,defaultValue=8.38e-3)) # Para o Air 2S - Phantom 4 Pro é f = 9e-3
+        self.addParameter(QgsProcessingParameterNumber('percL','Percentual de sobreposição Lateral (75% = 0.75)',
+                                                       type=QgsProcessingParameterNumber.Double,
+                                                       minValue=0.60,defaultValue=0.75))
+        self.addParameter(QgsProcessingParameterNumber('percF','Percentual de sobreposição Frontal (85% = 0.85)',
+                                                       type=QgsProcessingParameterNumber.Double,
+                                                       minValue=0.60,defaultValue=0.85)) 
         self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=3))
+        self.addParameter(QgsProcessingParameterNumber('tempo','Tempo de espera para obter a Foto (s)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=2))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
-        
+    
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
         
@@ -84,9 +98,13 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         H = parameters['altura']
         h = parameters['alturaMin']
-        deltaH = parameters['deltaHorizontal']
-        deltaV = parameters['deltaVertical']
+        dc = parameters['dc']
+        dl = parameters['dl']
+        f = parameters['f']
+        percL = parameters['percL'] # Lateral
+        percF = parameters['percF'] # Frontal
         velocidade = parameters['velocidade']
+        tempo = parameters['tempo']
         
         apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
         
@@ -100,33 +118,50 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         verificar_plugins(plugins_verificar, feedback)
         
         # Verificar as Geometrias
-        linha = list(linha_base.getFeatures())
-        if len(linha) != 1:
+        if linha_base.featureCount() != 1:
             raise ValueError("Linha Base deve conter somente uma linha.")
         
-        if objeto.featureCount() != 1: # uma outra forma de checar
+        if objeto.featureCount() != 1:
             raise ValueError("Objeto deve conter somente um ponto.")
         
-        linha_base_geom = linha[0].geometry()  # Obter a geometria da linha base
+        linha = next(linha_base.getFeatures())
+        linha_base_geom = linha.geometry()  # Obter a geometria da linha base
         
-        # Verificar se delatH é mútiplo do comprimento da Linha Base
-        tolerancia = 0.01 # Tolerância de 1 metro
+        # Obtem a distância da Linha de Voo ao Objeto
+        p = list(objeto.getFeatures())
+        ponto_base_geom = p[0].geometry()
+        
+        dist_objeto = calculaDistancia_Linha_Ponto(linha_base_geom, ponto_base_geom)
+        
+        if dist_objeto <= 10:
+            raise ValueError(f"A distância horizontal ({round(dist_objeto, 2)}) está com 10 metros ou menos.")
+        
+        feedback.pushInfo(f"Distância Linha de Voo ao Objeto: {round(dist_objeto, 2)}     Altura do Objeto: {round(H, 2)}")
+        
+        # =====Cálculo das Sobreposições=========================================
+        # Distância das linhas de voo paralelas - Espaçamento Lateral
+        # H é dist_objeto
+        tg_alfa_2 = dc / (2 * f)
+        D_lat = dc * dist_objeto / f
+        SD_lat = percL * D_lat
+        h1 = SD_lat / (2 * tg_alfa_2)
+        deltaLat = SD_lat * (dist_objeto / h1 - 1)
 
-        comprimento = int(linha_base_geom.length()) # pegando a linha com comprimento inteiro
+        # Espaçamento Frontal entre as fotografias- Espaçamento Frontal
+        tg_alfa_2 = dl / (2 * f)
+        D_front = dl * dist_objeto / f
+        SD_front = percF * D_front
+        h1 = SD_front / (2 * tg_alfa_2)
+        deltaFront = SD_front * (dist_objeto / h1 - 1)
         
-        restante = comprimento % deltaH
-           
-        if restante > tolerancia:
-            raise ValueError(f"O espaçamento horizontal ({deltaH}) não é múltiplo do comprimento total da Linha Base ({comprimento}).")
+        feedback.pushInfo(f"Delta Horizontal: {round(deltaFront, 2)}     Delta Vertical: {round(deltaLat, 2)}")
         
-        # Determina as alturas das linhas de Voo
-        alturas = [i for i in range(h, H + h + 1, deltaV)]
+        # Obtem as alturas das linhas de Voo (range só para números inteiros)
+        alturas = [i for i in np.arange(h, H + h + 1, deltaLat)]
         
-        # Determina as distâncias nas linhas de Voo
-        comprimento = int(comprimento)
-        distancias = [i for i in range(0, comprimento + 1, deltaH)]
-        
-        feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {deltaH}, Delta Vertical: {deltaV}")
+        # Obtem as distâncias nas linhas de Voo
+        comprimento = linha_base_geom.length() # comprimento da linha
+        distancias = [i for i in np.arange(0, comprimento, deltaFront)]
         
         # =====================================================================
         # ===== OpenTopography ================================================
@@ -135,11 +170,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         
-        camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
+        #camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
         
         #QgsProject.instance().addMapLayer(camadaMDE)
         
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
         
         # =============================================================================================
         # ===== Criar Linhas de Voo ===================================================================
@@ -162,13 +197,13 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
             # Alternar o sentido da linha
             if linha_idx % 2 == 0:  # "Linha de vem" (segunda, quarta, ...)
-                distancias_atual = reversed(distancias)
+                dist_horiz = reversed(distancias)
             else:  # "Linha de vai" (primeira, terceira, ...)
-                distancias_atual = distancias
+                dist_horiz = distancias
 
-            for d in distancias_atual:
-                if d == comprimento:  # Ajuste para evitar problemas com interpolate
-                    d -= 0.01
+            for d in dist_horiz:
+                if d >= comprimento:
+                    d = comprimento
 
                 # Interpolar o ponto ao longo da linha base
                 ponto = linha_base_geom.interpolate(d).asPoint()
@@ -187,6 +222,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
                 # Adicionar o ponto com elevação (x, y, z)
                 verticesLinha.append(QgsPoint(ponto.x(), ponto.y(), altura + a))
+                
+                if d == comprimento:
+                    break
             
             # Criar a linha com os vértices
             if len(verticesLinha) > 1:
@@ -203,6 +241,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         linha_voo_layer.updateExtents()
         linha_voo_layer.commitChanges()   
         
+        QgsProject.instance().addMapLayer(linha_voo_layer)
+        
         # o final da Linha de Voo será feito no final da criação dos Pontos de Fotos,
         # pois precisamos da altura mais alta dos Pontos para atribuir à Linha de Voo
         
@@ -213,7 +253,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # =============================================================================================
         # ===== Criar a camada Pontos de Fotos ========================================================
         
-        # Criar uma camada Pontos com os deltaH sobre a linha Base e depois empilhar com os deltaH
+        # Criar uma camada Pontos com os deltaFront sobre a linha Base e depois empilhar com os deltaFront
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
         
@@ -276,11 +316,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         for linha_idx, altura in enumerate(alturas, start=1):  # Cada altura representa uma "linha"
             # Alternar o sentido
             if linha_idx % 2 == 0:  # "Linha de vem" (segunda, quarta, ...)
-                distancias_atual = reversed(distancias)
+                dist_horiz = reversed(distancias)
             else:  # "Linha de vai" (primeira, terceira, ...)
-                distancias_atual = distancias
+                dist_horiz = distancias
             
-            for d in distancias_atual:
+            for d in dist_horiz:
                 if d == comprimento:  # Ajuste para evitar problemas com interpolate
                     d -= 0.01
 
@@ -417,7 +457,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # =============L I T C H I==========================================================
         
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("VF", pontos_reproj, arquivo_csv, velocidade, deltaH, angulo_perpendicular, H)
+            gerar_CSV("VF", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, angulo_perpendicular, H)
         else:
             feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
 
