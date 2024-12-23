@@ -48,16 +48,13 @@ class PlanoVooProvider(QgsProcessingProvider):
         self.addAlgorithm(PlanoVoo_V_C())
 
     def id(self):
-        return 'PlanoVoo'
+        return 'GeoFlightPlanner'
 
     def name(self):
-        return self.tr('PlanoVoo')
+        return self.tr('GeoFlight Planner')
 
     def icon(self):
         return QIcon(os.path.dirname(__file__) + '/images/PlanoVoo.png')
 
     def longName(self):
         return self.name()
-
-
-
