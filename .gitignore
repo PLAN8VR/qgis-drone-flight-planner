@@ -5,3 +5,9 @@ __pycache__/PlanoVoo.cpython-312.pyc
 __pycache__/PlanoVoo_provider.cpython-312.pyc
 algoritmos/__pycache__/__init__.cpython-312.pyc
 *.pyc
+*.pyc
+__pycache__/__init__.cpython-312.pyc
+__pycache__/PlanoVoo.cpython-312.pyc
+__pycache__/PlanoVoo_provider.cpython-312.pyc
+algoritmos/__pycache__/__init__.cpython-312.pyc
+algoritmos/__pycache__/Funcs.cpython-312.pyc
