@@ -25,7 +25,7 @@
 __author__ = 'Prof Cazaroli e Leandro França'
 __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
-__revision__ = '$Format:%H$'
+
 
 import os
 import sys
@@ -46,7 +46,7 @@ class PlanoVooPlugin(object):
         self.provider = None
 
     def initProcessing(self):
-        """Init Processing provider for QGIS >= 3.8."""
+
         self.provider = PlanoVooProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
 
