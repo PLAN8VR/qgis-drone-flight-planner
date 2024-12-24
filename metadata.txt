@@ -3,7 +3,7 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=PlanoVoo
+name=GeoFlight Planner
 qgisMinimumVersion=3.0
 description=Plano de Voo para Drones
 version=1.0
@@ -23,11 +23,11 @@ hasProcessingProvider=yes
 # changelog=1.0 - Initial version
 
 # Tags are comma separated with spaces allowed
-tags=drones, topografia, georreferenciamento, car, rural, levantamento, georural, brazil, GeoOne
+tags=drones, dji, litchi, fly, path, csv, kmz, kml, brazil, GeoOne
 
 homepage=https://github.com/OpenGeoOne/PlanoVoo/wiki
 category=Topography
-icon=images/PlanoVoo.png
+icon=images/GeoFlightPlanner.png
 # experimental flag
 experimental=False
 
@@ -44,4 +44,3 @@ Category of the plugin: Raster, Vector, Drone or Topography
 
 # If the plugin can run on QGIS Server.
 server=False
-
