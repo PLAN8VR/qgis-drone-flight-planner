@@ -92,7 +92,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
 
-        apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
+        apikey = parameters['api_key']
 
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
@@ -465,9 +465,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             5. Número de partes que se quer dividir o Círculo (Determina o espaçamento Horizontal - Mínimo de 4 partes)
             6. Espaçamento Vertical (m)
             7. Velocidade do Voo (m/s)
-            8. Chave API do Open Topography
+            8. Tempo de espera para tirar a Foto (s)
+            9. Chave API do Open Topography
             9. Caminho para gravar os KML
-            10 Arquivo para gravar o CSV para o Litchi
+            11.Arquivo para gravar o CSV para o Litchi
             """
     figura = 'images/VooVC1.jpg'
 
@@ -477,7 +478,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                       </div>
                       <div align="right">
                       <p align="right">
-                      <b>Autor: Prof Cazaroli     -     Leandro França</b>
+                      <b>Autores: Prof Cazaroli     -     Leandro França</b>
                       </p>GeoOne</div>
                     </div>'''
         return self.tr(self.texto) + corpo

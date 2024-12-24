@@ -85,7 +85,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                                fileFilter='CSV files (*.csv)'))
 
     def processAlgorithm(self, parameters, context, feedback):
-        teste = True # Quando True mostra camadas intermediárias
+        teste = False # Quando True mostra camadas intermediárias
 
         # =====Parâmetros de entrada para variáveis==============================
         area_layer = self.parameterAsVectorLayer(parameters, 'terreno', context)
@@ -93,7 +93,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
 
-        apikey = parameters['api_key'] # 'd0fd2bf40aa8a6225e8cb6a4a1a5faf7' # Open Topgragraphy DEM Downloader
+        apikey = parameters['api_key']
 
         H = parameters['H']
         dc = parameters['dc']
@@ -745,9 +745,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             3. Dados do Drone
             4. Altura do Voo (m)
             5. Velocidade do Voo (m/s)
-            6. Chave API do Open Topography
-            7. Caminho para gravar os KML
-            8. Arquivo para gravar o CSV para o Litchi
+            6. Tempo de espera para tirar a Foto (s)
+            7. Chave API do Open Topography
+            8. Caminho para gravar os KML
+            9. Arquivo para gravar o CSV para o Litchi
             """
 
     figura2 = 'images/VooH2.jpg'
@@ -758,7 +759,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                       </div>
                       <div align="right">
                       <p align="right">
-                      <b>Autor: Prof Cazaroli     -     Leandro França</b>
+                      <b>Autores: Prof Cazaroli     -     Leandro França</b>
                       </p>GeoOne</div>
                     </div>'''
         return self.tr(self.texto) + corpo
