@@ -26,7 +26,7 @@ hasProcessingProvider=yes
 tags=drones, dji, litchi, fly, path, csv, kmz, kml, brazil, GeoOne
 
 homepage=https://github.com/OpenGeoOne/PlanoVoo/wiki
-category=Topography
+category=Drone
 icon=images/GeoFlightPlanner.png
 # experimental flag
 experimental=False
