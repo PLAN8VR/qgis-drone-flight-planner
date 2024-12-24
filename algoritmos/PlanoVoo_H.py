@@ -732,7 +732,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         return self.tr('Flight Plan,Measure,Topography,Plano voo,Plano de voo,voo,drone').split(',')
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
     texto = """Este algoritmo calcula a sobreposição lateral e frontal para um Voo de Drone,
             fornecendo uma camada da 'Linha do Voo' e uma camada dos 'Pontos' para Fotos.
