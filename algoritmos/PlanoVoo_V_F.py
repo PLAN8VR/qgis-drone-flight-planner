@@ -419,7 +419,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         return self.tr('Flight Plan,Measure,Topography,Fachada,Vertical,Front,View').split(',')
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/PlanoVoo.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Vertical.png'))
 
     texto = """Este algoritmo calcula um 'Voo para Fachada' gerando a 'Linha do Voo' e uma camada de 'Pontos' para Fotos.
             Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth.
