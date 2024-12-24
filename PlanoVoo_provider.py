@@ -54,7 +54,7 @@ class PlanoVooProvider(QgsProcessingProvider):
         return self.tr('GeoFlight Planner')
 
     def icon(self):
-        return QIcon(os.path.dirname(__file__) + '/images/PlanoVoo.png')
+        return QIcon(os.path.dirname(__file__) + '/images/FlightPlanner.png')
 
     def longName(self):
         return self.name()
