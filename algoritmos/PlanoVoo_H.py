@@ -27,11 +27,7 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsCoordinateReferenceSystem
-from qgis.core import QgsProcessingParameterFolderDestination, QgsProcessingParameterFileDestination
-from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
-from qgis.core import QgsPalLayerSettings, QgsCoordinateTransform, QgsSpatialIndex, edit
-from qgis.core import QgsVectorLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
+from qgis.core import *
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
@@ -46,42 +42,38 @@ import csv
 
 class PlanoVoo_H(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        diretorio = QgsProject.instance().homePath()
-
-        dirArq = os.path.join(diretorio, 'api_key.txt') # Caminho do arquivo 'ali_key.txt' no mesmo diretório do projeto
-
-        if os.path.exists(dirArq): # Verificar se o arquivo existe
-            with open(dirArq, 'r') as file:    # Ler o conteúdo do arquivo (a chave da API)
-                api_key = file.read().strip()  # Remover espaços extras no início e fim
-        else:
+        my_settings = QgsSettings()
+        try:
+            api_key = my_settings.value("OpenTopographyDEMDownloader/ot_api_key", "")
+        except:
             api_key = ''
 
-        self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Terreno do Voo', types=[QgsProcessing.TypeVectorPolygon]))
-        self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','Primeira Linha de Voo', types=[QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterNumber('H','Altura de Voo (m)',
+        self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
+        self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
+        self.addParameter(QgsProcessingParameterNumber('H','Flight Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=50,defaultValue=100))
-        self.addParameter(QgsProcessingParameterNumber('dc','Drone: Tamanho do Sensor Horizontal (m)',
+        self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (m)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=13.2e-3)) # igual p/o Phantom 4 Pro e Air 2S (5472 × 3648)
-        self.addParameter(QgsProcessingParameterNumber('dl','Drone: Tamanho do Sensor Vertical (m)',
+        self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Vertical Size (m)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=8.8e-3)) # igual p/o Phantom 4 Pro e Air 2S (5472 × 3648)
-        self.addParameter(QgsProcessingParameterNumber('f','Drone: Distância Focal (m)',
+        self.addParameter(QgsProcessingParameterNumber('f','Sensor: Focal Length (m)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=8.38e-3)) # Para o Air 2S - Phantom 4 Pro é f = 9e-3
-        self.addParameter(QgsProcessingParameterNumber('percL','Percentual de sobreposição Lateral (75% = 0.75)',
+        self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (75% = 0.75)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=0.75))
-        self.addParameter(QgsProcessingParameterNumber('percF','Percentual de sobreposição Frontal (85% = 0.85)',
+        self.addParameter(QgsProcessingParameterNumber('percF','Forward Overlap (85% = 0.85)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=0.85))
-        self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
-        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
+        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin',defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=8))
-        self.addParameter(QgsProcessingParameterNumber('tempo','Tempo para esperar para obter a Foto (s)',
+        self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=0))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)'))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -749,6 +741,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             7. Chave API do Open Topography
             8. Caminho para gravar os KML
             9. Arquivo para gravar o CSV para o Litchi
+            Artigo: https://geoone.com.br/plano-de-voo-para-drone-com-python/
             """
 
     figura2 = 'images/VooH2.jpg'
