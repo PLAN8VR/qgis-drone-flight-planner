@@ -27,11 +27,7 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessing, QgsProject, QgsProcessingAlgorithm, QgsCoordinateReferenceSystem
-from qgis.core import QgsProcessingParameterFolderDestination, QgsProcessingParameterFileDestination
-from qgis.core import QgsProcessingParameterVectorLayer, QgsProcessingParameterNumber, QgsProcessingParameterString
-from qgis.core import QgsPalLayerSettings, QgsCoordinateTransform
-from qgis.core import QgsVectorLayer, QgsPoint, QgsPointXY, QgsField, QgsFields, QgsFeature, QgsGeometry
+from qgis.core import *
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
@@ -46,33 +42,29 @@ import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        diretorio = QgsProject.instance().homePath()
-
-        dirArq = os.path.join(diretorio, 'api_key.txt') # Caminho do arquivo 'ali_key.txt' no mesmo diretório do projeto
-
-        if os.path.exists(dirArq): # Verificar se o arquivo existe
-            with open(dirArq, 'r') as file:    # Ler o conteúdo do arquivo (a chave da API)
-                api_key = file.read().strip()  # Remover espaços extras no início e fim
-        else:
+        my_settings = QgsSettings()
+        try:
+            api_key = my_settings.value("OpenTopographyDEMDownloader/ot_api_key", "")
+        except:
             api_key = ''
 
-        self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Círculo Base de Voo', types=[QgsProcessing.TypeVectorPolygon]))
-        self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Posição do Início do Voo', types=[QgsProcessing.TypeVectorPoint]))
-        self.addParameter(QgsProcessingParameterNumber('altura','Altura do Objeto (m)',
+        self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight base Circle', types=[QgsProcessing.TypeVectorPolygon]))
+        self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Start Point', types=[QgsProcessing.TypeVectorPoint]))
+        self.addParameter(QgsProcessingParameterNumber('altura','Object Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=15))
-        self.addParameter(QgsProcessingParameterNumber('alturaMin','Altura Inicial (m)',
+        self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=2))
-        self.addParameter(QgsProcessingParameterNumber('num_partes','Espaçamento Horizontal em PARTES do Círculo Base',
+        self.addParameter(QgsProcessingParameterNumber('num_partes','Horizontal Division into PARTS of Base Circle',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=8))
-        self.addParameter(QgsProcessingParameterNumber('deltaVertical','Espaçamento Vertical (m)',
+        self.addParameter(QgsProcessingParameterNumber('deltaVertical','Vertical Spacing (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
-        self.addParameter(QgsProcessingParameterString('api_key', 'Chave API - OpenTopography',defaultValue=api_key))
-        self.addParameter(QgsProcessingParameterNumber('velocidade','Velocidade do Voo (m/s)',
+        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin',defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=3))
-        self.addParameter(QgsProcessingParameterNumber('tempo','Tempo para esperar para obter a Foto (s)',
+        self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=2))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Pasta de Saída para o KML (Google Earth)'))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Arquivo de Saída CSV (Litchi)',
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)'))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)',
                                                                fileFilter='CSV files (*.csv)'))
 
     def processAlgorithm(self, parameters, context, feedback):
