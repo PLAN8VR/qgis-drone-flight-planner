@@ -21,9 +21,8 @@
         <li><a href="#vertical-flight">Vertical Flight</a></li>
         <li>
           <a href="#circular-vertical-flight">Circular Vertical Flight</a></li>
-        <ul>
           <a href="#facade-vertical-flight">Facade Vertical Flight</a></li>
-        </ul>
+      </ul>
     <li>
       <a href="#collaborators">Collaborators</a>
     </li>
