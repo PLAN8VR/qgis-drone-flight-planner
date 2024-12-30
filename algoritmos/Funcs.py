@@ -38,7 +38,7 @@ import csv
 
 def obter_DEM(flight_type, layer, transformador, apikey, feedback=None, bbox_area_min=2.5):
    # Obter a Altitude dos pontos das Fotos com OpenTopography
-   feedback.pushInfo("Obtendo as Altitudes com o OpenTopography")
+   feedback.pushInfo("Getting Altitudes with OpenTopography")
    
    # Obter as coordenadas extremas da área (em WGS 84)
    pontoN = float('-inf')  # coordenada máxima (Norte) / inf de inifito
@@ -116,7 +116,7 @@ def obter_DEM(flight_type, layer, transformador, apikey, feedback=None, bbox_are
    output_path = result['OUTPUT']
    camadaMDE = QgsRasterLayer(output_path, "DEM")
 
-   feedback.pushInfo("DEM processado com sucesso!")
+   feedback.pushInfo("DEM successfully processed!")
    
    return camadaMDE
  
@@ -143,7 +143,7 @@ def gerar_KML(layer, arquivo_kml, crs_wgs, feedback=None):
          'TimeEndField': ''
    }, feedback=feedback)
    
-   feedback.pushInfo(f"KML exportado com sucesso para: {arquivo_kml}")
+   feedback.pushInfo(f"KML successfully exported to: {arquivo_kml}")
    
    return result
 
@@ -486,9 +486,9 @@ def verificar_plugins(plugins_list, feedback=None):
     
     # Se houver plugins não instalados, levantar erro
     if plugins_not_installed:
-       raise Exception(f"Os seguintes plugins não estão instalados: {', '.join(plugins_not_installed)}")
+       raise Exception(f"The following plugins are not installed: {', '.join(plugins_not_installed)}")
     else:
-       feedback.pushInfo(f"Todos os plugins estão instalados: {plugins_list}")
+       feedback.pushInfo(f"All plugins are installed: {plugins_list}")
     
     return
  

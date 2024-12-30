@@ -111,10 +111,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # Verificar as Geometrias
         if linha_base.featureCount() != 1:
-            raise ValueError("Linha Base deve conter somente uma linha.")
+            raise ValueError("Flight Base Line must contain only one line.")
 
         if objeto.featureCount() != 1:
-            raise ValueError("Objeto deve conter somente um ponto.")
+            raise ValueError("Position of the Facade must contain only one point.")
 
         linha = next(linha_base.getFeatures())
         linha_base_geom = linha.geometry()
@@ -126,9 +126,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         dist_objeto = calculaDistancia_Linha_Ponto(linha_base_geom, ponto_base_geom)
 
         if dist_objeto <= 10:
-            raise ValueError(f"A distância horizontal ({round(dist_objeto, 2)}) está com 10 metros ou menos.")
+            raise ValueError(f"Horizontal distance ({round(dist_objeto, 2)}) is 10 meters or less.")
 
-        feedback.pushInfo(f"Distância Linha de Voo ao Objeto: {round(dist_objeto, 2)}     Altura do Objeto: {round(H, 2)}")
+        feedback.pushInfo(f"Flight Line to Facade Distance: {round(dist_objeto, 2)}     Facade Height: {round(H, 2)}")
 
         # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
@@ -146,7 +146,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         h1 = SD_front / (2 * tg_alfa_2)
         deltaFront = SD_front * (dist_objeto / h1 - 1)
 
-        feedback.pushInfo(f"Delta Horizontal: {round(deltaFront, 2)}     Delta Vertical: {round(deltaLat, 2)}")
+        feedback.pushInfo(f"Horizontal Spacing: {round(deltaFront, 2)}     Vertical Spacing: {round(deltaLat, 2)}")
 
         # Obtem as alturas das linhas de Voo (range só para números inteiros)
         alturas = [i for i in np.arange(h, H + h + 1, deltaLat)]
@@ -155,7 +155,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         comprimento_linha_base = linha_base_geom.length() # comprimento da linha
         distancias = [i for i in np.arange(0, comprimento_linha_base, deltaFront)]
 
-        feedback.pushInfo(f"Comprimento Linha Base: {comprimento_linha_base} \n Alturas: {alturas}     Distancias: {distancias}")
+        feedback.pushInfo(f"Flight baseline Length: {comprimento_linha_base} \n Heights: {alturas}     Distances: {distancias}")
 
         # =====================================================================
         # ===== OpenTopography ================================================
@@ -164,11 +164,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
 
-        #camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
+        camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
 
         #QgsProject.instance().addMapLayer(camadaMDE)
 
-        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
         # =============================================================================================
         # ===== Criar a camada Pontos de Fotos ========================================================
@@ -362,7 +362,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # =====================================================================
 
         feedback.pushInfo("")
-        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
+        feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
 
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
 
@@ -374,18 +374,18 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
             gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
-            feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
+            feedback.pushInfo("KML path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("VF", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, angulo_perpendicular, H)
         else:
-            feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
+            feedback.pushInfo("CSV path not specified. Export step skipped.")
 
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
-        feedback.pushInfo("Plano de Voo Vertical de Fachada executado com sucesso.")
+        feedback.pushInfo("Facade Vertical Flight Plan successfully executed.")
 
         return {}
 

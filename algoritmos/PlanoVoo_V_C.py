@@ -98,10 +98,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Verificar as Geometrias
         circulo = list(circulo_base.getFeatures())
         if len(circulo) != 1:
-            raise ValueError("Cículo Base deve conter somente um círculo.")
+            raise ValueError("Flight base Circle must contain only one circle.")
 
         if ponto_inicial.featureCount() != 1: # uma outra forma de checar
-            raise ValueError("Ponto Inicial deve conter somente um ponto.")
+            raise ValueError("Start Point must contain only on point.")
 
         # ===== Cálculos Iniciais ================================================
 
@@ -120,7 +120,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Determina as alturas das linhas de Voo
         alturas = [i for i in range(h, H + h + 1, deltaV)]
 
-        feedback.pushInfo(f"Altura: {H}, Delta Horizontal: {round(deltaH,2)}, Delta Vertical: {deltaV}")
+        feedback.pushInfo(f"Height: {H}, Horizontal Spacing: {round(deltaH,2)}, Vertical Spacing: {deltaV}")
 
         # =====================================================================
         # ===== OpenTopography ================================================
@@ -272,9 +272,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         else:
             vertices_reordenados = vertices  # Caso não encontre, mantém a lista original
 
-        # for v in vertices_reordenados:
-        #     feedback.pushInfo(f"Vértice {v}")
-
         # Criar os pontos para as outras linhas de Voo
         for idx, altura in enumerate(alturas, start=1):  # Cada altura corresponde a uma linha de voo
             for v in vertices_reordenados:
@@ -395,7 +392,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # =====================================================================
 
         feedback.pushInfo("")
-        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
+        feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
 
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
 
@@ -407,18 +404,18 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
             gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
-            feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
+            feedback.pushInfo("KML path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("VC", pontos_reproj, arquivo_csv, velocidade, tempo, deltaH, 0, H)
         else:
-            feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
+            feedback.pushInfo("CSV path not specified. Export step skipped.")
 
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
-        feedback.pushInfo("Plano de Voo Vertical Circular executado com sucesso.")
+        feedback.pushInfo("Circular Vertical Flight Plan successfully executed.")
 
         return {}
 

@@ -108,11 +108,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Verificar se o polígono e a primeira_linha contém exatamente uma feature
         poligono_features = list(area_layer.getFeatures()) # dados do Terreno
         if len(poligono_features) != 1:
-            raise ValueError("A Área deve conter somente um polígono.")
+            raise ValueError("The Area must contain only one polygon.")
 
         linha_features = list(primeira_linha.getFeatures())
         if len(linha_features) != 1:
-            raise ValueError("A Primeira Linha deve conter somente uma linha.")
+            raise ValueError("The First Line must contain only one line.")
 
          # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
@@ -129,7 +129,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         h1 = SD_front / (2 * tg_alfa_2)
         deltaFront = SD_front * (H / h1 - 1)
 
-        feedback.pushInfo(f"Delta Lateral: {round(deltaLat,2)}, Delta Frontal: {round(deltaFront,2)}")
+        feedback.pushInfo(f"Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
 
         # =====================================================================
         # ===== OpenTopography ================================================
@@ -138,11 +138,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
 
-        #camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
+        camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
 
         #QgsProject.instance().addMapLayer(camadaMDE)
 
-        camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
         # ================================================================================
         # ===== Ajuste da linha sobre um lado do polígono ================================
@@ -675,7 +675,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # =====================================================================
 
         feedback.pushInfo("")
-        feedback.pushInfo("Linha de Voo e Pontos para Fotos concluídos com sucesso!")
+        feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
 
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
 
@@ -687,18 +687,18 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
             gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
-            feedback.pushInfo("Caminho KML não especificado. Etapa de exportação ignorada.")
+            feedback.pushInfo("KML path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H)
         else:
-            feedback.pushInfo("Caminho CSV não especificado. Etapa de exportação ignorada.")
+            feedback.pushInfo("CSV path not specified. Export step skipped.")
 
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
-        feedback.pushInfo("Plano de Voo Horizontal executado com sucesso.")
+        feedback.pushInfo("Horizontal Flight Plan successfully executed.")
 
         return {}
 

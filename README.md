@@ -1,63 +1,72 @@
 <!-- PROJECT LOGO -->
 <p align="center">
-    <img src="https://github.com/OpenGeoOne/GeoCAR/blob/main/images/geocar_logo.jpg" alt="Logo" width="90" height="75">
-  <h3 align="center">GeoCAR</h3>
+    <img src="https://github.com/OpenGeoOne/qgis-drone-flight-planner/tree/main/images/FlightPlanner.png" alt="Logo" width="90" height="75">
+  <h3 align="center">Flight Planner</h3>
   <p align="center">
-    <b><i>Plugin do QGIS para o Cadastro Ambiental Rural conforme normas técnicas do SiCAR Federal.</i><b>
+    <b><i>Plugin for QGIS Drone Flight Planner.</i><b>
     <br />
   </p>
 </p>
 
 <!-- TABLE OF CONTENTS -->
 <details open="open">
-  <summary>Conteúdo</summary>
+  <summary>Contents</summary>
   <ol>
       <li>
-      <a href="#ferramentas-do-plugin">Ferramentas do Plugin</a>
+      <a href="#plugin-tools">Plugin Tools</a>
       <ul>
-        <li><a href="#consultar-base-do-car">Consultar base do CAR</a></li>
+        <li><a href="#geoFlight-planner">GeoFlight Planner</a></li>
       </ul>
       <ul>
-        <li><a href="#prepara-arquivos-zip-para-o-car">Prepara Arquivos ZIP para o CAR</a></li>
+        <li><a href="#horizontal-flight">Horizontal Flight</a></li>
       </ul>
       </li>
     <li>
-      <a href="#como-contribuir-aprendendo-mais">Como contribuir aprendendo mais</a>
+      <a href="#circular-vertical-flight">Circular Vertical Flight</a>
     </li>
     <li>
-      <a href="#colaboradores">Colaboradores</a>
+    <li>
+      <a href="#facade-vertical-flight">Facade Vertical Flight</a>
     </li>
     <li>
-      <a href="#autores">Autores</a>
+      <a href="#collaborators">Collaborators</a>
+    </li>
+    <li>
+      <a href="#authors">Authors</a>
     </li>
   </ol>
 </details>
 
 
-## Ferramentas do Plugin
+## Plugin Tools
 
 
-### Consultar base do CAR
-Conecta a base de dados do CAR no servidor da Geoone. É possível baixar dados dos imóveis certificados no formato SHP, obtendo-se mais informações complementares.
+### Horizontal Flight
+This tool creates a Horizontal Flight Plan
 <div align="center">  
 </div>
 
-### Prepara Arquivos ZIP para o CAR
-Esta ferramenta cria os arquivos Zip das camadas com feições do QGIS para serem depois importadas pelo App do CAR.
+### Circular Vertical Flight
+This tool creates a Circular Vertical Flight Plan
 <div align="center">    
 </div>
 
-## Como contribuir aprendendo mais
+### Facade Vertical Flight
+This tool creates a Facade Vertical Flight Plan
+<div align="center">    
+</div>
+
+## How to contribute by learning more
 <div style="text-align: center;"><a
  href="https://portal.geoone.com.br/m/courses"><img
- style="border: 2px solid ;" alt="GeoCAR no QGIS"
+ style="border: 2px solid ;" alt="GeoFlight Planner"
  title="CURSO NA GEOONE"
  src="https://files.curseduca.com/04a4f1db-3c21-47da-8b58-d1d3ceed8d90/facefe689e70437ed8f9f108228e80f64e046bbd.webp"></a>
 <br>
 </div>
 
 
-## Colaboradores
+## Colaborators
 <div style="text-align: center;">
 <tbody>
         <tr>
