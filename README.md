@@ -19,7 +19,6 @@
       </ul>
       <ul>
         <li><a href="#vertical-flight">Vertical Flight</a></li>
-      </ul>
         <li>
           <a href="#circular-vertical-flight">Circular Vertical Flight</a></li>
         <ul>
