@@ -1,6 +1,6 @@
 <!-- PROJECT LOGO -->
 <p align="center">
-    <img src="https://github.com/OpenGeoOne/qgis-drone-flight-planner/tree/main/images/FlightPlanner.png" alt="Logo" width="90" height="75">
+    <img src="https://github.com/OpenGeoOne/qgis-drone-flight-planner/blob/main/images/GeoFlightPlanner.png" alt="Logo" width="90" height="75">
   <h3 align="center">Flight Planner</h3>
   <p align="center">
     <b><i>Plugin for QGIS Drone Flight Planner.</i><b>
@@ -13,21 +13,18 @@
   <summary>Contents</summary>
   <ol>
       <li>
-      <a href="#plugin-tools">Plugin Tools</a>
-      <ul>
-        <li><a href="#geoFlight-planner">GeoFlight Planner</a></li>
-      </ul>
+      <a href="gGeoflightplanner">GeoFlightPlanner</a>
       <ul>
         <li><a href="#horizontal-flight">Horizontal Flight</a></li>
       </ul>
-      </li>
-    <li>
-      <a href="#circular-vertical-flight">Circular Vertical Flight</a>
-    </li>
-    <li>
-    <li>
-      <a href="#facade-vertical-flight">Facade Vertical Flight</a>
-    </li>
+      <ul>
+        <li><a href="#vertical-flight">Vertical Flight</a></li>
+      </ul>
+        <li>
+          <a href="#circular-vertical-flight">Circular Vertical Flight</a></li>
+        <ul>
+          <a href="#facade-vertical-flight">Facade Vertical Flight</a></li>
+        </ul>
     <li>
       <a href="#collaborators">Collaborators</a>
     </li>
