@@ -241,7 +241,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         vertices = [QgsPointXY(v) for v in poligono_geom.vertices()] # Extrair os vértices do polígono
 
-        if linha_geom.asMultiPolyline():
+        if linha_geom.isMultipart():
             linha_vertices = linha_geom.asMultiPolyline()[0]  # Se a linha for do tipo poly
         else:
             linha_vertices = linha_geom.asPolyline()
@@ -681,10 +681,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
         if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-            arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
+            arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
             gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
 
-            arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
+            arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
             gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
             feedback.pushInfo("KML path not specified. Export step skipped.")
