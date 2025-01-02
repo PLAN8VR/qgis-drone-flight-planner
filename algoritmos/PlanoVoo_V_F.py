@@ -368,10 +368,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
         if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-            arquivo_kml = caminho_kml + r"\Pontos Fotos.kml"
+            arquivo_kml = os.path.join(caminho_kml, r"\Pontos Fotos.kml")
             gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
 
-            arquivo_kml = caminho_kml + r"\Linha de Voo.kml"
+            arquivo_kml = os.path.join(caminho_kml, r"\Linha de Voo.kml")
             gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
             feedback.pushInfo("KML path not specified. Export step skipped.")
@@ -415,19 +415,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
     texto = """Este algoritmo calcula um 'Voo para Fachada' gerando a 'Linha do Voo' e uma camada de 'Pontos' para Fotos.
             Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth.
-            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML
-            Dados:
-            1. Linha Base de Voo
-            2. Um Ponto para indicar o Ponto Extremo da Fachada
-            3. Altura do Objeto (m)
-            4. Altura Inicial do Voo (m)
-            5. Espaçamento Horizontal (m)
-            6. Espaçamento Vertical (m)
-            7. Velocidade do Voo (m/s)
-            8. Tempo de espera para tirar a Foto (s)
-            9. Chave API do Open Topography
-            10. Caminho para gravar os KML
-            11. Arquivo para gravar o CSV para o Litchi
+            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML.
             """
     figura = 'images/VooVF1.jpg'
 
