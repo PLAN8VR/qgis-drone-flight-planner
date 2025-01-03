@@ -92,32 +92,32 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         percF = parameters['percF'] # Frontal
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-        
+
         apikey = parameters['api_key']
 
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
 
         # ===== Verificações =====================================================
-        
+
         # Verificar o SRC das Camadas
         crs = area_layer.crs()
         crsL = primeira_linha.crs() # não usamos o crsL, apenas para verificar a camada
-        
+
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Area' is already in CRS UTM.")
         else:
             crs = verificarCRS(area_layer, feedback)
             nome = area_layer.name() + "_reproject"
             area_layer = QgsProject.instance().mapLayersByName(nome)[0]
-       
+
         if "UTM" in crsL.description().upper():
             feedback.pushInfo(f"The layer 'First line - direction flight' is already in CRS UTM.")
         else:
             verificarCRS(primeira_linha, feedback)
             nome = primeira_linha.name() + "_reproject"
             primeira_linha = QgsProject.instance().mapLayersByName(nome)[0]
-            
+
         # Verificar se os plugins estão instalados
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]
         verificar_plugins(plugins_verificar, feedback)
@@ -132,10 +132,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_geom = linha_features.geometry()
         if linha_geom.isMultipart():
             linha_geom = linha_geom.asGeometryCollection()[0]
-        
+
         if area_layer.featureCount() != 1:
             raise ValueError("The Area must contain only one polygon.")
-        
+
         if primeira_linha.featureCount() != 1:
             raise ValueError("The First Line must contain only one line.")
 
@@ -175,17 +175,17 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Criar lista de arestas (pares de vértices consecutivos)
         # Verificar se o polígono é multipart ou simples
         if poligono_geom.isMultipart():
-            p = poligono_geom.asMultiPolygon()[0][0]  
+            p = poligono_geom.asMultiPolygon()[0][0]
         else:
             p = poligono_geom.asPolygon()[0]
-            
+
         bordas = [(p[i], p[i + 1]) for i in range(len(p) - 1)]
 
         if linha_geom.isMultipart():
             linha_base = linha_geom.asMultiPolyline()[0]  # Primeira linha em multipart
         else:
             linha_base = linha_geom.asPolyline()  # Linha simples
-        
+
         # Calcular direção da linha base (comparar o ponto inicial e final)
         x1_base, y1_base = linha_base[0]
         x2_base, y2_base = linha_base[-1]
@@ -194,7 +194,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         # Verificar se a linha base coincide com algum lado do polígono
         linha_base_geom = QgsGeometry.fromPolylineXY(linha_base)
-        
+
         tolerancia = 0.01
         coincide_com_borda = False
 
@@ -247,7 +247,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         linha_geom = linha_features.geometry()
         if linha_geom.isMultipart():
             linha_geom = linha_geom.asGeometryCollection()[0]
-            
+
         # =====================================================================
         # ===== Determinação das Linhas de Voo ================================
 
@@ -351,10 +351,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         paralelas_provider.addAttributes([QgsField('id', QVariant.Int)])
         paralelas_layer.updateFields()
 
-        # Incluir a linha como a primeira linha paralela      
+        # Incluir a linha como a primeira linha paralela
         primeira_linha_feature = next(primeira_linha.getFeatures())
         primeira_linha = primeira_linha_feature.geometry()
-        
+
         linha_id = 1
         paralela_feature = QgsFeature()
         paralela_feature.setGeometry(primeira_linha)
@@ -503,7 +503,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
             geom = f.geometry()
             if geom.isMultipart():
                 parte = geom.asMultiPolyline()[0]
-                linha_unica_coords.extend(parte)  
+                linha_unica_coords.extend(parte)
             else:
                 linha_unica_coords.extend(geom.asPolyline())
 
@@ -734,23 +734,16 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
-    texto = """Este algoritmo calcula a sobreposição lateral e frontal para um Voo de Drone,
-            fornecendo uma camada da 'Linha do Voo' e uma camada dos 'Pontos' para Fotos.
-            Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth.
-            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML.
-
-            Dados necessários:
-            1. Área a ser levantada (um pouco maior)
-            2. Uma linha de Início do Voo (criar próximo ao lado que ser quer iniciar o Voo)
-            3. Dados do Drone
-            4. Altura do Voo (m)
-            5. Velocidade do Voo (m/s)
-            6. Tempo de espera para tirar a Foto (s)
-            7. Chave API do Open Topography
-            8. Caminho para gravar os KML
-            9. Arquivo para gravar o CSV para o Litchi
-            Artigo: https://geoone.com.br/plano-de-voo-para-drone-com-python/
-            """
+    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations and calculating lateral and frontal overlaps.<br>
+It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
+<p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
+<b>Requirements: </b>Plugins <b>LFTools</b>, <b>Open Topography</b>, and <b>KML Tools</b> installed in QGIS.</p>
+<p><b>Tips:</b><o:p></o:p></p>
+<ul style="margin-top: 0cm;" type="disc">
+  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the API Key for the Open Topography plugin</a><o:p></o:p></span></li>
+  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a><o:p></o:p></li>
+</ul>
+"""
 
     figura2 = 'images/VooH2.jpg'
 
@@ -760,7 +753,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                       </div>
                       <div align="right">
                       <p align="right">
-                      <b>Autores: Prof Cazaroli     -     Leandro França</b>
+                      <b>Autores: Prof Cazaroli & Leandro França</b>
                       </p>GeoOne</div>
                     </div>'''
         return self.tr(self.texto) + corpo
