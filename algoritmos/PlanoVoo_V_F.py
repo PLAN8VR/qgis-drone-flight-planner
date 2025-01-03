@@ -450,7 +450,7 @@ It enables the planning of a precise vertical trajectory with appropriate overla
                       </div>
                       <div align="right">
                       <p align="right">
-                      <b>Autores: Prof Cazaroli     -     Leandro França</b>
+                      <b>Autores: Prof Cazaroli & Leandro França</b>
                       </p>GeoOne</div>
                     </div>'''
         return self.tr(self.texto) + corpo
