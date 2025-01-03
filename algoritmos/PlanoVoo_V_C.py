@@ -92,14 +92,14 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Verificar o SRC das Camadas
         crs = circulo_base.crs()
         crsP = ponto_inicial.crs() # não usamos o crsP, apenas para verificar a camada
-        
+
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Flight Base Circle' is already in CRS UTM.")
         else:
             crs = verificarCRS(circulo_base, feedback)
             nome = circulo_base.name() + "_reproject"
             circulo_base = QgsProject.instance().mapLayersByName(nome)[0]
-       
+
         if "UTM" in crsP.description().upper():
             feedback.pushInfo(f"The layer 'Start Point' is already in CRS UTM.")
             ponto_inicial_move = self.parameterAsVectorLayer(parameters, 'ponto_inicial', context)
@@ -107,7 +107,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             verificarCRS(ponto_inicial, feedback)
             nome = ponto_inicial.name() + "_reproject"
             ponto_inicial = QgsProject.instance().mapLayersByName(nome)[0]
-            
+
             duplicaPontoInicial(ponto_inicial)
             nome = ponto_inicial.name() + "_move"
             ponto_inicial_move = QgsProject.instance().mapLayersByName(nome)[0]
@@ -120,7 +120,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         if circulo_base.featureCount() != 1:
             raise ValueError("Flight base Circle must contain only one circle.")
 
-        if ponto_inicial.featureCount() != 1: 
+        if ponto_inicial.featureCount() != 1:
             raise ValueError("Start Point must contain only on point.")
 
         # ===== Cálculos Iniciais ================================================
@@ -468,10 +468,22 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Vertical.png'))
 
-    texto = """Este algoritmo calcula um 'Voo Circular' gerando a 'Linha do Voo' e uma camada de 'Pontos' para Fotos.
-            Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth.
-            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML.
+    texto = """This tool is designed to plan vertical and circular flights, ideal for 3D inspection and mapping projects around towers and similar objects.<br>
+It enables the creation of an optimized flight path to capture detailed images of the object's surroundings.
+<p><b>Required configurations:</b></p>
+<ul>
+  <li><b>Estimated object height:</b><span> Defines the highest point of the structure to be inspected.<o:p></o:p></span></li>
+  <li class="MsoNormal" style=""><b><span>Vertical spacing:</span></b><span> Determines the distance between capture levels along the object's height.<o:p></o:p></span></li>
+  <li class="MsoNormal" style=""><b><span>Number of photos per base circle (segments):</span></b><span> Specifies the number of photos to be captured at each circular level.<o:p></o:p></span></li>
+</ul>
+<p><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
+<p><b><span>Requirements:</span></b><span> Plugins <b>LFTools</b>, <b>Open Topography</b>, and <b>KML Tools</b> installed in QGIS.</span></p>
+<p><b>Tips:</b></p>
+<ul>
+  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the API Key for the Open Topography plugin</a></li>
+  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a></li>
             """
+
     figura = 'images/VooVC1.jpg'
 
     def shortHelpString(self):
