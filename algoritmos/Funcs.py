@@ -523,9 +523,9 @@ def verificarCRS(layer, feedback=None):
 
    # Define o código EPSG apropriado para UTM
    if hemisferio == "N":
-      epsg_code = 31900 + utm_zone  # UTM Norte
+      epsg_code = 32600 + utm_zone  # UTM Norte 32601 a 32660 / SIRGAS2000 31957 a 31965 N
    else:
-      epsg_code = 31958 + utm_zone  # UTM Sul
+      epsg_code = 31960 + utm_zone  # UTM Sul 32700 e SIRGAS2000 31978 a 31985 S
 
    crs_utm = QgsCoordinateReferenceSystem(f"EPSG:{epsg_code}")
    feedback.pushInfo(f"Reprojecting for CRS EPSG:{epsg_code} - {crs_utm.description()}")
