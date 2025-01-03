@@ -492,7 +492,7 @@ It enables the creation of an optimized flight path to capture detailed images o
                       </div>
                       <div align="right">
                       <p align="right">
-                      <b>Autores: Prof Cazaroli     -     Leandro França</b>
+                      <b>Autores: Prof Cazaroli & Leandro França</b>
                       </p>GeoOne</div>
                     </div>'''
         return self.tr(self.texto) + corpo
