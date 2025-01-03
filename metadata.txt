@@ -23,7 +23,7 @@ hasProcessingProvider=yes
 # changelog=1.0 - Initial version
 
 # Tags are comma separated with spaces allowed
-tags=drones, dji, litchi, fly, path, csv, kmz, kml, brazil, GeoOne
+tags=drones, dji, litchi, fly, path, csv, kmz, kml, brazil, plano de voo, GeoOne
 
 homepage=https://github.com/OpenGeoOne/PlanoVoo/wiki
 category=Drone
