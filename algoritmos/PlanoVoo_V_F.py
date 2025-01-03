@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto
+from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto, verificarCRS
 import processing
 import os
 import math
@@ -50,7 +50,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             api_key = ''
 
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Flight Base Line', types=[QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterVectorLayer('objeto','Position of the Facade', types=[QgsProcessing.TypeVectorPoint]))
+        self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position of the Facade', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Facade Height (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=15))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
@@ -84,9 +84,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # ===== Parâmetros de entrada para variáveis =========================================================
         linha_base = self.parameterAsVectorLayer(parameters, 'linha_base', context)
-        crs = linha_base.crs()
 
-        objeto = self.parameterAsVectorLayer(parameters, 'objeto', context)
+        ponto_base = self.parameterAsVectorLayer(parameters, 'ponto_base', context)
 
         H = parameters['altura']
         h = parameters['alturaMin']
@@ -104,6 +103,24 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         arquivo_csv = parameters['saida_csv']
 
         # ===== Verificações ===================================================================================
+        
+        # Verificar o SRC das Camadas
+        crs = linha_base.crs()
+        crsP = ponto_base.crs() # não usamos o crsP, apenas para verificar a camada
+        
+        if "UTM" in crs.description().upper():
+            feedback.pushInfo(f"The layer 'Flight Base Line' is already in CRS UTM.")
+        else:
+            crs = verificarCRS(linha_base, feedback)
+            nome = linha_base.name() + "_reproject"
+            linha_base = QgsProject.instance().mapLayersByName(nome)[0]
+       
+        if "UTM" in crsP.description().upper():
+            feedback.pushInfo(f"The layer 'Position of the Facade' is already in CRS UTM.")
+        else:
+            verificarCRS(ponto_base, feedback)
+            nome = ponto_base.name() + "_reproject"
+            ponto_base = QgsProject.instance().mapLayersByName(nome)[0]
 
         # Verificar se os plugins estão instalados
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]
@@ -113,38 +130,42 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         if linha_base.featureCount() != 1:
             raise ValueError("Flight Base Line must contain only one line.")
 
-        if objeto.featureCount() != 1:
+        if ponto_base.featureCount() != 1:
             raise ValueError("Position of the Facade must contain only one point.")
 
         linha = next(linha_base.getFeatures())
         linha_base_geom = linha.geometry()
+        if linha_base_geom.isMultipart():
+            linha_base_geom = linha_base_geom.asGeometryCollection()[0]
 
-        # Obtem a distância da Linha de Voo ao Objeto
-        p = list(objeto.getFeatures())
-        ponto_base_geom = p[0].geometry()
+        p = next(ponto_base.getFeatures())
+        ponto_base_geom = p.geometry()
+        if ponto_base_geom.isMultipart():
+            ponto_base_geom = ponto_base_geom.asGeometryCollection()[0]
 
-        dist_objeto = calculaDistancia_Linha_Ponto(linha_base_geom, ponto_base_geom)
+        # Obtem a distância da Linha de Voo ao ponto_base
+        dist_ponto_base = calculaDistancia_Linha_Ponto(linha_base_geom, ponto_base_geom)
 
-        if dist_objeto <= 10:
-            raise ValueError(f"Horizontal distance ({round(dist_objeto, 2)}) is 10 meters or less.")
+        if dist_ponto_base <= 10:
+            raise ValueError(f"Horizontal distance ({round(dist_ponto_base, 2)}) is 10 meters or less.")
 
-        feedback.pushInfo(f"Flight Line to Facade Distance: {round(dist_objeto, 2)}     Facade Height: {round(H, 2)}")
+        feedback.pushInfo(f"Flight Line to Facade Distance: {round(dist_ponto_base, 2)}     Facade Height: {round(H, 2)}")
 
         # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
-        # H é dist_objeto
+        # H é dist_ponto_base
         tg_alfa_2 = dc / (2 * f)
-        D_lat = dc * dist_objeto / f
+        D_lat = dc * dist_ponto_base / f
         SD_lat = percL * D_lat
         h1 = SD_lat / (2 * tg_alfa_2)
-        deltaLat = SD_lat * (dist_objeto / h1 - 1)
+        deltaLat = SD_lat * (dist_ponto_base / h1 - 1)
 
         # Espaçamento Frontal entre as fotografias- Espaçamento Frontal
         tg_alfa_2 = dl / (2 * f)
-        D_front = dl * dist_objeto / f
+        D_front = dl * dist_ponto_base / f
         SD_front = percF * D_front
         h1 = SD_front / (2 * tg_alfa_2)
-        deltaFront = SD_front * (dist_objeto / h1 - 1)
+        deltaFront = SD_front * (dist_ponto_base / h1 - 1)
 
         feedback.pushInfo(f"Horizontal Spacing: {round(deltaFront, 2)}     Vertical Spacing: {round(deltaLat, 2)}")
 
@@ -155,7 +176,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         comprimento_linha_base = linha_base_geom.length() # comprimento da linha
         distancias = [i for i in np.arange(0, comprimento_linha_base, deltaFront)]
 
-        feedback.pushInfo(f"Flight baseline Length: {comprimento_linha_base} \n Heights: {alturas}     Distances: {distancias}")
+        #feedback.pushInfo(f"Flight baseline Length: {comprimento_linha_base} \n Heights: {alturas}     Distances: {distancias}")
 
         # =====================================================================
         # ===== OpenTopography ================================================
@@ -190,13 +211,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         pontoID = 1
 
-        # Verificar a posição da linha base em relação ao objeto que se quer medir
-        if linha_base_geom.isMultipart():
-            partes = linha_base_geom.asGeometryCollection()
-            linha_base_geom = partes[0]  # Pegue a primeira linha da MultiLineString
-        else:
-            linha_base_geom = linha_base_geom[0].geometry()
-
+        # Verificar a posição da linha base em relação ao ponto_base que se quer medir
         linha = linha_base_geom.asPolyline()
 
         # Coordenadas da linha base
@@ -212,9 +227,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         angulo_perpendicular = (angulo_linha_base + 90) % 360
 
         # Verificar orientação do ponto em relação à linha base
-        objeto_feature = objeto.getFeature(0)
-        objeto_geom = objeto_feature.geometry()
-        objeto_point = objeto_geom.asPoint()
+        ponto_base_point = ponto_base_geom.asPoint()
 
         # Calcular a equação da linha base (Ax + By + C = 0)
         A = p2.y() - p1.y()
@@ -222,7 +235,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         C = p2.x() * p1.y() - p1.x() * p2.y()
 
         # Verificar o sinal ao substituir as coordenadas do ponto de orientação
-        orientacao = A * objeto_point.x() + B * objeto_point.y() + C
+        orientacao = A * ponto_base_point.x() + B * ponto_base_point.y() + C
 
         # Ajustar o ângulo da perpendicular com base na orientação
         if orientacao < 0:
@@ -368,10 +381,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
         if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-            arquivo_kml = os.path.join(caminho_kml, r"\Pontos Fotos.kml")
+            arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
             gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
 
-            arquivo_kml = os.path.join(caminho_kml, r"\Linha de Voo.kml")
+            arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
             gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
             feedback.pushInfo("KML path not specified. Export step skipped.")

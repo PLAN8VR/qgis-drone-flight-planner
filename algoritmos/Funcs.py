@@ -27,8 +27,17 @@ __date__ = '2024-12-02'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes, QgsTextBufferSettings
-from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsField, QgsPointXY, QgsVectorFileWriter, QgsPalLayerSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsVectorLayer,
+    QgsProject,
+    QgsFeature,
+    QgsGeometry
+)
+
+from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes, QgsTextBufferSettings, QgsCoordinateTransformContext
+from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsGeometry, QgsField, QgsPointXY, QgsVectorFileWriter, QgsPalLayerSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling
 from qgis.core import QgsApplication, QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer, QgsFillSymbol
 from qgis.PyQt.QtGui import QColor, QFont
 from PyQt5.QtCore import QVariant
@@ -495,4 +504,89 @@ def verificar_plugins(plugins_list, feedback=None):
 def calculaDistancia_Linha_Ponto(line_geom, point_geom):
    distancia = line_geom.distance(point_geom)
 
-   return distancia
+   return distancia   
+
+def verificarCRS(layer, feedback=None):
+   crs_atual = layer.crs()
+   
+   # Calcula a zona UTM com base na extensão da camada
+   extent = layer.extent()
+   lon = (extent.xMinimum() + extent.xMaximum()) / 2.0  # Longitude média
+   lat = (extent.yMinimum() + extent.yMaximum()) / 2.0  # Latitude média
+   utm_zone = int((lon + 180) / 6) + 1  # Calcula a zona UTM
+
+   # Define o hemisfério com base na latitude
+   if lat >= 0:
+      hemisferio = "N"  # Hemisfério norte
+   else:
+      hemisferio = "S"  # Hemisfério sul
+
+   # Define o código EPSG apropriado para UTM
+   if hemisferio == "N":
+      epsg_code = 31900 + utm_zone  # UTM Norte
+   else:
+      epsg_code = 31958 + utm_zone  # UTM Sul
+
+   crs_utm = QgsCoordinateReferenceSystem(f"EPSG:{epsg_code}")
+   feedback.pushInfo(f"Reprojecting for CRS EPSG:{epsg_code} - {crs_utm.description()}")
+
+   # Reprojetar a camada para o CRS UTM apropriado
+   transform_context = QgsProject.instance().transformContext()
+   transform = QgsCoordinateTransform(crs_atual, crs_utm, transform_context)
+
+   # Determina o tipo de geometria da camada original
+   geometry_type = layer.geometryType()  # 0: Point, 1: Line, 2: Polygon
+   if geometry_type == 0:
+      geometry_string = "Point"
+   elif geometry_type == 1:
+      geometry_string = "LineString"
+   elif geometry_type == 2:
+      geometry_string = "Polygon"
+
+   # Cria uma nova camada para armazenar os dados reprojetados
+   camada_reprojetada = QgsVectorLayer(
+            f"{geometry_string}?crs=EPSG:{epsg_code}",
+            f"{layer.name()}_reproject",
+            "memory")
+   
+   nova_data_provider = camada_reprojetada.dataProvider()
+
+   # Adiciona os campos da camada original à nova camada
+   nova_data_provider.addAttributes(layer.fields())
+   camada_reprojetada.updateFields()
+
+   # Reprojeta os recursos (features) da camada original
+   camada_reprojetada.startEditing()
+   for feature in layer.getFeatures():
+      geom = feature.geometry()
+      if geom:
+         geom.transform(transform)  # Aplica a transformação
+         feature.setGeometry(geom)
+         nova_data_provider.addFeatures([feature])
+   camada_reprojetada.commitChanges()
+   
+   QgsProject.instance().addMapLayer(camada_reprojetada)
+   
+   return crs_utm  
+      
+def duplicaPontoInicial(layer):
+   crs = layer.crs()
+   
+   geometry_type = layer.wkbType()
+   duplicated_layer = QgsVectorLayer(f"{QgsWkbTypes.displayString(geometry_type)}?crs={crs.authid()}", 
+                                       f"{layer.name()}_move", "memory")
+   
+   # Copia os campos da camada original para a nova camada
+   duplicated_layer.dataProvider().addAttributes(layer.fields())
+   duplicated_layer.updateFields()
+   
+   # Copia as feições (geometria e atributos) da camada original
+   duplicated_layer.startEditing()
+   for feature in layer.getFeatures():
+      duplicated_layer.addFeature(feature)
+   duplicated_layer.commitChanges()
+   
+   # Adiciona a nova camada ao projeto
+   QgsProject.instance().addMapLayer(duplicated_layer)
+   
+   return

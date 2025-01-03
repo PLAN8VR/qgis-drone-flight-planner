@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
+from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial
 import processing
 import os
 import math
@@ -48,7 +48,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         except:
             api_key = ''
 
-        self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight base Circle', types=[QgsProcessing.TypeVectorPolygon]))
+        self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight Base Circle', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Start Point', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Object Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=15))
@@ -72,10 +72,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         # ===== Parâmetros de entrada para variáveis ==========================================
         circulo_base = self.parameterAsVectorLayer(parameters, 'circulo_base', context)
-        crs = circulo_base.crs()
 
         ponto_inicial = self.parameterAsVectorLayer(parameters, 'ponto_inicial', context)
-        ponto_inicial_move = self.parameterAsVectorLayer(parameters, 'ponto_inicial', context) # ponto inicial precisa ser movido para um vértice da Linha de Voo
 
         H = parameters['altura']
         h = parameters['alturaMin']
@@ -91,24 +89,51 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         # ===== Verificações =================================================================
 
+        # Verificar o SRC das Camadas
+        crs = circulo_base.crs()
+        crsP = ponto_inicial.crs() # não usamos o crsP, apenas para verificar a camada
+        
+        if "UTM" in crs.description().upper():
+            feedback.pushInfo(f"The layer 'Flight Base Circle' is already in CRS UTM.")
+        else:
+            crs = verificarCRS(circulo_base, feedback)
+            nome = circulo_base.name() + "_reproject"
+            circulo_base = QgsProject.instance().mapLayersByName(nome)[0]
+       
+        if "UTM" in crsP.description().upper():
+            feedback.pushInfo(f"The layer 'Start Point' is already in CRS UTM.")
+            ponto_inicial_move = self.parameterAsVectorLayer(parameters, 'ponto_inicial', context)
+        else:
+            verificarCRS(ponto_inicial, feedback)
+            nome = ponto_inicial.name() + "_reproject"
+            ponto_inicial = QgsProject.instance().mapLayersByName(nome)[0]
+            
+            duplicaPontoInicial(ponto_inicial)
+            nome = ponto_inicial.name() + "_move"
+            ponto_inicial_move = QgsProject.instance().mapLayersByName(nome)[0]
+
         # Verificar se os plugins estão instalados
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]
         verificar_plugins(plugins_verificar, feedback)
 
         # Verificar as Geometrias
-        circulo = list(circulo_base.getFeatures())
-        if len(circulo) != 1:
+        if circulo_base.featureCount() != 1:
             raise ValueError("Flight base Circle must contain only one circle.")
 
-        if ponto_inicial.featureCount() != 1: # uma outra forma de checar
+        if ponto_inicial.featureCount() != 1: 
             raise ValueError("Start Point must contain only on point.")
 
         # ===== Cálculos Iniciais ================================================
 
-        circulo_base_geom = circulo[0].geometry()
+        c = next(circulo_base.getFeatures())
+        circulo_base_geom = c.geometry()
+        if circulo_base_geom.isMultipart():
+            circulo_base_geom = circulo_base_geom.asGeometryCollection()[0]
 
-        ponto = next(ponto_inicial.getFeatures())
-        ponto_inicial_geom = ponto.geometry()
+        p = next(ponto_inicial.getFeatures())
+        ponto_inicial_geom = p.geometry()
+        if ponto_inicial_geom.isMultipart():
+            ponto_inicial_geom = ponto_inicial_geom.asGeometryCollection()[0]
 
         # Cálculo do deltaH
         bounding_box = circulo_base_geom.boundingBox()
@@ -398,10 +423,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
         if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-            arquivo_kml = os.path.join(caminho_kml, r"\Pontos Fotos.kml")
+            arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
             gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
 
-            arquivo_kml = os.path.join(caminho_kml, r"\Linha de Voo.kml")
+            arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
             gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
         else:
             feedback.pushInfo("KML path not specified. Export step skipped.")

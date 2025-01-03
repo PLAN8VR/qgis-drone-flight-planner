@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos
+from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS
 import processing
 import os
 import math
@@ -81,11 +81,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         # =====Parâmetros de entrada para variáveis==============================
         area_layer = self.parameterAsVectorLayer(parameters, 'terreno', context)
-        crs = area_layer.crs()
 
         primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
-
-        apikey = parameters['api_key']
 
         H = parameters['H']
         dc = parameters['dc']
@@ -95,23 +92,51 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         percF = parameters['percF'] # Frontal
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
+        
+        apikey = parameters['api_key']
 
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
 
         # ===== Verificações =====================================================
-
+        
+        # Verificar o SRC das Camadas
+        crs = area_layer.crs()
+        crsL = primeira_linha.crs() # não usamos o crsL, apenas para verificar a camada
+        
+        if "UTM" in crs.description().upper():
+            feedback.pushInfo(f"The layer 'Area' is already in CRS UTM.")
+        else:
+            crs = verificarCRS(area_layer, feedback)
+            nome = area_layer.name() + "_reproject"
+            area_layer = QgsProject.instance().mapLayersByName(nome)[0]
+       
+        if "UTM" in crsL.description().upper():
+            feedback.pushInfo(f"The layer 'First line - direction flight' is already in CRS UTM.")
+        else:
+            verificarCRS(primeira_linha, feedback)
+            nome = primeira_linha.name() + "_reproject"
+            primeira_linha = QgsProject.instance().mapLayersByName(nome)[0]
+            
         # Verificar se os plugins estão instalados
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]
         verificar_plugins(plugins_verificar, feedback)
 
-        # Verificar se o polígono e a primeira_linha contém exatamente uma feature
-        poligono_features = list(area_layer.getFeatures()) # dados do Terreno
-        if len(poligono_features) != 1:
-            raise ValueError("The Area must contain only one polygon.")
+        # Verificar as Geometrias
+        poligono_features = next(area_layer.getFeatures()) # dados do Terreno
+        poligono_geom = poligono_features.geometry()
+        if poligono_geom.isMultipart():
+            poligono_geom = poligono_geom.asGeometryCollection()[0]
 
-        linha_features = list(primeira_linha.getFeatures())
-        if len(linha_features) != 1:
+        linha_features = next(primeira_linha.getFeatures())
+        linha_geom = linha_features.geometry()
+        if linha_geom.isMultipart():
+            linha_geom = linha_geom.asGeometryCollection()[0]
+        
+        if area_layer.featureCount() != 1:
+            raise ValueError("The Area must contain only one polygon.")
+        
+        if primeira_linha.featureCount() != 1:
             raise ValueError("The First Line must contain only one line.")
 
          # =====Cálculo das Sobreposições=========================================
@@ -147,27 +172,20 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # ================================================================================
         # ===== Ajuste da linha sobre um lado do polígono ================================
 
-        poligono_features = next(area_layer.getFeatures())
-        poligono_geom = poligono_features.geometry()
-
-        linha_features = next(primeira_linha.getFeatures())
-        linha_geom = linha_features.geometry()
-
+        # Criar lista de arestas (pares de vértices consecutivos)
         # Verificar se o polígono é multipart ou simples
         if poligono_geom.isMultipart():
-            p = poligono_geom.asMultiPolygon()[0][0]  # Primeiro polígono
+            p = poligono_geom.asMultiPolygon()[0][0]  
         else:
-            p = poligono_geom.asPolygon()[0]  # Polígono simples
-
-        # Criar lista de arestas (pares de vértices consecutivos)
+            p = poligono_geom.asPolygon()[0]
+            
         bordas = [(p[i], p[i + 1]) for i in range(len(p) - 1)]
 
-        # Encontrar o ponto inicial da linha
         if linha_geom.isMultipart():
             linha_base = linha_geom.asMultiPolyline()[0]  # Primeira linha em multipart
         else:
             linha_base = linha_geom.asPolyline()  # Linha simples
-
+        
         # Calcular direção da linha base (comparar o ponto inicial e final)
         x1_base, y1_base = linha_base[0]
         x2_base, y2_base = linha_base[-1]
@@ -176,7 +194,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         # Verificar se a linha base coincide com algum lado do polígono
         linha_base_geom = QgsGeometry.fromPolylineXY(linha_base)
-
+        
         tolerancia = 0.01
         coincide_com_borda = False
 
@@ -211,14 +229,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 primeira_linha.changeGeometry(linha_features.id(), nova_linha_geom)
 
             # Encontrar o ponto inicial da linha deslocada
-            linha_features = next(primeira_linha.getFeatures())
-            linha_geom = linha_features.geometry()
-
-            if linha_geom.isMultipart():
-                linha_base = linha_geom.asMultiPolyline()[0]  # Primeira linha em multipart
-            else:
-                linha_base = linha_geom.asPolyline()  # Linha simples
-
             # Calcular a direção da linha deslocada
             x1, y1 = linha_base[0]
             x2, y2 = linha_base[-1]
@@ -233,11 +243,13 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 with edit(primeira_linha):
                     primeira_linha.changeGeometry(linha_features.id(), nova_linha_geom_invertida)
 
-        # =====================================================================
-        # ===== Determinação das Linhas de Voo ================================
-
         linha_features = next(primeira_linha.getFeatures())
         linha_geom = linha_features.geometry()
+        if linha_geom.isMultipart():
+            linha_geom = linha_geom.asGeometryCollection()[0]
+            
+        # =====================================================================
+        # ===== Determinação das Linhas de Voo ================================
 
         vertices = [QgsPointXY(v) for v in poligono_geom.vertices()] # Extrair os vértices do polígono
 
@@ -339,9 +351,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         paralelas_provider.addAttributes([QgsField('id', QVariant.Int)])
         paralelas_layer.updateFields()
 
-        # Incluir a linha como a primeira linha paralela
-        primeira_linha_feature = self.parameterAsVectorLayer(parameters, 'primeira_linha', context).getFeature(0)
+        # Incluir a linha como a primeira linha paralela      
+        primeira_linha_feature = next(primeira_linha.getFeatures())
         primeira_linha = primeira_linha_feature.geometry()
+        
         linha_id = 1
         paralela_feature = QgsFeature()
         paralela_feature.setGeometry(primeira_linha)
@@ -489,11 +502,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         for f in linhas:
             geom = f.geometry()
             if geom.isMultipart():
-                partes = geom.asMultiPolyline()
-                for parte in partes:
-                    linha_unica_coords.extend(parte)  # Adicionar todas as partes
+                parte = geom.asMultiPolyline()[0]
+                linha_unica_coords.extend(parte)  
             else:
-                linha_unica_coords.extend(geom.asPolyline())  # Adicionar a linha simples
+                linha_unica_coords.extend(geom.asPolyline())
 
         # Criar a geometria combinada a partir das coordenadas coletadas
         linha_unica_geom = QgsGeometry.fromPolylineXY(linha_unica_coords)
@@ -535,10 +547,6 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         linha_voo = next(linha_voo_layer.getFeatures())  # Pegando a única linha
         geom_linha = linha_voo.geometry() # Obter a geometria da linha
-
-        # Obter a geometria do polígono a partir da camada
-        poligono_feature = next(area_layer.getFeatures())  # Assumindo que a camada contém apenas um polígono
-        poligono_geom = poligono_feature.geometry()  # Geometria do polígono
 
         # Criar um buffer com tolerância de 3 metros
         tolerancia = 3  # Margem de 3 metros
