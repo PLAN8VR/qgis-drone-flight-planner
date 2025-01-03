@@ -103,18 +103,18 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         arquivo_csv = parameters['saida_csv']
 
         # ===== Verificações ===================================================================================
-        
+
         # Verificar o SRC das Camadas
         crs = linha_base.crs()
         crsP = ponto_base.crs() # não usamos o crsP, apenas para verificar a camada
-        
+
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Flight Base Line' is already in CRS UTM.")
         else:
             crs = verificarCRS(linha_base, feedback)
             nome = linha_base.name() + "_reproject"
             linha_base = QgsProject.instance().mapLayersByName(nome)[0]
-       
+
         if "UTM" in crsP.description().upper():
             feedback.pushInfo(f"The layer 'Position of the Facade' is already in CRS UTM.")
         else:
@@ -426,10 +426,22 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Vertical.png'))
 
-    texto = """Este algoritmo calcula um 'Voo para Fachada' gerando a 'Linha do Voo' e uma camada de 'Pontos' para Fotos.
-            Gera ainda: a planilha CSV para importar no Litchi e o arquivo KML para Google Earth.
-            Se você usa um aplicativo para Voo que não seja o Litchi, pode usar os pontos gerados no QGIS ou os arquivos KML.
-            """
+    texto = """This tool is designed for creating vertical flight plans tailored for mapping building facades, ideal for architectural projects and building inspections.
+It enables the planning of a precise vertical trajectory with appropriate overlap and stop times for the drone, ensuring high-quality photographs and detailed mapping.</span></p>
+<p class="MsoNormal"><b>Configuration Details:</b></p>
+<ul style="margin-top: 0cm;" type="disc">
+  <li><b><span>Estimated Facade Height:</span></b><span> Specifies the highest point of the facade to be mapped.</span></li>
+  <li><b><span>Flight Base Line:</span></b><span> The path along which the drone will fly in front of the facade.</span></li>
+  <li><b><span>Position of the Facade:</span></b><span> A reference point on the facade used to calculate overlap distances.</span></li>
+</ul>
+<p class="MsoNormal"><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
+<p><b><span>Requirements:</span></b><span> Plugins <b>LFTools</b>, <b>Open Topography</b>, and <b>KML Tools</b> installed in QGIS.</span></p>
+<p><b>Tips:</b></p>
+<ul style="margin-top: 0cm;" type="disc">
+  <li><span><a href="https://geoone.com.br/opentopography-qgis/">Obtain the API Key for the Open Topography plugin</a></span></li>
+  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a></li>
+</ul>"""
+
     figura = 'images/VooVF1.jpg'
 
     def shortHelpString(self):
