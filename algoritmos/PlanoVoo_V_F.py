@@ -108,6 +108,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # Verificar o SRC das Camadas
         crs = linha_base.crs()
         crsP = ponto_base.crs() # não usamos o crsP, apenas para verificar a camada
+        if crs != crsP:
+            raise ValueError("Both layers must be from the same CRS.")
 
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Flight Base Line' is already in CRS UTM.")
@@ -150,7 +152,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # Obtem a distância da Linha de Voo ao ponto_base
         dist_ponto_base = calculaDistancia_Linha_Ponto(linha_base_geom, ponto_base_geom)
-
+    
         if dist_ponto_base <= 10:
             raise ValueError(f"Horizontal distance ({round(dist_ponto_base, 2)}) is 10 meters or less.")
 

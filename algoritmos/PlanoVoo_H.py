@@ -104,6 +104,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Verificar o SRC das Camadas
         crs = area_layer.crs()
         crsL = primeira_linha.crs() # não usamos o crsL, apenas para verificar a camada
+        if crs != crsL:
+            raise ValueError("Both layers must be from the same CRS.")
 
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Area' is already in CRS UTM.")
