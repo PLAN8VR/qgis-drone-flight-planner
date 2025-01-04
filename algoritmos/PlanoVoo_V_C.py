@@ -33,6 +33,7 @@ from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial
+from ..images.Imgs import *
 import processing
 import os
 import math
@@ -484,7 +485,7 @@ It enables the creation of an optimized flight path to capture detailed images o
   <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a></li>
             """
 
-    figura = 'images/VooVC1.jpg'
+    figura = 'images/Terrain_Follow.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">
@@ -493,6 +494,9 @@ It enables the creation of an optimized flight path to capture detailed images o
                       <div align="right">
                       <p align="right">
                       <b>Autores: Prof Cazaroli & Leandro França</b>
-                      </p>GeoOne</div>
+                      </p>
+                      <a target="_blank" rel="noopener noreferrer" href="https://geoone.com.br/"><img title="GeoOne" src="data:image/png;base64,'''+ GeoOne +'''"></a>
+					  <p><i>"Mapeamento automatizado, fácil e direto ao ponto é na GeoOne!"</i></p>
+                      </div>
                     </div>'''
         return self.tr(self.texto) + corpo
