@@ -507,32 +507,43 @@ def calculaDistancia_Linha_Ponto(line_geom, point_geom):
    return distancia   
 
 def verificarCRS(layer, feedback=None):
-   crs_atual = layer.crs()
-   
-   # Calcula a zona UTM com base na extensão da camada
+   # UTM Norte / UTM 32601 a 32660 / 31918 a 31924 / SIRGAS2000 UTM 31957 a 31965 S
+   # UTM Sul  /  UTM 32701 a 32760 / 31925 a 31927 / SIRGAS2000 UTM 31978 a 31985 S
+
+   crs_layer = layer.crs()
+   descricao_crs_layer = crs_layer.description()
+   epsg_code_layer = crs_layer.authid()
+    
    extent = layer.extent()
-   lon = (extent.xMinimum() + extent.xMaximum()) / 2.0  # Longitude média
-   lat = (extent.yMinimum() + extent.yMaximum()) / 2.0  # Latitude média
-   utm_zone = int((lon + 180) / 6) + 1  # Calcula a zona UTM
-
-   # Define o hemisfério com base na latitude
-   if lat >= 0:
-      hemisferio = "N"  # Hemisfério norte
+   lat_media = (extent.yMinimum() + extent.yMaximum()) / 2.0  # Latitude média
+   long_media = (extent.xMinimum() + extent.xMaximum()) / 2.0  # Longitude média
+   
+   utm_zone = int((long_media + 180) / 6) + 1  # Calcula a zona UTM
+   
+   if lat_media >= 0:
+      hemisferio = "Norte"
    else:
-      hemisferio = "S"  # Hemisfério sul
-
-   # Define o código EPSG apropriado para UTM
-   if hemisferio == "N":
-      epsg_code = 32600 + utm_zone  # UTM Norte 32601 a 32660 / SIRGAS2000 31957 a 31965 N
+      hemisferio = "Sul"
+   
+   if "WGS 84" in descricao_crs_layer.upper():
+        if hemisferio == "Norte":
+            epsg_code = 32600 + utm_zone  # WGS 84 Hemisfério Norte
+        else:
+            epsg_code = 32700 + utm_zone  # WGS 84 Hemisfério Sul
+   elif "SIRGAS 2000" in descricao_crs_layer.upper():
+      if hemisferio == "Norte":
+            epsg_code = 31956 + utm_zone      # SIRGAS 2000 Hemisfério Norte
+      else:
+            epsg_code = 31978 + utm_zone - 18 # SIRGAS 2000 Hemisfério Sul
    else:
-      epsg_code = 31960 + utm_zone  # UTM Sul 32700 e SIRGAS2000 31978 a 31985 S
-
+      raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({descricao_crs_layer.upper()}, EPSG:{epsg_code_layer}) not supported")
+   
    crs_utm = QgsCoordinateReferenceSystem(f"EPSG:{epsg_code}")
    feedback.pushInfo(f"Reprojecting for CRS EPSG:{epsg_code} - {crs_utm.description()}")
 
    # Reprojetar a camada para o CRS UTM apropriado
    transform_context = QgsProject.instance().transformContext()
-   transform = QgsCoordinateTransform(crs_atual, crs_utm, transform_context)
+   transform = QgsCoordinateTransform(crs_layer, crs_utm, transform_context)
 
    # Determina o tipo de geometria da camada original
    geometry_type = layer.geometryType()  # 0: Point, 1: Line, 2: Polygon
@@ -551,7 +562,7 @@ def verificarCRS(layer, feedback=None):
    
    nova_data_provider = camada_reprojetada.dataProvider()
 
-   # Adiciona os campos da camada original à nova camada
+   # Adiciona os campos da camada original à nova amada
    nova_data_provider.addAttributes(layer.fields())
    camada_reprojetada.updateFields()
 
