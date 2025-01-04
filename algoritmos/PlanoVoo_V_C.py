@@ -93,6 +93,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Verificar o SRC das Camadas
         crs = circulo_base.crs()
         crsP = ponto_inicial.crs() # não usamos o crsP, apenas para verificar a camada
+        if crs != crsP:
+            raise ValueError("Both layers must be from the same CRS.")
 
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Flight Base Circle' is already in CRS UTM.")
