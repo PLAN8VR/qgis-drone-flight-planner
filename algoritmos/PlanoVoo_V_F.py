@@ -159,7 +159,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             raise ValueError(f"Horizontal distance ({round(dist_ponto_base, 2)}) is 10 meters or less.")
 
         feedback.pushInfo(f"Flight Line to Facade Distance: {round(dist_ponto_base, 2)}     Facade Height: {round(H, 2)}")
-        
+
         # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
         # H é dist_ponto_base
@@ -451,7 +451,7 @@ It enables the planning of a precise vertical trajectory with appropriate overla
   <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a></li>
 </ul>"""
 
-    figura = 'images/Terrain_Follow.jpg'
+    figura = 'images/Facade.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">
