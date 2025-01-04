@@ -112,7 +112,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             verificarCRS(ponto_inicial, feedback)
             nome = ponto_inicial.name() + "_reproject"
             ponto_inicial = QgsProject.instance().mapLayersByName(nome)[0]
-            
+
             duplicaPontoInicial(ponto_inicial)
             nome = ponto_inicial.name() + "_move"
             ponto_inicial_move = QgsProject.instance().mapLayersByName(nome)[0]
@@ -491,7 +491,7 @@ It enables the creation of an optimized flight path to capture detailed images o
   <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a></li>
             """
 
-    figura = 'images/Terrain_Follow.jpg'
+    figura = 'images/Circular.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">
