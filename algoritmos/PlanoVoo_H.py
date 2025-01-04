@@ -33,6 +33,7 @@ from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS
+from ..images.Imgs import *
 import processing
 import os
 import math
@@ -63,7 +64,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                        minValue=0,defaultValue=8.38e-3)) # Para o Air 2S - Phantom 4 Pro é f = 9e-3
         self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (75% = 0.75)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.60,defaultValue=0.75))
+                                                       minValue=0.30,defaultValue=0.75))
         self.addParameter(QgsProcessingParameterNumber('percF','Forward Overlap (85% = 0.85)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=0.85))
@@ -745,7 +746,7 @@ It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a 
 </ul>
 """
 
-    figura2 = 'images/VooH2.jpg'
+    figura2 = 'images/Terrain_Follow.jpg'
 
     def shortHelpString(self):
         corpo = '''<div align="center">
@@ -754,6 +755,9 @@ It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a 
                       <div align="right">
                       <p align="right">
                       <b>Autores: Prof Cazaroli & Leandro França</b>
-                      </p>GeoOne</div>
+                      </p>
+                      <a target="_blank" rel="noopener noreferrer" href="https://geoone.com.br/"><img title="GeoOne" src="data:image/png;base64,'''+ GeoOne +'''"></a>
+					  <p><i>"Mapeamento automatizado, fácil e direto ao ponto é na GeoOne!"</i></p>
+                      </div>
                     </div>'''
         return self.tr(self.texto) + corpo
