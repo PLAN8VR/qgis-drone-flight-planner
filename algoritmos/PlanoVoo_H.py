@@ -107,17 +107,21 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Area' is already in CRS UTM.")
-        else:
+        elif "WGS 84" in crs.description().upper() or "SIRGAS 2000" in crs.description().upper():
             crs = verificarCRS(area_layer, feedback)
             nome = area_layer.name() + "_reproject"
             area_layer = QgsProject.instance().mapLayersByName(nome)[0]
+        else:
+            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         if "UTM" in crsL.description().upper():
             feedback.pushInfo(f"The layer 'First line - direction flight' is already in CRS UTM.")
-        else:
+        elif "WGS 84" in crsL.description().upper() or "SIRGAS 2000" in crsL.description().upper():
             verificarCRS(primeira_linha, feedback)
             nome = primeira_linha.name() + "_reproject"
             primeira_linha = QgsProject.instance().mapLayersByName(nome)[0]
+        else:
+            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]

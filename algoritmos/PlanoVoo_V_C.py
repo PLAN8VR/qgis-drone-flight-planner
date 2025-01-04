@@ -96,22 +96,26 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Flight Base Circle' is already in CRS UTM.")
-        else:
+        elif "WGS 84" in crs.description().upper() or "SIRGAS 2000" in crs.description().upper():
             crs = verificarCRS(circulo_base, feedback)
             nome = circulo_base.name() + "_reproject"
             circulo_base = QgsProject.instance().mapLayersByName(nome)[0]
+        else:
+            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         if "UTM" in crsP.description().upper():
             feedback.pushInfo(f"The layer 'Start Point' is already in CRS UTM.")
             ponto_inicial_move = self.parameterAsVectorLayer(parameters, 'ponto_inicial', context)
-        else:
+        elif "WGS 84" in crsP.description().upper() or "SIRGAS 2000" in crsP.description().upper():
             verificarCRS(ponto_inicial, feedback)
             nome = ponto_inicial.name() + "_reproject"
             ponto_inicial = QgsProject.instance().mapLayersByName(nome)[0]
-
+            
             duplicaPontoInicial(ponto_inicial)
             nome = ponto_inicial.name() + "_move"
             ponto_inicial_move = QgsProject.instance().mapLayersByName(nome)[0]
+        else:
+            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
         plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]
