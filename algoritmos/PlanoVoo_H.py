@@ -419,12 +419,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         if teste == True:
             QgsProject.instance().addMapLayer(paralelas_layer)
 
-        # Criar a camada com a união das linhas paralelas
-        linhas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas', 'memory')
-        linhas_provider = linhas_layer.dataProvider()
+        # Criar a camada com a união das linhas paralelas, criando as Linhas de Voo
+        linhas_unidas_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas Unidas', 'memory')
+        linhas_provider = linhas_unidas_layer.dataProvider()
         linhas_provider.addAttributes([QgsField('id', QVariant.Int)])
-        linhas_provider.addAttributes([QgsField('altitude', QVariant.Double)])
-        linhas_layer.updateFields()
+        linhas_unidas_layer.updateFields()
 
         paralelas_features = list(paralelas_layer.getFeatures())
         linha_id = 1
@@ -462,10 +461,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 linha_id += 1
 
         # Atualizar extensão da camada de resultado
-        linhas_layer.updateExtents()
+        linhas_unidas_layer.updateExtents()
 
         # Verificar se as linhas estão contínuas
-        linhas = sorted(linhas_layer.getFeatures(), key=lambda f: f['id'])
+        linhas = sorted(linhas_unidas_layer.getFeatures(), key=lambda f: f['id'])
 
         for i in range(len(linhas) - 1):
             geom_atual = linhas[i].geometry()
@@ -483,60 +482,17 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                 geom_seguinte = QgsGeometry.fromPolylineXY(extremos_seguinte)
 
                 # Atualizar imediatamente a geometria da linha na camada
-                linhas_layer.dataProvider().changeGeometryValues({linhas[i + 1].id(): geom_seguinte})
+                linhas_unidas_layer.dataProvider().changeGeometryValues({linhas[i + 1].id(): geom_seguinte})
 
                 # Atualizar a linha seguinte na lista local para manter consistência no loop
                 linhas[i + 1].setGeometry(geom_seguinte)
 
         # Atualizar a extensão da camada
-        linhas_layer.updateExtents()
-
+        linhas_unidas_layer.updateExtents()
+        
         if teste == True:
-            QgsProject.instance().addMapLayer(linhas_layer)
-
-        # Criação de uma linha única para Linha de Voo
-        linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linha de Voo', 'memory')
-        linha_voo_provider = linha_voo_layer.dataProvider()
-        linha_voo_provider.addAttributes([QgsField('id', QVariant.Int)])
-        linha_voo_provider.addAttributes([QgsField('alturavoo', QVariant.Double)])
-        linha_voo_layer.updateFields()
-
-        # Obter e ordenar as feições pela ordem dos IDs para garantir
-        linhas = sorted(linhas_layer.getFeatures(), key=lambda f: f['id'])
-
-        # Iniciar a lista de coordenadas para a linha única
-        linha_unica_coords = []
-
-        # Adicionar coordenadas de todas as linhas em ordem
-        for f in linhas:
-            geom = f.geometry()
-            if geom.isMultipart():
-                parte = geom.asMultiPolyline()[0]
-                linha_unica_coords.extend(parte)
-            else:
-                linha_unica_coords.extend(geom.asPolyline())
-
-        # Criar a geometria combinada a partir das coordenadas coletadas
-        linha_unica_geom = QgsGeometry.fromPolylineXY(linha_unica_coords)
-
-        # Criar a feature para a linha única
-        linha_unica_feature = QgsFeature()
-        linha_unica_feature.setGeometry(linha_unica_geom)
-        linha_unica_feature.setAttributes([1])  # Atributo ID = 1
-
-        # Adicionar a feature à camada de linha de voo
-        linha_voo_provider.addFeature(linha_unica_feature)
-
-        # Atualizar extensão da camada de resultado
-        linha_voo_layer.updateExtents()
-
-        # o final da Linha de Voo será feito no final da criação dos Pontos de Fotos,
-        # pois precisamos da altura média dos Pontos para atribuir à Linha de Voo
-
-        # ===== Final Parcial Linha de Voo (precisa ainda colocar altitude média) =======
-        # ===============================================================================
-
-
+            QgsProject.instance().addMapLayer(linhas_unidas_layer)
+        
         # ===============================================================================
         # =====Criar a camada Pontos de Fotos============================================
 
@@ -547,6 +503,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
+        campos.append(QgsField("linha", QVariant.Int))
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
@@ -554,73 +511,52 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
 
-        linha_voo = next(linha_voo_layer.getFeatures())  # Pegando a única linha
-        geom_linha = linha_voo.geometry() # Obter a geometria da linha
-
-        # Criar um buffer com tolerância de 3 metros
+        linhas = list(linhas_unidas_layer.getFeatures())
         tolerancia = 3  # Margem de 3 metros
-        poligono_com_tolerancia = poligono_geom.buffer(tolerancia, 5)  # Buffer com 5 segmentos por quadrante
+        poligono_com_tolerancia = poligono_geom.buffer(tolerancia, 5)
 
-        # Obter o ponto inicial da linha
-        ponto_inicial = QgsPointXY(geom_linha.vertexAt(0))
-
-        # Gerar pontos
+        # Gerar pontos ao longo das linhas
         pontoID = 1
-        distVoo = geom_linha.length()
-        distAtual = 0
+        for linha in linhas:
+            geom_linha = linha.geometry()
+            comprimento = geom_linha.length()
+            distAtual = 0
 
-        # Primeiro Ponto no início da primeira linha da Linha de Voo
-        ponto_feature = QgsFeature()
-        ponto_feature.setFields(campos)
-        ponto_feature.setAttribute("id", pontoID)
-        ponto_feature.setAttribute("latitude", ponto_inicial.y())
-        ponto_feature.setAttribute("longitude", ponto_inicial.x())
-        ponto_feature.setGeometry(QgsGeometry.fromPointXY(ponto_inicial))
-        pontos_provider.addFeature(ponto_feature)
+            while distAtual <= comprimento:
+                ponto = geom_linha.interpolate(distAtual).asPoint()
+                ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
 
-        pontoID += 1
+                # Verificar se o ponto está dentro do polígono
+                if poligono_com_tolerancia.contains(ponto_geom):
+                    ponto_feature = QgsFeature()
+                    ponto_feature.setFields(campos)
+                    ponto_feature.setAttribute("id", pontoID)
+                    ponto_feature.setAttribute("linha", linha["id"])  # Campo 'id' da linha
+                    ponto_feature.setAttribute("latitude", ponto.y())
+                    ponto_feature.setAttribute("longitude", ponto.x())
+                    ponto_feature.setGeometry(ponto_geom)
+                    pontos_provider.addFeature(ponto_feature)
+                    pontoID += 1
 
-        while True:
-            distAtual += deltaFront
-
-            if distAtual > (distVoo):  # Evitar extrapolação além do comprimento da linha
-                feedback.pushInfo(f"Dist. Atual: {round(distAtual,2)}, Dist. Voo: {round(distVoo,2)}")
-                break
-
-            ponto = geom_linha.interpolate(distAtual).asPoint()
-            ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
-
-            # Adicionar ponto somente se estiver dentro do polígono
-            if poligono_com_tolerancia.contains(ponto_geom):
-                ponto_feature = QgsFeature()
-                ponto_feature.setFields(campos)
-                ponto_feature.setAttribute("id", pontoID)
-                ponto_feature.setAttribute("latitude", ponto.y())
-                ponto_feature.setAttribute("longitude", ponto.x())
-                ponto_feature.setGeometry(ponto_geom)
-                pontos_provider.addFeature(ponto_feature)
-
-                pontoID += 1
-
+                distAtual += deltaFront
         # Atualizar a camada
         pontos_fotos.updateExtents()
-
-        # Obter a altitude dos pontos das Fotos
-        prov = pontos_fotos.dataProvider()
+        
+        # Obter a altitude dos pontos a partir do MDE
+        transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
         pontos_fotos.startEditing()
 
-        # definir o valor de Z
         for f in pontos_fotos.getFeatures():
             point = f.geometry().asPoint()
 
-            # Transformar coordenada para CRS do raster
-            point_wgs = transformador.transform(QgsPointXY(point.x(), point.y()))
-
+            # Transformar coordenada para o CRS do MDE
+            point_transf = transformador.transform(QgsPointXY(point.x(), point.y()))
+            
             # Obter o valor de Z do MDE
-            value, result = camadaMDE.dataProvider().sample(point_wgs, 1)  # Resolução = 1
+            value, result = camadaMDE.dataProvider().sample(point_transf, 1)  # Resolução = 1
             if result:
-                f['altitude'] = value
-                f['alturavoo'] = value + H  # altura de Voo
+                f["altitude"] = value
+                f["alturavoo"] = value + H
                 pontos_fotos.updateFeature(f)
 
         pontos_fotos.commitChanges()
@@ -642,40 +578,55 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         # ===== Final Pontos Fotos ============================================
         # =====================================================================
-
-        # ===== Linha de Voo com Altitudes para o Google Earth Pro ============
-        # =====================================================================
-
-        # Determinar as altitudes baseado no Pontos
-
-        # Criar a lista de vértices (com valores de Z)
-        lista_vertices = []
-        for feature in pontos_fotos.getFeatures():
-            geom = feature.geometry()
-            ponto = geom.asPoint()
-            z = feature['alturavoo']
-            ponto_z = QgsPoint(ponto.x(), ponto.y(), z)  # Criar ponto com Z (altitude)
-            lista_vertices.append(ponto_z)
-
-        # Calcular a média das altitudes como exemplo
-        media_altitude = sum([p.z() for p in lista_vertices]) / len(lista_vertices)
-
-        # Criar a geometria da linha
-        linha_geom = QgsGeometry.fromPolyline(lista_vertices)
-
-        # Criar a feature (linha) com a geometria e atributos
-        feature_linha = QgsFeature()
-        feature_linha.setGeometry(linha_geom)
-
+        
+        
+        # ===============================================================================
+        # ===== Criar Linha de Voo ======================================================
+        
+        # Criar Linha de Voo e colocar altitude nas linhas; altitude do primeiro vértice; do MDE
+        linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas de Voo', 'memory')
+        linhas_provider = linha_voo_layer.dataProvider()
+        linhas_provider.addAttributes([QgsField('id', QVariant.Int)])
+        linhas_provider.addAttributes([QgsField('alturavoo', QVariant.Double)])
+        linha_voo_layer.updateFields()
+        
         linha_voo_layer.startEditing()
+        
+        linha_feature = QgsFeature()
+        linha_atual = None
+        linha_geom = None
 
-        linha_voo_provider.changeAttributeValues({feature_id: {1: media_altitude}})
+        # Iterar sobre os pontos da camada de pontos
+        for f in pontos_fotos.getFeatures():
+            linha_id = f['linha']
 
-        linha_voo_layer.triggerRepaint()  # Redesenhar a camada para refletir as alterações
-        linha_voo_layer.updateFields()    # Atualizar os campos da camada
-        linha_voo_layer.updateExtents()   # Atualizar a extensão da camada
+            if linha_id != linha_atual:
+                # Primeiro Ponto de cada Linha
+                x, y = f.geometry().vertexAt(0).x(), f.geometry().vertexAt(0).y()
+                z = f.geometry().vertexAt(0).z()  
+                ponto = QgsPoint(x, y, z) 
+                
+                alturavoo_primeiro_ponto = f['alturavoo']
+                
+                # Criação da geometria da linha
+                linha_geom = QgsGeometry.fromPolyline([ponto])
+                
+                # Criar uma nova feature e atribuir valores
+                linha_feature.setGeometry(linha_geom)
+                
+                # Definir os atributos da feature corretamente
+                linha_feature.setAttributes([linha_id, alturavoo_primeiro_ponto])
+                
+                # Adicionar a feature à camada
+                linhas_provider.addFeature(linha_feature)
+                
+                # Atualizar o valor de linha_atual
+                linha_atual = linha_id
+
+        # Finalizar edição e atualizar camada de linhas
         linha_voo_layer.commitChanges()
-
+        linha_voo_layer.triggerRepaint()
+        
         # Reprojetar linha_voo_layer para WGS84 (4326)
         linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
 
@@ -687,10 +638,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         # ===== LINHA DE VOO ==============================
         QgsProject.instance().addMapLayer(linha_voo_reproj)
-
-        # ===== Final Linha de Voo ============================================
+        
+        # ===== Final Linha de Voo ============================================ 
         # =====================================================================
-
+        
         feedback.pushInfo("")
         feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
 
