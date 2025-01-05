@@ -103,6 +103,10 @@ def obter_DEM(flight_type, layer, transformador, apikey, feedback=None, bbox_are
    coordenadas = f'{pontoW},{pontoE},{pontoS},{pontoN}'
    area = f"{coordenadas}[EPSG:4326]"
 
+   # Atualmente, o OpenTopography não oferece modelos de elevação diretamente referenciados ao elipsoide (como o WGS84)
+   # Ele utiliza uma superfície ortométrica como referência, que é baseada no Geoid EGM96 (Earth Gravitational Model 1996)
+   # Isso significa que as elevações fornecidas pelo Copernicus DSM estão em relação ao nível médio do mar, e não ao elipsoide
+   
    result = processing.run(
       "OTDEMDownloader:OpenTopography DEM Downloader", {
          'DEMs': 7,  # Copernicus Global DSM 30m
