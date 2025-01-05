@@ -592,40 +592,35 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         
         linha_voo_layer.startEditing()
         
-        linha_feature = QgsFeature()
-        linha_atual = None
-        linha_geom = None
+        last_point = None
 
         # Iterar sobre os pontos da camada de pontos
         for f in pontos_fotos.getFeatures():
             linha_id = f['linha']
 
-            if linha_id != linha_atual:
-                # Primeiro Ponto de cada Linha
-                x, y = f.geometry().vertexAt(0).x(), f.geometry().vertexAt(0).y()
-                z = f.geometry().vertexAt(0).z()  
-                ponto = QgsPoint(x, y, z) 
+            # Obter as coordenadas do ponto
+            x, y = f.geometry().vertexAt(0).x(), f.geometry().vertexAt(0).y()
+            z = f.geometry().vertexAt(0).z()  
+            ponto_atual = QgsPointXY(x, y)
+
+            alturavoo = f['alturavoo'] # Obter a altitude do ponto
+
+            # Se houver um ponto anterior, cria-se uma linha entre o ponto anterior e o ponto atual
+            if last_point:
+                linha_geom = QgsGeometry.fromPolylineXY([last_point, ponto_atual])  # Criar geometria da linha
                 
-                alturavoo_primeiro_ponto = f['alturavoo']
-                
-                # Criação da geometria da linha
-                linha_geom = QgsGeometry.fromPolyline([ponto])
-                
-                # Criar uma nova feature e atribuir valores
                 linha_feature.setGeometry(linha_geom)
                 
-                # Definir os atributos da feature corretamente
-                linha_feature.setAttributes([linha_id, alturavoo_primeiro_ponto])
+                linha_feature.setAttributes([linha_id, alturavoo])
                 
                 # Adicionar a feature à camada
                 linhas_provider.addFeature(linha_feature)
-                
-                # Atualizar o valor de linha_atual
-                linha_atual = linha_id
-
+            
+            # Atualiza o ponto anterior para o próximo ciclo
+            last_point = ponto_atual
+    
         # Finalizar edição e atualizar camada de linhas
         linha_voo_layer.commitChanges()
-        linha_voo_layer.triggerRepaint()
         
         # Reprojetar linha_voo_layer para WGS84 (4326)
         linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
