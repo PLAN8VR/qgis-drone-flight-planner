@@ -71,6 +71,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)'))
         self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin', defaultValue=api_key))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -82,6 +83,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         linha_base = self.parameterAsVectorLayer(parameters, 'linha_base', context)
 
         ponto_base = self.parameterAsVectorLayer(parameters, 'ponto_base', context)
+
+        camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
         H = parameters['altura']
         h = parameters['alturaMin']
@@ -192,7 +195,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
 
-        camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
+        if camadaMDE is None:
+            camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
 
         #QgsProject.instance().addMapLayer(camadaMDE)
 
