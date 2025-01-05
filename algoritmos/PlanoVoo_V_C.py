@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial
+from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -43,30 +43,25 @@ import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        my_settings = QgsSettings()
-        try:
-            api_key = my_settings.value("OpenTopographyDEMDownloader/ot_api_key", "")
-        except:
-            api_key = ''
+        hObj, altMin, nPartes, dVertical, veloc, tStay, api_key, sKML, sCSV = loadParametros("VC")
 
         self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight Base Circle', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Start Point', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Object Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=15))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hObj))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=2))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=altMin))
         self.addParameter(QgsProcessingParameterNumber('num_partes','Horizontal Division into PARTS of Base Circle',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=8))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=nPartes))
         self.addParameter(QgsProcessingParameterNumber('deltaVertical','Vertical Spacing (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=3))
-        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin',defaultValue=api_key))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=dVertical))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=3))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=2))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)'))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)',
-                                                               fileFilter='CSV files (*.csv)'))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
+        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin', defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -88,6 +83,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
 
+        # ===== Grava Parâmetros =====================================================
+        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['alturaMin'], parameters['num_partes'], parameters['deltaVertical'])
+        
         # ===== Verificações =================================================================
 
         # Verificar o SRC das Camadas
@@ -445,10 +443,15 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         else:
             feedback.pushInfo("CSV path not specified. Export step skipped.")
 
+        # ============= Remover Camadas Reproject e Move =============================================
+        
+        removeLayersReproj('_reproject') 
+        removeLayersReproj('_move')    
+        
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("Circular Vertical Flight Plan successfully executed.")
-
+        
         return {}
 
     def name(self):

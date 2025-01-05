@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS
+from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -43,39 +43,34 @@ import csv
 
 class PlanoVoo_H(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        my_settings = QgsSettings()
-        try:
-            api_key = my_settings.value("OpenTopographyDEMDownloader/ot_api_key", "")
-        except:
-            api_key = ''
+        hVoo, sensorH, sensorV, dFocal, sLateral, sFrontal, veloc, tStay, api_key, sKML, sCSV = loadParametros("H")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('H','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=50,defaultValue=100))
-        self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (m)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=50,defaultValue=hVoo))
+        self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=13.2e-3)) # igual p/o Phantom 4 Pro e Air 2S (5472 × 3648)
-        self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Vertical Size (m)',
+                                                       minValue=0,defaultValue=sensorH)) # default p/o Phantom 4 Pro e Air 2S
+        self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Vertical Size (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=8.8e-3)) # igual p/o Phantom 4 Pro e Air 2S (5472 × 3648)
-        self.addParameter(QgsProcessingParameterNumber('f','Sensor: Focal Length (m)',
+                                                       minValue=0,defaultValue=sensorV)) # default p/o Phantom 4 Pro e Air 2S 
+        self.addParameter(QgsProcessingParameterNumber('f','Sensor: Focal Length (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=8.38e-3)) # Para o Air 2S - Phantom 4 Pro é f = 9e-3
+                                                       minValue=0,defaultValue=dFocal)) # default o Air 2S - Phantom 4 Pro 
         self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (75% = 0.75)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.30,defaultValue=0.75))
+                                                       minValue=0.30,defaultValue=sLateral))
         self.addParameter(QgsProcessingParameterNumber('percF','Forward Overlap (85% = 0.85)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.60,defaultValue=0.85))
-        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin',defaultValue=api_key))
+                                                       minValue=0.60,defaultValue=sFrontal))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=8))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=0))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)'))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)',
-                                                               fileFilter='CSV files (*.csv)'))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
+        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin', defaultValue=api_key))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -99,6 +94,9 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
 
+        # ===== Grava Parâmetros =====================================================
+        saveParametros("H", parameters['H'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
+        
         # ===== Verificações =====================================================
 
         # Verificar o SRC das Camadas
@@ -711,10 +709,14 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         else:
             feedback.pushInfo("CSV path not specified. Export step skipped.")
 
+        # ============= Remover Camadas Reproject ===================================================
+        
+        removeLayersReproj('_reproject') 
+        
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("Horizontal Flight Plan successfully executed.")
-
+        
         return {}
 
     def name(self):

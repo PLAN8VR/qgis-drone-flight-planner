@@ -38,7 +38,7 @@ from qgis.core import (
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes, QgsTextBufferSettings, QgsCoordinateTransformContext
 from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsGeometry, QgsField, QgsPointXY, QgsVectorFileWriter, QgsPalLayerSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling
-from qgis.core import QgsApplication, QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer, QgsFillSymbol
+from qgis.core import QgsApplication, QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer, QgsFillSymbol, QgsSettings
 from qgis.PyQt.QtGui import QColor, QFont
 from PyQt5.QtCore import QVariant
 import qgis.utils
@@ -600,4 +600,93 @@ def duplicaPontoInicial(layer):
    # Adiciona a nova camada ao projeto
    QgsProject.instance().addMapLayer(duplicated_layer)
    
+   return
+
+def loadParametros(tipoVoo):
+   my_settings = QgsSettings()
+   
+   if tipoVoo == "H":
+      hVoo = my_settings.value("qgis-drone-flight-planner/hVoo", 100)
+      sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2)
+      sensorV = my_settings.value("qgis-drone-flight-planner/sensorV", 8.8)
+      dFocal = my_settings.value("qgis-drone-flight-planner/dFocal", 8.38)
+      sLateralH = my_settings.value("qgis-drone-flight-planner/sLateralH", 0.75)
+      sFrontalH = my_settings.value("qgis-drone-flight-planner/sFrontalH", 0.85)
+      velocH = my_settings.value("qgis-drone-flight-planner/velocH", 8)
+      tStayH = my_settings.value("qgis-drone-flight-planner/tStayH", 0)
+   elif tipoVoo == "VF":
+      hFac = my_settings.value("qgis-drone-flight-planner/hFac", 15)
+      altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 2)
+      sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2)
+      sensorV = my_settings.value("qgis-drone-flight-planner/sensorV", 8.8)
+      dFocal = my_settings.value("qgis-drone-flight-planner/dFocal", 8.38)
+      sLateralVF = my_settings.value("qgis-drone-flight-planner/sLateralVF", 0.85)
+      sFrontalVF = my_settings.value("qgis-drone-flight-planner/sFrontalVF", 0.90)
+      velocVF = my_settings.value("qgis-drone-flight-planner/velocVF", 3)
+      tStayVF = my_settings.value("qgis-drone-flight-planner/tStayVF", 2)
+   elif tipoVoo == "VC": 
+      hObj = my_settings.value("qgis-drone-flight-planner/hObj", 15)
+      altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 2)  
+      nPartesVC = my_settings.value("qgis-drone-flight-planner/nPartesVC", 8)
+      dVertVC = my_settings.value("qgis-drone-flight-planner/dVertVC", 3)
+      velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 3)
+      tStayVC = my_settings.value("qgis-drone-flight-planner/tStayVC", 2)
+      
+   api_key = my_settings.value("OpenTopographyDEMDownloader/ot_api_key", "")
+   sKML = my_settings.value("qgis-drone-flight-planner/sKML", "")
+   sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
+      
+   if tipoVoo == "H":
+      return hVoo, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, api_key, sKML, sCSV
+   elif tipoVoo == "VF":
+      return hFac, altMinVF, sensorH, sensorV, dFocal, sLateralVF, sFrontalVF, velocVF, tStayVF, api_key, sKML, sCSV
+   elif tipoVoo == "VC":
+      return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, api_key, sKML, sCSV
+   
+def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, aM=None, nVC=None, dVC=None):
+   my_settings = QgsSettings()
+   
+   if tipoVoo == "H":
+      my_settings.setValue("qgis-drone-flight-planner/hVoo", h)
+      my_settings.setValue("qgis-drone-flight-planner/sensorH", sensorH)
+      my_settings.setValue("qgis-drone-flight-planner/sensorV", sensorV)
+      my_settings.setValue("qgis-drone-flight-planner/dFocal", dFocal)
+      my_settings.setValue("qgis-drone-flight-planner/sLateralH", sLateral)
+      my_settings.setValue("qgis-drone-flight-planner/sFrontalH", sFrontal)
+      my_settings.setValue("qgis-drone-flight-planner/velocH", v)
+      my_settings.setValue("qgis-drone-flight-planner/tStayH", t)
+   elif tipoVoo == "VF":
+      my_settings.setValue("qgis-drone-flight-planner/hFac", h)
+      my_settings.setValue("qgis-drone-flight-planner/altMinVF", aM)
+      my_settings.setValue("qgis-drone-flight-planner/sensorH", sensorH)
+      my_settings.setValue("qgis-drone-flight-planner/sensorV", sensorV)
+      my_settings.setValue("qgis-drone-flight-planner/dFocal", dFocal)
+      my_settings.setValue("qgis-drone-flight-planner/sLateralVF", sLateral)
+      my_settings.setValue("qgis-drone-flight-planner/sFrontalVF", sFrontal)
+      my_settings.setValue("qgis-drone-flight-planner/velocVF", v)
+      my_settings.setValue("qgis-drone-flight-planner/tStayVF", t)
+   elif tipoVoo == "VC":
+      my_settings.setValue("qgis-drone-flight-planner/hObj", h)
+      my_settings.setValue("qgis-drone-flight-planner/altMinVC", aM)
+      my_settings.setValue("qgis-drone-flight-planner/nPartesVC", nVC)
+      my_settings.setValue("qgis-drone-flight-planner/dVertVC", dVC)
+      my_settings.setValue("qgis-drone-flight-planner/velocVC", v)
+      my_settings.setValue("qgis-drone-flight-planner/tStayVC", t)
+   
+   my_settings.setValue("qgis-drone-flight-planner/sKML", sKML)
+   my_settings.setValue("qgis-drone-flight-planner/sCSV", sCSV)
+
+   return
+
+def removeLayersReproj(txtFinal):
+   layers_to_remove = []
+   for layer in QgsProject.instance().mapLayers().values():
+      # Verificar se o nome da camada termina com '_reproject' ou '_move'
+      if layer.name().endswith(txtFinal):
+            layers_to_remove.append(layer)
+
+   # Remover as camadas que atendem ao critério
+   for layer in layers_to_remove:
+      QgsProject.instance().removeMapLayer(layer)
+            
    return
