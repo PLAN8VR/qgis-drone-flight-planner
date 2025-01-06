@@ -43,17 +43,8 @@ Tool for Horizontal Flight Plan.
 This tool enables drone flight planning for photogrammetry, following terrain elevations and calculating lateral and frontal overlaps.<br>
 It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
 <p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
-<div align="center">
-<table style="text-align: left; width: 275px;" border="0" cellpadding="0" cellspacing="0">
-  <tbody>
-    <tr>
-      <td>
-          ![following-terrain](https://github.com/user-attachments/assets/86042dcb-0d89-4c7b-9789-f989d6d86e91)
-    </td>
-    </tr>
-  </tbody>
-</table>
-</div>
+
+![following-terrain](https://github.com/user-attachments/assets/86042dcb-0d89-4c7b-9789-f989d6d86e91)
 
 ### Vertical Flight
 Tools for Vertical Flight Plan.
@@ -70,15 +61,9 @@ It enables the creation of an optimized flight path to capture detailed images o
   <li class="MsoNormal" style=""><b><span>Number of photos per base circle (segments):</span></b><span> Specifies the number of photos to be captured at each circular level.<o:p></o:p></span></li>
 </ul>
 <p><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
-<div align="center">
-<table style="text-align: left; width: 275px;" border="0" cellpadding="0" cellspacing="0">
-  <tbody>
-    <tr>
-      <td><img src="https://github.com/LEOXINGU/lftools/blob/main/images/tutorial/cadastre_connectFeatures.jpg"></td>
-    </tr>
-  </tbody>
-</table>
-</div>
+
+![circular](https://github.com/user-attachments/assets/166372ad-0bed-4ca4-be2b-14b03dd5350d)
+
 
 ### Facade
 This tool is designed for creating vertical flight plans tailored for mapping building facades, ideal for architectural projects and building inspections.
@@ -90,20 +75,14 @@ It enables the planning of a precise vertical trajectory with appropriate overla
   <li><b><span>Position of the Facade:</span></b><span> A reference point on the facade used to calculate overlap distances.</span></li>
 </ul>
 <p class="MsoNormal"><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
-<div align="center">
-<table style="text-align: left; width: 275px;" border="0" cellpadding="0" cellspacing="0">
-  <tbody>
-    <tr>
-      <td><img src="https://github.com/LEOXINGU/lftools/blob/main/images/tutorial/cadastre_connectFeatures.jpg"></td>
-    </tr>
-  </tbody>
-</table>
-</div>
+
+![facade](https://github.com/user-attachments/assets/6566854d-cc7a-48f4-9016-2230e5657ddb)
+
 
 ## Requirements
 The following plugins must bem installed and activated in QGIS:
 <ul style="margin-top: 0cm;" type="disc">
-  <li>Plugins <b>LFTools</b></li>
+  <li><b>LFTools</b></li>
   <li><b>Open Topography</b></li>
   <li><b>KML Tools</b></li>
 </ul>
@@ -115,11 +94,12 @@ The following plugins must bem installed and activated in QGIS:
 </ul>
 
 ## How to contribute by learning more
+Purchase one of our online courses or e-book on the GeoOne platform.
 <div style="text-align: center;"><a
  href="https://portal.geoone.com.br/m/courses"><img
  style="border: 2px solid ;" alt="GeoFlight Planner"
  title="CURSO NA GEOONE"
- src="https://files.curseduca.com/04a4f1db-3c21-47da-8b58-d1d3ceed8d90/facefe689e70437ed8f9f108228e80f64e046bbd.webp"></a>
+ src="https://geoone.com.br/wp-content/uploads/2024/11/Capas-combo.png"></a>
 <br>
 </div>
 
