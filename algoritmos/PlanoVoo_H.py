@@ -583,7 +583,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         # ===============================================================================
         # ===== Criar Linha de Voo ======================================================
         
-        # Criar Linha de Voo e colocar altitude nas linhas; altitude do primeiro vértice; do MDE
+        # Criar Linha de Voo e colocar altitude nas linhas; altitude do primeiro vértice; dos Pontos de Fotos
         linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linhas de Voo', 'memory')
         linhas_provider = linha_voo_layer.dataProvider()
         linhas_provider.addAttributes([QgsField('id', QVariant.Int)])
