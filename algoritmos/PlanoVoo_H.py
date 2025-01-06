@@ -68,11 +68,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)'))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin (uses an orthometric surface)', defaultValue=api_key))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
-
+        
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
 
@@ -93,12 +93,31 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         tempo = parameters['tempo']
 
         apikey = parameters['api_key']
+        
+        caminho_kml = self.parameterAsFile(
+            parameters,
+            'saida_kml',
+            context
+        )
 
-        caminho_kml = parameters['saida_kml']
-        arquivo_csv = parameters['saida_csv']
+        arquivo_csv = self.parameterAsFile(
+            parameters,
+            'saida_csv',
+            context
+        )
+        
+        # if os.path.exists(parameters['saida_kml']):
+        #     caminho_kml = parameters['saida_kml']   
+        # else:
+        #     raise QgsProcessingException(self.invalidSourceError(parameters, 'saida_kml'))
+        
+        # try:
+        #    arquivo_csv = parameters['saida_csv']   
+        # except:
+        #     raise QgsProcessingException(self.invalidSourceError(parameters, 'saida_csv'))   
 
         # Grava Parâmetros
-        saveParametros("H", parameters['H'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
+        saveParametros("H", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
         
         # ===== Verificações =====================================================
 
