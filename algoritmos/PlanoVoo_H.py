@@ -97,7 +97,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         caminho_kml = parameters['saida_kml']
         arquivo_csv = parameters['saida_csv']
 
-        # ===== Grava Parâmetros =====================================================
+        # Grava Parâmetros
         saveParametros("H", parameters['H'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
         
         # ===== Verificações =====================================================
