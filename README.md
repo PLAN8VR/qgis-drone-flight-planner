@@ -1,55 +1,116 @@
 <!-- PROJECT LOGO -->
 <p align="center">
-    <img src="https://github.com/OpenGeoOne/qgis-drone-flight-planner/blob/main/images/GeoFlightPlanner.png" alt="Logo" width="90" height="75">
-  <h3 align="center">Flight Planner</h3>
+    <img src="https://github.com/OpenGeoOne/qgis-drone-flight-planner/blob/main/images/GeoFlightPlanner.png" alt="Logo" width="85" height="80">
+  <h3 align="center">GeoFlight Planner</h3>
   <p align="center">
-    <b><i>Plugin for QGIS Drone Flight Planner.</i><b>
+    <b><i>A versatile QGIS plugin for drone flight planning, ensuring optimized flight paths and high-quality data capture.</i><b>
     <br />
   </p>
 </p>
-
+        
+<p>A QGIS plugin for precise drone flight planning, designed for photogrammetry, 3D inspections, and building facade mapping. It includes tools for terrain-following flights, circular paths around structures, and vertical facade mapping, generating KML files for 3D visualization and CSV files compatible with Litchi or other flight apps.<br></p>
+        
 <!-- TABLE OF CONTENTS -->
 <details open="open">
-  <summary>Contents</summary>
+  <summary>GeoFlightPlanner</summary>
   <ol>
-      <li>
-      <a href="gGeoflightplanner">GeoFlightPlanner</a>
-      <ul>
-        <li><a href="#horizontal-flight">Horizontal Flight</a></li>
-      </ul>
-      <ul>
-        <li><a href="#vertical-flight">Vertical Flight</a></li>
-        <li>
-          <a href="#circular-vertical-flight">Circular Vertical Flight</a></li>
-          <a href="#facade-vertical-flight">Facade Vertical Flight</a></li>
-      </ul>
-    <li>
-      <a href="#collaborators">Collaborators</a>
-    </li>
-    <li>
-      <a href="#authors">Authors</a>
-    </li>
+      <li><a href='#horizontal-flight'>Horizontal Flight</a></li>
+         <ul>
+           <li><a href="#following-terrain">Following terrain</a></li>
+        </ul>
+      <li><a href='#vertical-flight'>Vertical Flight</a></li>
+        <ul>
+          <li><a href="#circular">Circular</a></li>
+          <li><a href="#facade">Facade</a></li>
+       </ul>
+    <li><a href="#requirements">Requirements</a></li>
+    <li><a href="#tips">Tips</a></li>
+    <li><a href="#how-to-contribute-by-learning-more">How to contribute by learning more</a></li>
+    <li><a href="#authors">Authors</a></li>
   </ol>
 </details>
 
 
-## Plugin Tools
+## GeoFlight Planner Plugin
 
 
 ### Horizontal Flight
-This tool creates a Horizontal Flight Plan
-<div align="center">  
+Tool for Horizontal Flight Plan.
+<div align="center">
 </div>
 
-### Circular Vertical Flight
-This tool creates a Circular Vertical Flight Plan
-<div align="center">    
+### Following terrain
+This tool enables drone flight planning for photogrammetry, following terrain elevations and calculating lateral and frontal overlaps.<br>
+It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
+<p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
+<div align="center">
+<table style="text-align: left; width: 275px;" border="0" cellpadding="0" cellspacing="0">
+  <tbody>
+    <tr>
+      <td><img src="https://github.com/LEOXINGU/lftools/blob/main/images/tutorial/cadastre_connectFeatures.jpg"></td>
+    </tr>
+  </tbody>
+</table>
 </div>
 
-### Facade Vertical Flight
-This tool creates a Facade Vertical Flight Plan
-<div align="center">    
+### Vertical Flight
+Tools for Vertical Flight Plan.
+<div align="center">
 </div>
+
+### Circular
+This tool is designed to plan vertical and circular flights, ideal for 3D inspection and mapping projects around towers and similar objects.<br>
+It enables the creation of an optimized flight path to capture detailed images of the object's surroundings.
+<p><b>Required configurations:</b></p>
+<ul>
+  <li><b>Estimated object height:</b><span> Defines the highest point of the structure to be inspected.<o:p></o:p></span></li>
+  <li class="MsoNormal" style=""><b><span>Vertical spacing:</span></b><span> Determines the distance between capture levels along the object's height.<o:p></o:p></span></li>
+  <li class="MsoNormal" style=""><b><span>Number of photos per base circle (segments):</span></b><span> Specifies the number of photos to be captured at each circular level.<o:p></o:p></span></li>
+</ul>
+<p><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
+<div align="center">
+<table style="text-align: left; width: 275px;" border="0" cellpadding="0" cellspacing="0">
+  <tbody>
+    <tr>
+      <td><img src="https://github.com/LEOXINGU/lftools/blob/main/images/tutorial/cadastre_connectFeatures.jpg"></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+### Facade
+This tool is designed for creating vertical flight plans tailored for mapping building facades, ideal for architectural projects and building inspections.
+It enables the planning of a precise vertical trajectory with appropriate overlap and stop times for the drone, ensuring high-quality photographs and detailed mapping.</span></p>
+<p class="MsoNormal"><b>Configuration Details:</b></p>
+<ul style="margin-top: 0cm;" type="disc">
+  <li><b><span>Estimated Facade Height:</span></b><span> Specifies the highest point of the facade to be mapped.</span></li>
+  <li><b><span>Flight Base Line:</span></b><span> The path along which the drone will fly in front of the facade.</span></li>
+  <li><b><span>Position of the Facade:</span></b><span> A reference point on the facade used to calculate overlap distances.</span></li>
+</ul>
+<p class="MsoNormal"><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
+<div align="center">
+<table style="text-align: left; width: 275px;" border="0" cellpadding="0" cellspacing="0">
+  <tbody>
+    <tr>
+      <td><img src="https://github.com/LEOXINGU/lftools/blob/main/images/tutorial/cadastre_connectFeatures.jpg"></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+## Requirements
+The following plugins must bem installed and activated in QGIS:
+<ul style="margin-top: 0cm;" type="disc">
+  <li>Plugins <b>LFTools</b></li>
+  <li><b>Open Topography</b></li>
+  <li><b>KML Tools</b></li>
+</ul>
+
+## Tips
+<ul style="margin-top: 0cm;" type="disc">
+  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the API Key for the Open Topography plugin</a><o:p></o:p></span></li>
+  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a><o:p></o:p></li>
+</ul>
 
 ## How to contribute by learning more
 <div style="text-align: center;"><a
@@ -61,36 +122,7 @@ This tool creates a Facade Vertical Flight Plan
 </div>
 
 
-## Colaborators
-<div style="text-align: center;">
-<tbody>
-        <tr>
-          <td><a target="_blank" rel="noopener noreferrer" href="https://www.acgeoengenharia.com.br/">
-          <img title="ACGEO Engenharia" style="border: 0px solid ; heigth: 160px; " alt="acgeo"
-           src="https://user-images.githubusercontent.com/88212377/161191725-f37650ff-1fba-4cae-8145-af45f1c599d1.jpg">
-           </a>
-          </td>
-          <td><a target="_blank" rel="noopener noreferrer" href="https://agrodata.me/">
-          <img title="AgroData" style="border: 0px solid ; heigth: 200px; " alt="agrodata"
-           src="https://user-images.githubusercontent.com/88212377/162043665-0508af3f-83f5-4bc4-847f-0e81b8261e77.JPG">
-           </a>
-          </td>
-          <td><a target="_blank" rel="noopener noreferrer" href="https://www.instagram.com/abeca.pe/">
-          <img title="ABECA-PE" style="border: 0px solid ; heigth: 200px; " alt="abeca-pe"
-           src="https://user-images.githubusercontent.com/25651083/178548305-85664a78-1dcc-4fda-9a07-af450480a32d.jpg">
-           </a>
-          </td>
-          <td><a target="_blank" rel="noopener noreferrer" href="https://sites.google.com/view/labat/01">
-          <img title="DECart-UFPE" style="border: 0px solid ; heigth: 200px; " alt="labat"
-           src="https://user-images.githubusercontent.com/25651083/179381253-1805dd57-1bf7-4eb4-9608-c2fb0bd4c93b.jpg">
-           </a>
-          </td>
-        </tr>
-      </tbody>
-</div>
-
-
-## Autores
+## Authors
 Prof Cazaroli 
 <div style="text-align: center;"><a
  href="https://www.linkedin.com/in/prof-cazaroli-458377274/"><img
