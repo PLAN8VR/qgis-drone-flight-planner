@@ -297,7 +297,7 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
    # Adicionar campos de texto em Pontos Reordenados
    addCampo(pontos_reproj, 'xcoord ', QVariant.String) # o espaço é para diferenciar; depois vamos deletar os campos antigos
    addCampo(pontos_reproj, 'ycoord ', QVariant.String)
-   addCampo(pontos_reproj, 'alturavoo ', QVariant.String)
+   addCampo(pontos_reproj, 'alturasolo ', QVariant.String)
       
    if flight_type == "VC":
       addCampo(pontos_reproj, 'angulo ', QVariant.String)   
@@ -305,7 +305,7 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
    for f in pontos_reproj.getFeatures():
          x1= str(f['xcoord']).replace(',', '.')
          x2 = str(f['ycoord']).replace(',', '.')
-         x3 = str(f['alturavoo']).replace(',', '.')
+         x3 = str(f['alturasolo']).replace(',', '.')
          
          if flight_type == "VC":
             x4 = str(f['angulo']).replace(',', '.')
@@ -321,7 +321,7 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
          # Atualizar os valores dos campos de texto
          f['xcoord '] = x1
          f['ycoord '] = x2
-         f['alturavoo '] = x3
+         f['alturasolo '] = x3
          
          if flight_type == "VC":
             f['angulo '] = x4
@@ -332,9 +332,9 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
 
    # Lista de campos Double a serem removidos de Pontos Reprojetados
    if flight_type == "H" or flight_type == "VF":
-      camposDel = ['xcoord', 'ycoord', 'alturavoo'] # sem o espaço
+      camposDel = ['xcoord', 'ycoord', 'alturasolo'] # sem o espaço
    elif flight_type == "VC":
-      camposDel = ['xcoord', 'ycoord', 'alturavoo', 'angulo']
+      camposDel = ['xcoord', 'ycoord', 'alturasolo', 'angulo']
       
    pontos_reproj.startEditing()
    pontos_reproj.dataProvider().deleteAttributes([pontos_reproj.fields().indexOf(campo) for campo in camposDel if pontos_reproj.fields().indexOf(campo) != -1])
@@ -394,9 +394,9 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
             y_coord = f['ycoord ']
             
             if flight_type == "VF":
-               alturavoo = f['alturavoo ']
+               alturavoo = f['alturasolo ']
             elif flight_type == "VC":
-               alturavoo = f['alturavoo ']
+               alturavoo = f['alturasolo ']
                angulo = f['angulo ']
                
             # Criar um dicionário de dados para cada item do CSV
