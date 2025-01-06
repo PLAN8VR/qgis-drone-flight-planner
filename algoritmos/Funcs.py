@@ -36,9 +36,7 @@ from qgis.core import (
     QgsGeometry
 )
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProcessingFeedback, QgsFeature, QgsProperty, QgsWkbTypes, QgsTextBufferSettings, QgsCoordinateTransformContext
-from qgis.core import QgsProject, QgsVectorLayer, QgsRasterLayer, QgsGeometry, QgsField, QgsPointXY, QgsVectorFileWriter, QgsPalLayerSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling
-from qgis.core import QgsApplication, QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsSimpleLineSymbolLayer, QgsLineSymbol, QgsMarkerLineSymbolLayer, QgsFillSymbol, QgsSettings
+from qgis.core import *
 from qgis.PyQt.QtGui import QColor, QFont
 from PyQt5.QtCore import QVariant
 import qgis.utils
@@ -133,6 +131,77 @@ def obter_DEM(flight_type, layer, transformador, apikey, feedback=None, bbox_are
    
    return camadaMDE
  
+def criarLinhaVoo(flight_type, point_layer, crs, crs_wgs, transformador, feedback=None):
+   # Criar Linha de Voo e colocar altitude nas linhas; altitude do primeiro vértice; dos Pontos de Fotos
+   linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Linha de Voo', 'memory')
+   linhavoo_provider = linha_voo_layer.dataProvider()
+
+   # Definir campos
+   campos = QgsFields()
+   campos.append(QgsField("id", QVariant.Int))
+   campos.append(QgsField("altitude", QVariant.Double))
+   campos.append(QgsField("alturavoo", QVariant.Double))
+   
+   if flight_type == "VF" or flight_type == "VC":
+       campos.append(QgsField("altura_solo", QVariant.Double))
+       
+   linhavoo_provider.addAttributes(campos)
+   linha_voo_layer.updateFields()
+
+   linha_voo_layer.startEditing()
+
+   linha_feature = QgsFeature()
+   last_point = None
+
+   # Iterar sobre os pontos da camada de pontos
+   for f in point_layer.getFeatures():
+      linha_id = f['linha']
+
+      # Obter as coordenadas do ponto
+      x, y = f.geometry().vertexAt(0).x(), f.geometry().vertexAt(0).y()
+      z = f.geometry().vertexAt(0).z()  
+      ponto_atual = QgsPointXY(x, y)
+
+      altitude = f['altitude'] # Obter a altura de voo e altitude do ponto
+      alturavoo = f['alturavoo']  
+      
+      if flight_type == "VF" or flight_type == "VC":
+         alturasolo = f['alturasolo']
+
+      # Se houver um ponto anterior, cria-se uma linha entre o ponto anterior e o ponto atual
+      if last_point:
+            linha_geom = QgsGeometry.fromPolylineXY([last_point, ponto_atual])  # Criar geometria da linha
+            
+            linha_feature.setGeometry(linha_geom)
+            
+            if flight_type == "VF" or flight_type == "VC":
+               linha_feature.setAttributes([linha_id, altitude, alturavoo, alturasolo])
+            else:
+               linha_feature.setAttributes([linha_id, altitude, alturavoo])  
+            
+            # Adicionar a feature à camada
+            linhavoo_provider.addFeature(linha_feature)
+      
+      # Atualiza o ponto anterior para o próximo ciclo
+      last_point = ponto_atual
+
+   # Finalizar edição e atualizar camada de linhas
+   linha_voo_layer.commitChanges()
+
+   # Reprojetar linha_voo_layer para WGS84 (4326)
+   linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
+
+   # Polygon para PolygonZ
+   linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+
+   # Configurar simbologia de seta
+   simbologiaLinhaVoo("VF", linha_voo_reproj)
+
+   # ===== LINHA DE VOO ==============================
+   QgsProject.instance().addMapLayer(linha_voo_reproj)
+
+   return linha_voo_reproj
+
 def gerar_KML(layer, arquivo_kml, crs_wgs, feedback=None):
    campos = [field.name() for field in layer.fields()]
    
@@ -211,10 +280,7 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
    pontos_reproj.commitChanges()
 
    # deletar campos desnecessários
-   if flight_type == "H" or flight_type == "VC":
-      campos = ['latitude', 'longitude']
-   elif flight_type == "VF":
-      campos = ['linha', 'latitude', 'longitude']
+   campos = ['latitude', 'longitude']
    
    pontos_reproj.startEditing()
    
@@ -445,39 +511,33 @@ def simbologiaLinhaVoo(flight_type, layer):
       marcador.setSubSymbol(seta)
       
       layer.renderer().symbol().appendSymbolLayer(marcador)
-   elif flight_type == "VC":
-      simbologia = QgsFillSymbol.createSimple({
-            'color': 'transparent',    # Sem preenchimento
-            'outline_color': 'green',  # Contorno verde
-            'outline_width': '0.8'     # Largura do contorno
-        })
-      layer.setRenderer(QgsSingleSymbolRenderer(simbologia))
-   elif flight_type == "VF":
+   elif flight_type == "VF" or flight_type == "VC":
       simbologia = QgsLineSymbol.createSimple({
             'color': 'green',        # Cor da linha
             'width': '0.8'           # Largura da linha
          })
       layer.setRenderer(QgsSingleSymbolRenderer(simbologia))
-       
-   # Rótulo
-   label_settings = QgsPalLayerSettings()
-   label_settings.fieldName = 'id'  # Campo que será usado como rótulo
-   label_settings.placement = QgsPalLayerSettings.Line
-   label_settings.enabled = True
+      
+   if flight_type == "H" or flight_type == "VF": 
+      # Rótulo
+      label_settings = QgsPalLayerSettings()
+      label_settings.fieldName = 'id'  # Campo que será usado como rótulo
+      label_settings.placement = QgsPalLayerSettings.Line
+      label_settings.enabled = True
 
-   # Criar configurações de renderização de rótulos
-   text_format = QgsTextFormat()
-   text_format.setSize(10)  # Tamanho da fonte
-   text_format.setColor(QColor('blue'))  # Cor do texto
-   text_format.setFont(QFont('Arial'))  # Fonte do texto
+      # Criar configurações de renderização de rótulos
+      text_format = QgsTextFormat()
+      text_format.setSize(10)  # Tamanho da fonte
+      text_format.setColor(QColor('blue'))  # Cor do texto
+      text_format.setFont(QFont('Arial'))  # Fonte do texto
 
-   label_settings.setFormat(text_format)
+      label_settings.setFormat(text_format)
 
-   # Aplicar rótulos à camada
-   labeling = QgsVectorLayerSimpleLabeling(label_settings)
-   layer.setLabelsEnabled(True)
-   layer.setLabeling(labeling)
-   layer.triggerRepaint()
+      # Aplicar rótulos à camada
+      labeling = QgsVectorLayerSimpleLabeling(label_settings)
+      layer.setLabelsEnabled(True)
+      layer.setLabeling(labeling)
+      layer.triggerRepaint()
        
    return
 
