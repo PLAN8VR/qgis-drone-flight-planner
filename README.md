@@ -96,7 +96,7 @@ The following plugins must bem installed and activated in QGIS:
 Purchase one of our online courses or e-book on the GeoOne platform.
 <div style="text-align: center;"><a
  href="https://portal.geoone.com.br/m/courses"><img
- style="border: 2px solid ;" alt="GeoFlight Planner"
+ style="border: 2px solid ;" alt="Cursos da GeoOne"
  title="CURSO NA GEOONE"
  src="https://geoone.com.br/wp-content/uploads/2024/11/Capas-combo.png"></a>
 <br>
