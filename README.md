@@ -8,7 +8,6 @@
   </p>
 </p>
         
-<p>A QGIS plugin for precise drone flight planning, designed for photogrammetry, 3D inspections, and building facade mapping. It includes tools for terrain-following flights, circular paths around structures, and vertical facade mapping, generating KML files for 3D visualization and CSV files compatible with Litchi or other flight apps.<br></p>
         
 <!-- TABLE OF CONTENTS -->
 <details open="open">
@@ -32,7 +31,7 @@
 
 
 ## GeoFlight Planner Plugin
-
+<p>A QGIS plugin for precise drone flight planning, designed for photogrammetry, 3D inspections, and building facade mapping. It includes tools for terrain-following flights, circular paths around structures, and vertical facade mapping, generating KML files for 3D visualization and CSV files compatible with Litchi or other flight apps.<br></p>
 
 ### Horizontal Flight
 Tool for Horizontal Flight Plan.
