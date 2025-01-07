@@ -141,9 +141,6 @@ def criarLinhaVoo(flight_type, point_layer, crs, crs_wgs, transformador, feedbac
    campos.append(QgsField("id", QVariant.Int))
    campos.append(QgsField("altitude", QVariant.Double))
    campos.append(QgsField("alturavoo", QVariant.Double))
-   
-   if flight_type == "VF" or flight_type == "VC":
-       campos.append(QgsField("altura_solo", QVariant.Double))
        
    linhavoo_provider.addAttributes(campos)
    linha_voo_layer.updateFields()
@@ -152,39 +149,33 @@ def criarLinhaVoo(flight_type, point_layer, crs, crs_wgs, transformador, feedbac
 
    linha_feature = QgsFeature()
    last_point = None
+   
+   # Obter os pontos da camada em ordem
+   pontos = [f for f in point_layer.getFeatures()] 
 
    # Iterar sobre os pontos da camada de pontos
-   for f in point_layer.getFeatures():
-      linha_id = f['linha']
+   for i in range(len(pontos) - 1):  # Vai até o penúltimo índice
+      ponto_atual = pontos[i]
+      proximo_ponto = pontos[i + 1]
 
-      # Obter as coordenadas do ponto
-      x, y = f.geometry().vertexAt(0).x(), f.geometry().vertexAt(0).y()
-      z = f.geometry().vertexAt(0).z()  
-      ponto_atual = QgsPointXY(x, y)
+      # Coordenadas do ponto atual
+      x1, y1 = ponto_atual['longitude'], ponto_atual['latitude']
+      z1 = ponto_atual['altitude']
 
-      altitude = f['altitude'] # Obter a altura de voo e altitude do ponto
-      alturavoo = f['alturavoo']  
+      # Coordenadas do próximo ponto
+      x2, y2 = proximo_ponto['longitude'], proximo_ponto['latitude']
+      z2 = proximo_ponto['altitude']
+
+      # Criar a geometria da linha
+      linha_geom = QgsGeometry.fromPolylineXY([QgsPointXY(x1, y1), QgsPointXY(x2, y2)])
+      linha_feature.setGeometry(linha_geom)
+
+      # Adicionar atributos à linha
+      linha_feature.setAttributes([ponto_atual['linha'], z1, ponto_atual['alturavoo']])
+
+      # Adicionar a linha à camada
+      linhavoo_provider.addFeature(linha_feature)
       
-      if flight_type == "VF" or flight_type == "VC":
-         alturasolo = f['alturasolo']
-
-      # Se houver um ponto anterior, cria-se uma linha entre o ponto anterior e o ponto atual
-      if last_point:
-            linha_geom = QgsGeometry.fromPolylineXY([last_point, ponto_atual])  # Criar geometria da linha
-            
-            linha_feature.setGeometry(linha_geom)
-            
-            if flight_type == "VF" or flight_type == "VC":
-               linha_feature.setAttributes([linha_id, altitude, alturavoo, alturasolo])
-            else:
-               linha_feature.setAttributes([linha_id, altitude, alturavoo])  
-            
-            # Adicionar a feature à camada
-            linhavoo_provider.addFeature(linha_feature)
-      
-      # Atualiza o ponto anterior para o próximo ciclo
-      last_point = ponto_atual
-
    # Finalizar edição e atualizar camada de linhas
    linha_voo_layer.commitChanges()
 
@@ -297,33 +288,45 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
    # Adicionar campos de texto em Pontos Reordenados
    addCampo(pontos_reproj, 'xcoord ', QVariant.String) # o espaço é para diferenciar; depois vamos deletar os campos antigos
    addCampo(pontos_reproj, 'ycoord ', QVariant.String)
-   addCampo(pontos_reproj, 'alturasolo ', QVariant.String)
+   
+   if flight_type == "VF":
+      addCampo(pontos_reproj, 'alturasolo ', QVariant.String)
       
    if flight_type == "VC":
+      addCampo(pontos_reproj, 'alturasolo ', QVariant.String)
       addCampo(pontos_reproj, 'angulo ', QVariant.String)   
    
    for f in pontos_reproj.getFeatures():
          x1= str(f['xcoord']).replace(',', '.')
          x2 = str(f['ycoord']).replace(',', '.')
-         x3 = str(f['alturasolo']).replace(',', '.')
+         
+         if flight_type == "VF":
+            x3 = str(f['alturasolo']).replace(',', '.')
          
          if flight_type == "VC":
+            x3 = str(f['alturasolo']).replace(',', '.')
             x4 = str(f['angulo']).replace(',', '.')
          
          # Formatar os valores como strings com ponto como separador decimal
          x1 = "{:.6f}".format(float(x1))
          x2 = "{:.6f}".format(float(x2))
-         x3 = "{:.6f}".format(float(x3))
+         
+         if flight_type == "VF":
+            x3 = "{:.6f}".format(float(x3))
 
          if flight_type == "VC":
+            x3 = "{:.6f}".format(float(x3))
             x4 = "{:.6f}".format(float(x4))
 
          # Atualizar os valores dos campos de texto
          f['xcoord '] = x1
          f['ycoord '] = x2
-         f['alturasolo '] = x3
+         
+         if flight_type == "VF":
+            f['alturasolo '] = x3
          
          if flight_type == "VC":
+            f['alturasolo '] = x3
             f['angulo '] = x4
 
          pontos_reproj.updateFeature(f)
@@ -331,8 +334,10 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
    pontos_reproj.commitChanges()
 
    # Lista de campos Double a serem removidos de Pontos Reprojetados
-   if flight_type == "H" or flight_type == "VF":
-      camposDel = ['xcoord', 'ycoord', 'alturasolo'] # sem o espaço
+   if flight_type == "H":
+      camposDel = ['xcoord', 'ycoord'] # sem o espaço
+   elif flight_type == "VF":
+      camposDel = ['xcoord', 'ycoord', 'alturasolo']
    elif flight_type == "VC":
       camposDel = ['xcoord', 'ycoord', 'alturasolo', 'angulo']
       

@@ -47,7 +47,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         hFac, altMin, sensorH, sensorV, dFocal, sLateral, sFrontal, veloc, tStay, api_key, sKML, sCSV = loadParametros("VF")
 
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Flight Base Line', types=[QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position of the Facade', types=[QgsProcessing.TypeVectorPoint]))
+        self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position Point of the Facade', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Facade Height (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hFac))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
@@ -97,9 +97,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         tempo = parameters['tempo']
 
         apikey = parameters['api_key']
-
-        caminho_kml = parameters['saida_kml']
-        arquivo_csv = parameters['saida_csv']
+        
+        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
+        arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Grava Parâmetros =====================================================
         saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'], parameters['alturaMin'])

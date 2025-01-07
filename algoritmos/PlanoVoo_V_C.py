@@ -83,8 +83,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         apikey = parameters['api_key']
 
-        caminho_kml = parameters['saida_kml']
-        arquivo_csv = parameters['saida_csv']
+        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
+        arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Grava Parâmetros =====================================================
         saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['alturaMin'], parameters['num_partes'], parameters['deltaVertical'])

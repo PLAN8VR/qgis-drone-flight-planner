@@ -94,27 +94,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
 
         apikey = parameters['api_key']
         
-        caminho_kml = self.parameterAsFile(
-            parameters,
-            'saida_kml',
-            context
-        )
-
-        arquivo_csv = self.parameterAsFile(
-            parameters,
-            'saida_csv',
-            context
-        )
-        
-        # if os.path.exists(parameters['saida_kml']):
-        #     caminho_kml = parameters['saida_kml']   
-        # else:
-        #     raise QgsProcessingException(self.invalidSourceError(parameters, 'saida_kml'))
-        
-        # try:
-        #    arquivo_csv = parameters['saida_csv']   
-        # except:
-        #     raise QgsProcessingException(self.invalidSourceError(parameters, 'saida_csv'))   
+        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
+        arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
         saveParametros("H", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
