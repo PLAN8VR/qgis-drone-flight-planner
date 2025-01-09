@@ -186,7 +186,7 @@ def criarLinhaVoo(flight_type, point_layer, crs, crs_wgs, transformador, feedbac
    linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
 
    # Configurar simbologia de seta
-   simbologiaLinhaVoo("VF", linha_voo_reproj)
+   simbologiaLinhaVoo(flight_type, linha_voo_reproj)
 
    # ===== LINHA DE VOO ==============================
    QgsProject.instance().addMapLayer(linha_voo_reproj)
@@ -523,26 +523,26 @@ def simbologiaLinhaVoo(flight_type, layer):
          })
       layer.setRenderer(QgsSingleSymbolRenderer(simbologia))
       
-   if flight_type == "H" or flight_type == "VF": 
-      # Rótulo
-      label_settings = QgsPalLayerSettings()
-      label_settings.fieldName = 'id'  # Campo que será usado como rótulo
-      label_settings.placement = QgsPalLayerSettings.Line
-      label_settings.enabled = True
+      if flight_type == "VF": 
+         # Rótulo
+         label_settings = QgsPalLayerSettings()
+         label_settings.fieldName = 'id'  # Campo que será usado como rótulo
+         label_settings.placement = QgsPalLayerSettings.Line
+         label_settings.enabled = True
 
-      # Criar configurações de renderização de rótulos
-      text_format = QgsTextFormat()
-      text_format.setSize(10)  # Tamanho da fonte
-      text_format.setColor(QColor('blue'))  # Cor do texto
-      text_format.setFont(QFont('Arial'))  # Fonte do texto
+         # Criar configurações de renderização de rótulos
+         text_format = QgsTextFormat()
+         text_format.setSize(10)  # Tamanho da fonte
+         text_format.setColor(QColor('blue'))  # Cor do texto
+         text_format.setFont(QFont('Arial'))  # Fonte do texto
 
-      label_settings.setFormat(text_format)
+         label_settings.setFormat(text_format)
 
-      # Aplicar rótulos à camada
-      labeling = QgsVectorLayerSimpleLabeling(label_settings)
-      layer.setLabelsEnabled(True)
-      layer.setLabeling(labeling)
-      layer.triggerRepaint()
+         # Aplicar rótulos à camada
+         labeling = QgsVectorLayerSimpleLabeling(label_settings)
+         layer.setLabelsEnabled(True)
+         layer.setLabeling(labeling)
+         layer.triggerRepaint()
        
    return
 
