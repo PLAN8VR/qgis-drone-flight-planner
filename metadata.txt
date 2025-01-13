@@ -25,7 +25,7 @@ hasProcessingProvider=yes
 # Tags are comma separated with spaces allowed
 tags=drones, dji, litchi, fly, path, csv, kmz, kml, brazil, plano de voo, GeoOne
 
-homepage=https://github.com/OpenGeoOne/PlanoVoo/wiki
+homepage=https://github.com/OpenGeoOne/qgis-drone-flight-planner/blob/main/README.md
 category=Drone
 icon=images/GeoFlightPlanner.png
 # experimental flag
