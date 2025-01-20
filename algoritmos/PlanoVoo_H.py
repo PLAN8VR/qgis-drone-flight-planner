@@ -172,11 +172,11 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
 
         if camadaMDE is None:
-            camadaMDE = obter_DEM("H", area_layer, transformador, apikey, feedback)
+            camadaMDE = obter_DEM("H", poligono_geom, transformador, apikey, feedback)
 
-        #QgsProject.instance().addMapLayer(camadaMDE)
+        # QgsProject.instance().addMapLayer(camadaMDE)
 
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
+        # camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
         # ================================================================================
         # ===== Ajuste da linha sobre um lado do polígono ================================

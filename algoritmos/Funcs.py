@@ -47,55 +47,28 @@ def obter_DEM(flight_type, layer, transformador, apikey, feedback=None, bbox_are
    # Obter a Altitude dos pontos das Fotos com OpenTopography
    feedback.pushInfo("Getting Altitudes with OpenTopography")
    
-   # Obter as coordenadas extremas da área (em WGS 84)
-   pontoN = float('-inf')  # coordenada máxima (Norte) / inf de inifito
-   pontoS = float('inf')   # coordenada mínima (Sul)
-   pontoW = float('inf')   # coordenada mínima (Oeste)
-   pontoE = float('-inf')  # coordenada máxima (Leste)
-   
    # Determinar o bounding box da linha em WGS 84
-   if flight_type == "H":
-      for feature in layer.getFeatures():  # Terreno
-         geom = feature.geometry()
-         bounds = geom.boundingBox()  # Limites da geometria em UTM
+   bounds = layer.boundingBox()
+   ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
+   ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
 
-         # Transformar limites para WGS 84
-         ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
-         ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
+   pontoN = ponto_max.y()
+   pontoS = ponto_min.y()
+   pontoW = ponto_min.x()
+   pontoE = ponto_max.x()
 
-         pontoN = max(pontoN, ponto_max.y())
-         pontoS = min(pontoS, ponto_min.y())
-         pontoW = min(pontoW, ponto_min.x())
-         pontoE = max(pontoE, ponto_max.x())
-
-      # Ajustar os limites
-      ajuste_lat = (pontoN - pontoS) * 0.70
-      ajuste_long = (pontoE - pontoW) * 0.70
-
-      pontoN += ajuste_lat
-      pontoS -= ajuste_lat
-      pontoW -= ajuste_long
-      pontoE += ajuste_long  
-   else: # VF e VC
-      bounds = layer.boundingBox()
-      ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
-      ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
-
-      pontoN = ponto_max.y()
-      pontoS = ponto_min.y()
-      pontoW = ponto_min.x()
-      pontoE = ponto_max.x()
-
-      # Certificar que a área do bounding box seja grande o suficiente
-      bbox_area = (pontoE - pontoW) * (pontoN - pontoS) * 111 * 111  # Aproximação em km²
-      if bbox_area < bbox_area_min:
-         aumento = ((bbox_area_min / bbox_area) ** 0.5 - 1) / 2
-         ajuste_lat_extra = aumento * (pontoN - pontoS)
-         ajuste_long_extra = aumento * (pontoE - pontoW)
-         pontoN += ajuste_lat_extra
-         pontoS -= ajuste_lat_extra
-         pontoW -= ajuste_long_extra
-         pontoE += ajuste_long_extra
+   # Certificar que a área do bounding box seja grande o suficiente
+   bbox_area = (pontoE - pontoW) * (pontoN - pontoS) * 111 * 111  # Aproximação em km²
+   if bbox_area < bbox_area_min:
+      aumento = ((bbox_area_min / bbox_area) ** 0.5 - 1) / 2
+      
+      ajuste_lat_extra = aumento * (pontoN - pontoS)
+      ajuste_long_extra = aumento * (pontoE - pontoW)
+      
+      pontoN += ajuste_lat_extra
+      pontoS -= ajuste_lat_extra
+      pontoW -= ajuste_long_extra
+      pontoE += ajuste_long_extra
 
    # Obter o DEM da área
    coordenadas = f'{pontoW},{pontoE},{pontoS},{pontoN}'
