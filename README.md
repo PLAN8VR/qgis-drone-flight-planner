@@ -95,10 +95,10 @@ The following plugins must bem installed and activated in QGIS:
 ## How to contribute by learning more
 Purchase one of our online courses or e-book on the GeoOne platform.
 <div style="text-align: center;"><a
- href="https://portal.geoone.com.br/m/courses"><img
- style="border: 2px solid ;" alt="Cursos da GeoOne"
- title="CURSO NA GEOONE"
- src="https://geoone.com.br/wp-content/uploads/2024/11/Capas-combo.png"></a>
+ href="https://geoone.com.br/pvplanodevoo2"><img
+ style="border: 2px solid ;" alt="Plano de Voo"
+ title="PLANO DE VOO NO QGIS"
+ src="https://geoone.com.br/wp-content/uploads/2025/01/Plano-de-voo-no-QGIS.jpg"></a>
 <br>
 </div>
 
