@@ -88,8 +88,8 @@ The following plugins must bem installed and activated in QGIS:
 
 ## Tips
 <ul style="margin-top: 0cm;" type="disc">
-  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the API Key for the Open Topography plugin</a><o:p></o:p></span></li>
-  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a><o:p></o:p></li>
+  <li><a href="https://geoone.com.br/opentopography-qgis/" target="_blank">Obtain the API Key for the Open Topography plugin</a><o:p></o:p></span></li>
+  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor" target="_blank">Check your drone sensor parameters</a><o:p></o:p></li>
 </ul>
 
 ## How to contribute by learning more
@@ -106,7 +106,7 @@ Purchase one of our online courses or e-book on the GeoOne platform.
 ## Authors
 Prof Cazaroli 
 <div style="text-align: center;"><a
- href="https://www.linkedin.com/in/prof-cazaroli-458377274/"><img
+ href="https://www.linkedin.com/in/prof-cazaroli-458377274/" target="_blank"><img
  style="border: 0px solid ;width: 20px" alt="GeoCAR no QGIS"
  title="Prof Cazaroli"
  src="https://user-images.githubusercontent.com/52215653/163875911-3ff4d34b-bf67-4b2b-9d2c-8525c1c011a6.png"></a>
@@ -114,7 +114,7 @@ Prof Cazaroli
 
 Leandro França
 <div style="text-align: center;"><a
- href="https://www.linkedin.com/in/leandro-fran%C3%A7a-93093714b/"><img
+ href="https://www.linkedin.com/in/leandro-fran%C3%A7a-93093714b/" target="_blank"><img
  style="border: 0px solid ;width: 20px" alt="GeoCAR no QGIS"
  title="Leandro França"
  src="https://user-images.githubusercontent.com/52215653/163875911-3ff4d34b-bf67-4b2b-9d2c-8525c1c011a6.png"></a>
