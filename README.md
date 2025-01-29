@@ -15,11 +15,8 @@
   <ol>
       <li><a href='#horizontal-flight Sensor'>Horizontal Flight</a></li>
          <ul>
-           <li><a href="#following-terrain">Following terrain - Drone Sensor Data</a></li>
-           <li><a href="#following-terrain">Following terrain - Manual Lateral and Frontal Distance</a></li>
-        </ul>
-         <ul>
-           <li><a href="#following-terrain">Following terrain</a></li>
+           <li><a href="#following-terrain-sensor">Following terrain - Drone Sensor Data</a></li>
+           <li><a href="#following-terrain-manual">Following terrain - Manual Lateral and Frontal Distance</a></li>
         </ul>
       <li><a href='#vertical-flight'>Vertical Flight</a></li>
         <ul>
@@ -42,8 +39,13 @@ Tool for Horizontal Flight Plan.
 <div align="center">
 </div>
 
-### Following terrain
+### Following terrain Sensor
 This tool enables drone flight planning for photogrammetry, following terrain elevations and calculating lateral and frontal overlaps.<br>
+It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
+<p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
+
+### Following terrain Manual
+This tool enables drone flight planning for photogrammetry, following terrain elevations and lateral and frontal overlaps included manually.<br>
 It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
 <p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
 
