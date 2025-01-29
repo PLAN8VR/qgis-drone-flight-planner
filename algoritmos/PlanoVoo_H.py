@@ -48,7 +48,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('H','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=50,defaultValue=hVoo))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVoo))
         self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=sensorH)) # default p/o Phantom 4 Pro e Air 2S
@@ -65,7 +65,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=sFrontal))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=veloc))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))

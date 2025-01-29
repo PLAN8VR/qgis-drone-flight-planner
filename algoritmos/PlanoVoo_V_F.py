@@ -51,7 +51,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('altura','Facade Height (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hFac))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=altMin))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMin))
         self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=sensorH))
@@ -68,7 +68,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=sFrontal))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=veloc))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
