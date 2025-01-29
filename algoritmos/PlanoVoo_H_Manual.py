@@ -41,7 +41,7 @@ import csv
 
 class PlanoVoo_H(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, dl_manual, df_manual, veloc, tStay, api_key, sKML, sCSV = loadParametros("H")
+        hVoo, dl_manual, df_manual, veloc, tStay, api_key, sKML, sCSV = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
@@ -73,8 +73,8 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
         H = parameters['H']
-        dl = parameters['dl']
-        df = parameters['df']
+        deltaLat = parameters['dl']   # Distância das linhas de voo paralelas - sem cálculo
+        deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo    
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
 
@@ -84,7 +84,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['dl'], parameters['df'])
+        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['dl'], parameters['df'])
         
         # ===== Verificações =====================================================
 
@@ -133,20 +133,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         if primeira_linha.featureCount() != 1:
             raise ValueError("The First Line must contain only one line.")
 
-         # =====Cálculo das Sobreposições=========================================
-        # Distância das linhas de voo paralelas - Espaçamento Lateral
-        tg_alfa_2 = dc / (2 * f)
-        D_lat = dc * H / f
-        SD_lat = percL * D_lat
-        h1 = SD_lat / (2 * tg_alfa_2)
-        deltaLat = SD_lat * (H / h1 - 1)
-
-        # Espaçamento Frontal entre as fotografias- Espaçamento Frontal
-        tg_alfa_2 = dl / (2 * f)
-        D_front = dl * H / f
-        SD_front = percF * D_front
-        h1 = SD_front / (2 * tg_alfa_2)
-        deltaFront = SD_front * (H / h1 - 1)
+        # ===== Sobreposições digitadas manualmente ====================================================
 
         feedback.pushInfo(f"Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
 
@@ -630,7 +617,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
-    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations and calculating lateral and frontal overlaps.<br>
+    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (<b>Manually placed Side and Front distance dat</b>).<br>
 It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
 <p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
 <b>Requirements: </b>Plugins <b>LFTools</b>, <b>Open Topography</b>, and <b>KML Tools</b> installed in QGIS.</p>

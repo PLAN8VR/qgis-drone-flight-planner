@@ -13,7 +13,11 @@
 <details open="open">
   <summary>GeoFlightPlanner</summary>
   <ol>
-      <li><a href='#horizontal-flight'>Horizontal Flight</a></li>
+      <li><a href='#horizontal-flight Sensor'>Horizontal Flight - Drone Sensor Data</a></li>
+         <ul>
+           <li><a href="#following-terrain">Following terrain</a></li>
+        </ul>
+      <li><a href='#horizontal-flight Manual'>Horizontal Flight - Manually placed Side and Front distance data</a></li>
          <ul>
            <li><a href="#following-terrain">Following terrain</a></li>
         </ul>
@@ -72,6 +76,7 @@ It enables the planning of a precise vertical trajectory with appropriate overla
   <li><b><span>Estimated Facade Height:</span></b><span> Specifies the highest point of the facade to be mapped.</span></li>
   <li><b><span>Flight Base Line:</span></b><span> The path along which the drone will fly in front of the facade.</span></li>
   <li><b><span>Position of the Facade:</span></b><span> A reference point on the facade used to calculate overlap distances.</span></li>
+  <li><b><span>Manually entered side and front distance</span></b><span></li>
 </ul>
 <p class="MsoNormal"><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
 

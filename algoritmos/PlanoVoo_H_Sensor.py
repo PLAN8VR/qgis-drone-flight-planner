@@ -96,7 +96,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
+        saveParametros("H_Sensor", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
         
         # ===== Verificações =====================================================
 
