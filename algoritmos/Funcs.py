@@ -667,7 +667,7 @@ def duplicaPontoInicial(layer):
 def loadParametros(tipoVoo):
    my_settings = QgsSettings()
    
-   if tipoVoo == "H":
+   if tipoVoo == "H_Sensor":
       hVoo = my_settings.value("qgis-drone-flight-planner/hVoo", 100)
       sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2)
       sensorV = my_settings.value("qgis-drone-flight-planner/sensorV", 8.8)
@@ -676,39 +676,56 @@ def loadParametros(tipoVoo):
       sFrontalH = my_settings.value("qgis-drone-flight-planner/sFrontalH", 0.85)
       velocH = my_settings.value("qgis-drone-flight-planner/velocH", 8)
       tStayH = my_settings.value("qgis-drone-flight-planner/tStayH", 0)
-   elif tipoVoo == "VF":
+   elif tipoVoo == "H":
+      hVoo = my_settings.value("qgis-drone-flight-planner/hVoo", 100)
+      dl_manualH = my_settings.value("qgis-drone-flight-planner/dl_manualH", 10)
+      df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 5)
+      velocH = my_settings.value("qgis-drone-flight-planner/velocH", 8)
+      tStayH = my_settings.value("qgis-drone-flight-planner/tStayH", 0)
+   elif tipoVoo == "VF_Sensor":
       hFac = my_settings.value("qgis-drone-flight-planner/hFac", 15)
-      altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 2)
+      altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 0.5)
       sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2)
       sensorV = my_settings.value("qgis-drone-flight-planner/sensorV", 8.8)
       dFocal = my_settings.value("qgis-drone-flight-planner/dFocal", 8.38)
       sLateralVF = my_settings.value("qgis-drone-flight-planner/sLateralVF", 0.85)
       sFrontalVF = my_settings.value("qgis-drone-flight-planner/sFrontalVF", 0.90)
-      velocVF = my_settings.value("qgis-drone-flight-planner/velocVF", 3)
+      velocVF = my_settings.value("qgis-drone-flight-planner/velocVF", 1)
+      tStayVF = my_settings.value("qgis-drone-flight-planner/tStayVF", 2)
+   elif tipoVoo == "VF":
+      hFac = my_settings.value("qgis-drone-flight-planner/hFac", 15)
+      altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 0.5)
+      dl_manualVF = my_settings.value("qgis-drone-flight-planner/dl_manualVF", 5)
+      df_manualVF = my_settings.value("qgis-drone-flight-planner/df_manualVF", 3)
+      velocVF = my_settings.value("qgis-drone-flight-planner/velocVF", 1)
       tStayVF = my_settings.value("qgis-drone-flight-planner/tStayVF", 2)
    elif tipoVoo == "VC": 
       hObj = my_settings.value("qgis-drone-flight-planner/hObj", 15)
-      altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 2)  
+      altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 0.5)  
       nPartesVC = my_settings.value("qgis-drone-flight-planner/nPartesVC", 8)
       dVertVC = my_settings.value("qgis-drone-flight-planner/dVertVC", 3)
-      velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 3)
+      velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 1)
       tStayVC = my_settings.value("qgis-drone-flight-planner/tStayVC", 2)
       
    api_key = my_settings.value("OpenTopographyDEMDownloader/ot_api_key", "")
    sKML = my_settings.value("qgis-drone-flight-planner/sKML", "")
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
       
-   if tipoVoo == "H":
+   if tipoVoo == "H_Sensor":
       return hVoo, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, api_key, sKML, sCSV
-   elif tipoVoo == "VF":
+   elif tipoVoo == "H":
+      return hVoo, dl_manualH, df_manualH, velocH, tStayH, api_key, sKML, sCSV
+   elif tipoVoo == "VF_Sensor":
       return hFac, altMinVF, sensorH, sensorV, dFocal, sLateralVF, sFrontalVF, velocVF, tStayVF, api_key, sKML, sCSV
+   elif tipoVoo == "VF":
+      return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, api_key, sKML, sCSV
    elif tipoVoo == "VC":
       return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, api_key, sKML, sCSV
    
-def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, aM=None, nVC=None, dVC=None):
+def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, df=None, aM=None, nVC=None, dVC=None):
    my_settings = QgsSettings()
    
-   if tipoVoo == "H":
+   if tipoVoo == "H_Sensor":
       my_settings.setValue("qgis-drone-flight-planner/hVoo", h)
       my_settings.setValue("qgis-drone-flight-planner/sensorH", sensorH)
       my_settings.setValue("qgis-drone-flight-planner/sensorV", sensorV)
@@ -717,7 +734,13 @@ def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFo
       my_settings.setValue("qgis-drone-flight-planner/sFrontalH", sFrontal)
       my_settings.setValue("qgis-drone-flight-planner/velocH", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayH", t)
-   elif tipoVoo == "VF":
+   elif tipoVoo == "H":
+      my_settings.setValue("qgis-drone-flight-planner/hVoo", h)
+      my_settings.setValue("qgis-drone-flight-planner/dl_manualH", dl)
+      my_settings.setValue("qgis-drone-flight-planner/df_manualH", df)
+      my_settings.setValue("qgis-drone-flight-planner/velocH", v)
+      my_settings.setValue("qgis-drone-flight-planner/tStayH", t)
+   elif tipoVoo == "VF_Sensor":
       my_settings.setValue("qgis-drone-flight-planner/hFac", h)
       my_settings.setValue("qgis-drone-flight-planner/altMinVF", aM)
       my_settings.setValue("qgis-drone-flight-planner/sensorH", sensorH)
@@ -725,6 +748,13 @@ def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFo
       my_settings.setValue("qgis-drone-flight-planner/dFocal", dFocal)
       my_settings.setValue("qgis-drone-flight-planner/sLateralVF", sLateral)
       my_settings.setValue("qgis-drone-flight-planner/sFrontalVF", sFrontal)
+      my_settings.setValue("qgis-drone-flight-planner/velocVF", v)
+      my_settings.setValue("qgis-drone-flight-planner/tStayVF", t)
+   elif tipoVoo == "VF":
+      my_settings.setValue("qgis-drone-flight-planner/hFac", h)
+      my_settings.setValue("qgis-drone-flight-planner/altMinVF", aM)
+      my_settings.setValue("qgis-drone-flight-planner/dl_manualVF", dl)
+      my_settings.setValue("qgis-drone-flight-planner/df_manualVF", df)
       my_settings.setValue("qgis-drone-flight-planner/velocVF", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayVF", t)
    elif tipoVoo == "VC":

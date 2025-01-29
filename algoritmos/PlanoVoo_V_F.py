@@ -52,13 +52,13 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hFac))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMin))
-        self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (mm)',
+        self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (mm)', # default p/o Air 2S
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=sensorH))
-        self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Vertical Size (mm)',
+        self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Vertical Size (mm)',   # default p/o Air 2S
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=sensorV))
-        self.addParameter(QgsProcessingParameterNumber('f','Sensor: Focal Length (mm)',
+        self.addParameter(QgsProcessingParameterNumber('f','Sensor: Focal Length (mm)',     # default p/o Air 2S
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=dFocal))
         self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (85% = 0.85)',
