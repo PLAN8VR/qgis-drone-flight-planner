@@ -702,9 +702,9 @@ def loadParametros(tipoVoo):
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
       
    if tipoVoo == "H_Sensor":
-      return hVooS, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocHs, tStayHs, api_key, sKML, sCSV
+      return hVoo, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, api_key, sKML, sCSV
    elif tipoVoo == "H_Manual":
-      return hVooM, dl_manualH, df_manualH, velocHm, tStayHm, api_key, sKML, sCSV
+      return hVoo, dl_manualH, df_manualH, velocH, tStayH, api_key, sKML, sCSV
    elif tipoVoo == "VF":
       return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, api_key, sKML, sCSV
    elif tipoVoo == "VC":

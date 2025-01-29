@@ -39,7 +39,7 @@ import os
 import math
 import csv
 
-class PlanoVoo_H(QgsProcessingAlgorithm):
+class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         hVoo, dl_manual, df_manual, veloc, tStay, api_key, sKML, sCSV = loadParametros("H_Manual")
 
@@ -594,10 +594,10 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         return {}
 
     def name(self):
-        return 'FollowingTerrain'.lower()
+        return 'FollowingTerrainManual'.lower()
 
     def displayName(self):
-        return self.tr('Following terrain')
+        return self.tr('Following terrain - Manual Data')
 
     def group(self):
         return 'Horizontal Flight'
@@ -609,7 +609,7 @@ class PlanoVoo_H(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return PlanoVoo_H()
+        return PlanoVoo_H_Manual()
 
     def tags(self):
         return self.tr('Flight Plan,Measure,Topography,Plano voo,Plano de voo,voo,drone').split(',')
