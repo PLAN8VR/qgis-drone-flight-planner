@@ -13,11 +13,11 @@
 <details open="open">
   <summary>GeoFlightPlanner</summary>
   <ol>
-      <li><a href='#horizontal-flight Sensor'>Horizontal Flight - Drone Sensor Data</a></li>
+      <li><a href='#horizontal-flight Sensor'>Horizontal Flight</a></li>
          <ul>
-           <li><a href="#following-terrain">Following terrain</a></li>
+           <li><a href="#following-terrain">Following terrain - Drone Sensor Data</a></li>
+           <li><a href="#following-terrain">Following terrain - Manual Lateral and Frontal Distance</a></li>
         </ul>
-      <li><a href='#horizontal-flight Manual'>Horizontal Flight - Manually placed Side and Front distance data</a></li>
          <ul>
            <li><a href="#following-terrain">Following terrain</a></li>
         </ul>
