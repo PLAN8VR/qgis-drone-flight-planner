@@ -714,7 +714,7 @@ def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFo
    my_settings = QgsSettings()
    
    if tipoVoo == "H_Sensor":
-      my_settings.setValue("qgis-drone-flight-planner/hVooS", hs)
+      my_settings.setValue("qgis-drone-flight-planner/hVooS", h)
       my_settings.setValue("qgis-drone-flight-planner/sensorH", sensorH)
       my_settings.setValue("qgis-drone-flight-planner/sensorV", sensorV)
       my_settings.setValue("qgis-drone-flight-planner/dFocal", dFocal)
@@ -723,7 +723,7 @@ def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFo
       my_settings.setValue("qgis-drone-flight-planner/velocHs", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayHs", t)
    elif tipoVoo == "H_Manual":
-      my_settings.setValue("qgis-drone-flight-planner/hVooM", hm)
+      my_settings.setValue("qgis-drone-flight-planner/hVooM", h)
       my_settings.setValue("qgis-drone-flight-planner/dl_manualH", dl)
       my_settings.setValue("qgis-drone-flight-planner/df_manualH", df)
       my_settings.setValue("qgis-drone-flight-planner/velocHm", v)
