@@ -41,18 +41,23 @@ import csv
 
 class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, dl_manual, df_manual, veloc, tStay, sKML, sCSV = loadParametros("H_Manual")
+        hVoo, ab_ground, dl_manual, df_manual, tFoto, veloc, tStay, sKML, sCSV = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('H','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVoo))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVoo))    
+        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_ground))       
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Side between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.5,defaultValue=dl_manual))  
+                                                       minValue=0.5,defaultValue=dl_manual))
+        self.addParameter(QgsProcessingParameterDefinition('sep1', '──────── Determine Frontal Distance or Time between Photos ────────', QgsProcessingParameterDefinition.FlagReadOnly))  
         self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.5,defaultValue=df_manual))  
+                                                       minValue=0.5,defaultValue=df_manual))
+        self.addParameter(QgsProcessingParameterNumber('tempo_foto','Time between one Photo and the next (seconds)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=1,defaultValue=tFoto))
+        self.addParameter(QgsProcessingParameterString('sep2', '--------------------------------------------------------------------------------------------', defaultValue=''))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
@@ -72,15 +77,22 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
         H = parameters['H']
+        terrain = parameters['above_ground']
         deltaLat = parameters['dl']   # Distância das linhas de voo paralelas - sem cálculo
-        deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo    
+        t_foto = parameters['tempo_foto']
+        
+        if t_foto:
+            deltaFront = 0
+        else:
+            deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo
+        
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['dl'], parameters['df'])
+        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df'], parameters['t_foto'])
         
         # ===== Verificações =====================================================
 
@@ -131,7 +143,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
 
         # ===== Sobreposições digitadas manualmente ====================================================
 
-        feedback.pushInfo(f"Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
+        feedback.pushInfo(f"Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}, Time between Photos: {round(t_foto,2)}")
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -506,6 +518,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         pontos_fotos.startEditing()
         
         if camadaMDE:
+            param_KML = 2 # Altitude relativa ao terreno=1 e absoluta=2 para a geração do KML
             transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
 
             for f in pontos_fotos.getFeatures():
@@ -521,6 +534,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                     f["alturavoo"] = H
                     pontos_fotos.updateFeature(f)
         else:
+            param_KML = 1
             for f in pontos_fotos.getFeatures():
                 f["altitude"] = 0
                 f["alturavoo"] = H
@@ -563,17 +577,17 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
         if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
             arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
-            gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
+            gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, param_KML, feedback)
 
             arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
-            gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
+            gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, param_KML, feedback)
         else:
             feedback.pushInfo("KML path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
         else:
             feedback.pushInfo("CSV path not specified. Export step skipped.")
 

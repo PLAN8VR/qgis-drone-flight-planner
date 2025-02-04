@@ -15,7 +15,7 @@
   <ol>
       <li><a href='#horizontal-flight Sensor'>Horizontal Flight</a></li>
          <ul>
-           <li><a href="#following-terrain-sensor">Following terrain - Drone Sensor Data</a></li>
+           <li><a href="#following-terrain-sensor">Following terrain - Drone Sensor</a></li>
            <li><a href="#following-terrain-manual">Following terrain - Manual Lateral and Frontal Distance</a></li>
         </ul>
       <li><a href='#vertical-flight'>Vertical Flight</a></li>

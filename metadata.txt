@@ -21,7 +21,7 @@ repository=https://github.com/OpenGeoOne/qgis-drone-flight-planner
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 # changelog=
-      1.1 - Manually entered side and front distance 
+      1.1 - Manually entered side and front distance / Taken from OpenTopgraphy / Continuous Flight Line / Frontal Distance Time and Meters / Above Ground Yes or No
       1.0.1 - Update Horizontal Flight Minimum Area
       1.0 - Initial version
 

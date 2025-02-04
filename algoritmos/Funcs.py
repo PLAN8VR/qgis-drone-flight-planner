@@ -132,7 +132,7 @@ def criarLinhaVoo(flight_type, point_layer, crs_wgs, transformador, feedback=Non
 
    return linha_voo_reproj
 
-def gerar_KML(layer, arquivo_kml, crs_wgs, feedback=None):
+def gerar_KML(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
    campos = [field.name() for field in layer.fields()]
    
    result = processing.run("kmltools:exportkmz", {
@@ -140,7 +140,7 @@ def gerar_KML(layer, arquivo_kml, crs_wgs, feedback=None):
          'NameField': 'id',                     # Campo para o nome das feições no KML
          'UseGoogleIcon': 1,                    # Ícone padrão do Google Earth
          'AltitudeInterpretation': 1,           # Interpretar altitude
-         'AltitudeMode': 2,                     # Altitude absoluta
+         'AltitudeMode': altitude_mode,         # Altitude relativa ao terreno=1 e absoluta=2
          'AltitudeModeField': '',
          'AltitudeField': 'altitude',           # Campo com o valor Z
          'AltitudeAddend': 0,                   # Adicionar valor extra à altitude
@@ -181,7 +181,7 @@ def gerar_KML(layer, arquivo_kml, crs_wgs, feedback=None):
    return {}
    """
    
-def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta, angulo, H):
+def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None):
     # Definir novos campos xcoord e ycoord com coordenadas geográficas
    pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
    pontos_reproj.updateFields()
@@ -314,7 +314,10 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
             alturavoo = H
             mode_gimbal = 2
             angulo_gimbal = -90
-            above_ground = 1 # Above Ground habilitado
+            if terrain:
+               above_ground = 1 # Above Ground habilitado
+            else:
+               above_ground = 0 # Above Ground não habilitado
          else:
             mode_gimbal = 0
             angulo_gimbal = 0
@@ -635,6 +638,7 @@ def loadParametros(tipoVoo):
    
    if tipoVoo == "H_Sensor":
       hVoo = my_settings.value("qgis-drone-flight-planner/hVooS", 100)
+      ab_groundS = my_settings.value("qgis-drone-flight-planner/ab_groundS", True)
       sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2)
       sensorV = my_settings.value("qgis-drone-flight-planner/sensorV", 8.8)
       dFocal = my_settings.value("qgis-drone-flight-planner/dFocal", 8.38)
@@ -644,8 +648,10 @@ def loadParametros(tipoVoo):
       tStayH = my_settings.value("qgis-drone-flight-planner/tStayHs", 0)
    elif tipoVoo == "H_Manual":
       hVoo = my_settings.value("qgis-drone-flight-planner/hVooM", 100)
+      ab_groundM = my_settings.value("qgis-drone-flight-planner/ab_groundM", True)
       dl_manualH = my_settings.value("qgis-drone-flight-planner/dl_manualH", 10)
       df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 5)
+      t_fotoH = my_settings.value("qgis-drone-flight-planner/t_foto", 0)
       velocH = my_settings.value("qgis-drone-flight-planner/velocHm", 8)
       tStayH = my_settings.value("qgis-drone-flight-planner/tStayHm", 0)
    elif tipoVoo == "VF":
@@ -667,19 +673,20 @@ def loadParametros(tipoVoo):
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
       
    if tipoVoo == "H_Sensor":
-      return hVoo, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, sKML, sCSV
+      return hVoo, ab_groundS, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, sKML, sCSV
    elif tipoVoo == "H_Manual":
-      return hVoo, dl_manualH, df_manualH, velocH, tStayH, sKML, sCSV
+      return hVoo, ab_groundM, dl_manualH, df_manualH, t_fotoH, velocH, tStayH, sKML, sCSV
    elif tipoVoo == "VF":
       return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, sKML, sCSV
    elif tipoVoo == "VC":
       return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, sKML, sCSV
    
-def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, df=None, aM=None, nVC=None, dVC=None):
+def saveParametros(tipoVoo, h, v, t, sKML, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, df=None, t_foto=None, aM=None, nVC=None, dVC=None):
    my_settings = QgsSettings()
    
    if tipoVoo == "H_Sensor":
       my_settings.setValue("qgis-drone-flight-planner/hVooS", h)
+      my_settings.setValue("qgis-drone-flight-planner/ab_groundS", ab_ground)
       my_settings.setValue("qgis-drone-flight-planner/sensorH", sensorH)
       my_settings.setValue("qgis-drone-flight-planner/sensorV", sensorV)
       my_settings.setValue("qgis-drone-flight-planner/dFocal", dFocal)
@@ -689,8 +696,10 @@ def saveParametros(tipoVoo, h, v, t, sKML, sCSV, sensorH=None, sensorV=None, dFo
       my_settings.setValue("qgis-drone-flight-planner/tStayHs", t)
    elif tipoVoo == "H_Manual":
       my_settings.setValue("qgis-drone-flight-planner/hVooM", h)
+      my_settings.setValue("qgis-drone-flight-planner/ab_groundM", ab_ground)
       my_settings.setValue("qgis-drone-flight-planner/dl_manualH", dl)
       my_settings.setValue("qgis-drone-flight-planner/df_manualH", df)
+      my_settings.setValue("qgis-drone-flight-planner/t_fotoH", t_foto)
       my_settings.setValue("qgis-drone-flight-planner/velocHm", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayHm", t)
    elif tipoVoo == "VF":

@@ -41,12 +41,13 @@ import csv
 
 class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, sensorH, sensorV, dFocal, sLateral, sFrontal, veloc, tStay, sKML, sCSV = loadParametros("H_Sensor")
+        hVoo, ab_ground, sensorH, sensorV, dFocal, sLateral, sFrontal, veloc, tStay, sKML, sCSV = loadParametros("H_Sensor")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('H','Flight Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVoo))
+        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_ground))
         self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=sensorH)) # default p/o Air 2S
@@ -81,6 +82,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
         H = parameters['H']
+        terrain = parameters['above_ground']
         dc = parameters['dc']
         dl = parameters['dl']
         f = parameters['f']
@@ -92,7 +94,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Sensor", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
+        saveParametros("H_Sensor", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['above_ground'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
         
         # ===== Verificações =====================================================
 
@@ -531,6 +533,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         pontos_fotos.startEditing()
         
         if camadaMDE:
+            param_KML = 2 # Altitude relativa ao terreno=1 e absoluta=2 para a geração do KML
             transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
 
             for f in pontos_fotos.getFeatures():
@@ -546,6 +549,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                     f["alturavoo"] = H
                     pontos_fotos.updateFeature(f)
         else:
+            param_KML = 1
             for f in pontos_fotos.getFeatures():
                 f["altitude"] = 0
                 f["alturavoo"] = H
@@ -588,17 +592,17 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
         if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
             arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
-            gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
+            gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, param_KML, feedback)
 
             arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
-            gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
+            gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, param_KML, feedback)
         else:
             feedback.pushInfo("KML path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
         else:
             feedback.pushInfo("CSV path not specified. Export step skipped.")
 
