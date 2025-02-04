@@ -32,18 +32,16 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
+from .Funcs import verificar_plugins, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
 from ..images.Imgs import *
 import processing
 import os
 import math
 import csv
 
-# pontos_provider Air 2S (5472 × 3648)
-
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hObj, altMin, nPartes, dVertical, veloc, tStay, api_key, sKML, sCSV = loadParametros("VC")
+        hObj, altMin, nPartes, dVertical, veloc, tStay, sKML, sCSV = loadParametros("VC")
 
         self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight Base Circle', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Start Point', types=[QgsProcessing.TypeVectorPoint]))
@@ -60,7 +58,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin (uses an orthometric surface)', defaultValue=api_key))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
 
@@ -80,9 +77,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         deltaV = parameters['deltaVertical']
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-
-        apikey = parameters['api_key']
-
         caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
@@ -121,7 +115,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
-        plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]
+        plugins_verificar = ["lftools", "kmltools"]
         verificar_plugins(plugins_verificar, feedback)
 
         # Verificar as Geometrias
@@ -155,23 +149,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         feedback.pushInfo(f"Height: {H}, Horizontal Spacing: {round(deltaH,2)}, Vertical Spacing: {deltaV}")
 
-        # =====================================================================
-        # ===== OpenTopography ================================================
-
+        # =========================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
 
-        if camadaMDE is None:
-            camadaMDE = obter_DEM("VC", circulo_base_geom, transformador, apikey, feedback)
-
-        #QgsProject.instance().addMapLayer(camadaMDE)
-
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
-
-        # ====================================================================
-        # ===== Criar Polígono Circunscrito ==================================
-
+        # =========================================================================
+        # ===== Criar Polígono Circunscrito =======================================
         # Calcular vértices do polígono inscrito
         pontos = []
         for i in range(num_partes):
@@ -257,7 +241,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
         campos.append(QgsField("alturavoo", QVariant.Double))
-        campos.append(QgsField("alturasolo", QVariant.Double))
         campos.append(QgsField("angulo", QVariant.Double))
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
@@ -307,9 +290,12 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(v.x(), v.y()))
 
                 # Obter altitude do MDE
-                ponto_wgs = transformador.transform(QgsPointXY(v.x(), v.y()))
-                value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Amostragem no raster
-                altitude = value if result else 0
+                if camadaMDE:
+                    ponto_wgs = transformador.transform(QgsPointXY(v.x(), v.y()))
+                    value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Amostragem no raster
+                    a = value if result else 0
+                else:
+                    a = 0
 
                 # Calcular o ângulo do ponto
                 centroide = circulo_base_geom.centroid().asPoint()  # Obter o centro geométrico do objeto
@@ -325,9 +311,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 ponto_feature.setAttribute("linha", idx)
                 ponto_feature.setAttribute("latitude", v.y())
                 ponto_feature.setAttribute("longitude", v.x())
-                ponto_feature.setAttribute("altitude", altitude)
-                ponto_feature.setAttribute("alturavoo", altitude + float(altura))
-                ponto_feature.setAttribute("alturasolo", float(altura))
+                ponto_feature.setAttribute("altitude", a)
+                ponto_feature.setAttribute("alturavoo", float(altura))
                 ponto_feature.setAttribute("angulo", angulo)
                 ponto_feature.setGeometry(ponto_geom)
                 pontos_provider.addFeature(ponto_feature)
@@ -360,7 +345,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # ===== Linha de Voo com Altitudes  ===================================
         # =====================================================================
 
-        linha_voo_reproj = criarLinhaVoo("VC", pontos_fotos, crs, crs_wgs, transformador, feedback)
+        linha_voo_reproj = criarLinhaVoo("VC", pontos_fotos, crs_wgs, transformador, feedback)
 
         # ===== Final Linha de Voo ============================================
         # =====================================================================

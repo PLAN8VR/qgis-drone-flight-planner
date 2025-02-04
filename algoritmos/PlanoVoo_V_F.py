@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
+from .Funcs import verificar_plugins, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
 from ..images.Imgs import *
 import processing
 import os
@@ -40,11 +40,9 @@ import math
 import numpy as np
 import csv
 
-# pontos_provider Air 2S (5472 × 3648)
-
 class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hFac, altMin, dl_manual, df_manual, veloc, tStay, api_key, sKML, sCSV = loadParametros("VF")
+        hFac, altMin, dl_manual, df_manual, veloc, tStay, sKML, sCSV = loadParametros("VF")
 
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Flight Base Line', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position Point of the Facade', types=[QgsProcessing.TypeVectorPoint]))
@@ -63,7 +61,6 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin (uses an orthometric surface)', defaultValue=api_key))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
 
@@ -82,10 +79,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         deltaLat = parameters['dl']   # Distância das linhas de voo paralelas - sem cálculo
         deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo   l
         velocidade = parameters['velocidade']
-        tempo = parameters['tempo']
-
-        apikey = parameters['api_key']
-        
+        tempo = parameters['tempo']     
         caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
@@ -119,7 +113,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
-        plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]
+        plugins_verificar = ["lftools", "kmltools"]
         verificar_plugins(plugins_verificar, feedback)
 
         # Verificar as Geometrias
@@ -160,19 +154,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         #feedback.pushInfo(f"Flight baseline Length: {comprimento_linha_base} \n Heights: {alturas}     Distances: {distancias}")
 
-        # =====================================================================
-        # ===== OpenTopography ================================================
-
+        # ============================================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-
-        if camadaMDE is None:
-            camadaMDE = obter_DEM("VF", linha_base_geom, transformador, apikey, feedback)
-
-        #QgsProject.instance().addMapLayer(camadaMDE)
-
-        #camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
         # =============================================================================================
         # ===== Criar a camada Pontos de Fotos ========================================================
@@ -189,7 +174,6 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
         campos.append(QgsField("alturavoo", QVariant.Double))
-        campos.append(QgsField("alturasolo", QVariant.Double))
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
 
@@ -243,15 +227,19 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
                 ponto = linha_base_geom.interpolate(d).asPoint()
                 ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
-                # Transformar coordenada do ponto para CRS do raster
-                ponto_wgs = transformador.transform(QgsPointXY(ponto.x(), ponto.y()))
-
-                # Obter valor de Z do MDE
-                value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Resolução de amostragem
-                if result:
-                    a = value
+                
+                # Obter altitude do MDE
+                if camadaMDE:
+                    # Transformar coordenada do ponto para CRS do raster
+                    ponto_wgs = transformador.transform(QgsPointXY(ponto.x(), ponto.y()))
+                    
+                    value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Resolução de amostragem
+                    if result:
+                        a = value
+                    else:
+                        feedback.pushWarning(f"Falha ao obter altitude para o ponto {f.id()}")
+                        a = 0
                 else:
-                    feedback.pushWarning(f"Falha ao obter altitude para o ponto {f.id()}")
                     a = 0
 
                 # Criar o recurso de ponto
@@ -262,8 +250,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                 ponto_feature.setAttribute("latitude", ponto.y())
                 ponto_feature.setAttribute("longitude", ponto.x())
                 ponto_feature.setAttribute("altitude", a)
-                ponto_feature.setAttribute("alturavoo", a + float(altura))
-                ponto_feature.setAttribute("alturasolo", float(altura))
+                ponto_feature.setAttribute("alturavoo", float(altura))
                 ponto_feature.setGeometry(ponto_geom)
                 pontos_provider.addFeature(ponto_feature)
 
@@ -295,7 +282,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # =============================================================================================
         # ===== Criar Linhas de Voo ===================================================================
 
-        linha_voo_reproj = criarLinhaVoo("VF", pontos_fotos, crs, crs_wgs, transformador, feedback)
+        linha_voo_reproj = criarLinhaVoo("VF", pontos_fotos, crs_wgs, transformador, feedback)
 
         # ===== Final Linha de Voo ============================================
         # =====================================================================

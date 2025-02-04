@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, obter_DEM, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
+from .Funcs import verificar_plugins, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
 from ..images.Imgs import *
 import processing
 import os
@@ -41,7 +41,7 @@ import csv
 
 class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, sensorH, sensorV, dFocal, sLateral, sFrontal, veloc, tStay, api_key, sKML, sCSV = loadParametros("H_Sensor")
+        hVoo, sensorH, sensorV, dFocal, sLateral, sFrontal, veloc, tStay, sKML, sCSV = loadParametros("H_Sensor")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
@@ -67,7 +67,6 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterString('api_key', 'API key - OpenTopography plugin (uses an orthometric surface)', defaultValue=api_key))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
         
@@ -89,9 +88,6 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         percF = parameters['percF'] # Frontal
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-
-        apikey = parameters['api_key']
-        
         caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
@@ -125,7 +121,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
-        plugins_verificar = ["OpenTopography-DEM-Downloader", "lftools", "kmltools"]
+        plugins_verificar = ["lftools", "kmltools"]
         verificar_plugins(plugins_verificar, feedback)
 
         # Verificar as Geometrias
@@ -162,19 +158,10 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         feedback.pushInfo(f"Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
 
-        # =====================================================================
-        # ===== OpenTopography ================================================
-
+        # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
-
-        if camadaMDE is None:
-            camadaMDE = obter_DEM("H", poligono_geom, transformador, apikey, feedback)
-
-        # QgsProject.instance().addMapLayer(camadaMDE)
-
-        # camadaMDE = QgsProject.instance().mapLayersByName("DEM")[0]
 
         # ================================================================================
         # ===== Ajuste da linha sobre um lado do polígono ================================
@@ -540,27 +527,34 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         # Atualizar a camada
         pontos_fotos.updateExtents()
         
-        # Obter a altitude dos pontos a partir do MDE
-        transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
+        # Obter a altitude dos pontos a partir do MDE se tiver sido fornecido
         pontos_fotos.startEditing()
+        
+        if camadaMDE:
+            transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
 
-        for f in pontos_fotos.getFeatures():
-            point = f.geometry().asPoint()
+            for f in pontos_fotos.getFeatures():
+                point = f.geometry().asPoint()
 
-            # Transformar coordenada para o CRS do MDE
-            point_transf = transformador.transform(QgsPointXY(point.x(), point.y()))
-            
-            # Obter o valor de Z do MDE
-            value, result = camadaMDE.dataProvider().sample(point_transf, 1)  # Resolução = 1
-            if result:
-                f["altitude"] = value
-                f["alturavoo"] = value + H
+                # Transformar coordenada para o CRS do MDE
+                point_transf = transformador.transform(QgsPointXY(point.x(), point.y()))
+                
+                # Obter o valor de Z do MDE
+                value, result = camadaMDE.dataProvider().sample(point_transf, 1)  # Resolução = 1
+                if result:
+                    f["altitude"] = value
+                    f["alturavoo"] = H
+                    pontos_fotos.updateFeature(f)
+        else:
+            for f in pontos_fotos.getFeatures():
+                f["altitude"] = 0
+                f["alturavoo"] = H
                 pontos_fotos.updateFeature(f)
-
+                
         pontos_fotos.commitChanges()
 
         # Point para PointZ
-        pontos_fotos = set_Z_value(pontos_fotos, z_field="alturavoo")
+        pontos_fotos = set_Z_value(pontos_fotos, z_field="altitude")
 
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
@@ -581,7 +575,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         # ===============================================================================
         # ===== Criar Linha de Voo ======================================================
         
-        linha_voo_reproj = criarLinhaVoo("H", pontos_fotos, crs, crs_wgs, transformador, feedback)
+        linha_voo_reproj = criarLinhaVoo("H", pontos_fotos, crs_wgs, transformador, feedback)
         
         # ===== Final Linha de Voo ============================================ 
         # =====================================================================
