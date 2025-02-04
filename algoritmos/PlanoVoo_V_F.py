@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
+from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
 from ..images.Imgs import *
 import processing
 import os
@@ -42,7 +42,7 @@ import csv
 
 class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hFac, altMin, dl_manual, df_manual, veloc, tStay, sKML, sCSV = loadParametros("VF")
+        hFac, altMin, dl_manual, df_manual, veloc, tStay, skmz, sCSV = loadParametros("VF")
 
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Flight Base Line', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position Point of the Facade', types=[QgsProcessing.TypeVectorPoint]))
@@ -61,7 +61,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kmz', 'Output Folder for kmz (Google Earth)', defaultValue=skmz))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -80,11 +80,11 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo   l
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']     
-        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
+        caminho_kmz = self.parameterAsFile(parameters, 'saida_kmz', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['dl'], parameters['df'], parameters['alturaMin'])
+        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['dl'], parameters['df'], parameters['alturaMin'])
         
         # ===== Verificações ===================================================================================
 
@@ -230,6 +230,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                 
                 # Obter altitude do MDE
                 if camadaMDE:
+                    param_kmz = 2 # Altitude relativa ao terreno=1 e absoluta=2 para a geração do kmz
                     # Transformar coordenada do ponto para CRS do raster
                     ponto_wgs = transformador.transform(QgsPointXY(ponto.x(), ponto.y()))
                     
@@ -240,6 +241,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                         feedback.pushWarning(f"Falha ao obter altitude para o ponto {f.id()}")
                         a = 0
                 else:
+                    param_kmz = 1
                     a = 0
 
                 # Criar o recurso de ponto
@@ -290,17 +292,17 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         feedback.pushInfo("")
         feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
 
-        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
+        # =========Exportar para o Google  E a r t h   P r o  (kmz)================================================
 
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
-        if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-            arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
-            gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, feedback)
+        if caminho_kmz and caminho_kmz != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kmz):
+            arquivo_kmz = os.path.join(caminho_kmz, "Pontos Fotos.kmz")
+            gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
 
-            arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
-            gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, feedback)
+            arquivo_kmz = os.path.join(caminho_kmz, "Linha de Voo.kmz")
+            gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
         else:
-            feedback.pushInfo("KML path not specified. Export step skipped.")
+            feedback.pushInfo("kmz path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
@@ -351,8 +353,8 @@ It enables the planning of a precise vertical trajectory with appropriate overla
   <li><b><span>Flight Base Line:</span></b><span> The path along which the drone will fly in front of the facade.</span></li>
   <li><b><span>Position of the Facade:</span></b><span> A reference point on the facade used to calculate overlap distances.</span></li>
 </ul>
-<p class="MsoNormal"><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
-<p><b><span>Requirements:</span></b><span> Plugins <b>LFTools</b>, <b>Open Topography</b>, and <b>KML Tools</b> installed in QGIS.</span></p>
+<p class="MsoNormal"><span>The outputs are <b>kmz</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the kmz files for flight lines and waypoints.</span></p>
+<p><b><span>Requirements:</span></b><span> Plugins <b>LFTools</b>, and <b>KML Tools</b> installed in QGIS.</span></p>
 <p><b>Tips:</b></p>
 <ul style="margin-top: 0cm;" type="disc">
   <li><span><a href="https://geoone.com.br/opentopography-qgis/">Obtain the API Key for the Open Topography plugin</a></span></li>

@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_KML, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
+from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
 from ..images.Imgs import *
 import processing
 import os
@@ -41,7 +41,7 @@ import csv
 
 class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, ab_ground, dl_manual, df_manual, tFoto, veloc, tStay, sKML, sCSV = loadParametros("H_Manual")
+        hVoo, ab_ground, dl_manual, df_manual, tFoto, veloc, tStay, skmz, sCSV = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
@@ -49,21 +49,17 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVoo))    
         self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_ground))       
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Side between Flight Lines (m)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.5,defaultValue=dl_manual))
-        self.addParameter(QgsProcessingParameterDefinition('sep1', '──────── Determine Frontal Distance or Time between Photos ────────', QgsProcessingParameterDefinition.FlagReadOnly))  
-        self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos (m)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.5,defaultValue=df_manual))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manual))  
+        self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos (m) or Time between Photos (seconds)',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0,defaultValue=df_manual))
         self.addParameter(QgsProcessingParameterNumber('tempo_foto','Time between one Photo and the next (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=1,defaultValue=tFoto))
-        self.addParameter(QgsProcessingParameterString('sep2', '--------------------------------------------------------------------------------------------', defaultValue=''))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tFoto))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for KML (Google Earth)', defaultValue=sKML))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kmz', 'Output Folder for kmz (Google Earth)', defaultValue=skmz))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
         
     def processAlgorithm(self, parameters, context, feedback):
@@ -78,24 +74,26 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
 
         H = parameters['H']
         terrain = parameters['above_ground']
-        deltaLat = parameters['dl']   # Distância das linhas de voo paralelas - sem cálculo
-        t_foto = parameters['tempo_foto']
-        
-        if t_foto:
-            deltaFront = 0
-        else:
-            deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo
-        
+        deltaLat = parameters['dl']       # Distância das linhas de voo paralelas - sem cálculo
+        deltaFront = parameters['df']     # Espaçamento Frontal entre as fotografias- sem cálculo
+        t_foto = parameters['tempo_foto'] # tempo entre uma Foto e outra - daí não precisa de deltaFront que deve ser zero
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
+        caminho_kmz = self.parameterAsFile(parameters, 'saida_kmz', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kml, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df'], parameters['t_foto'])
+        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kmz, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df'], parameters['tempo_foto'])
         
         # ===== Verificações =====================================================
 
+        # Verificar delatFronta e Tempo entre Fotos
+        if deltaFront != 0 and t_foto != 0:
+            raise ValueError("Front Distance and Time between Photos - At least one must be zero.")
+        
+        if deltaFront == 0 and t_foto == 0:
+            raise ValueError("Front Distance and Time between Photos - At least one must be different from zero.")
+        
         # Verificar o SRC das Camadas
         crs = area_layer.crs()
         crsL = primeira_linha.crs() # não usamos o crsL, apenas para verificar a camada
@@ -518,7 +516,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         pontos_fotos.startEditing()
         
         if camadaMDE:
-            param_KML = 2 # Altitude relativa ao terreno=1 e absoluta=2 para a geração do KML
+            param_kmz = 2 # Altitude relativa ao terreno=1 e absoluta=2 para a geração do kmz
             transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
 
             for f in pontos_fotos.getFeatures():
@@ -534,7 +532,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                     f["alturavoo"] = H
                     pontos_fotos.updateFeature(f)
         else:
-            param_KML = 1
+            param_kmz = 1
             for f in pontos_fotos.getFeatures():
                 f["altitude"] = 0
                 f["alturavoo"] = H
@@ -572,17 +570,17 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         feedback.pushInfo("")
         feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
 
-        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
+        # =========Exportar para o Google  E a r t h   P r o  (kmz)================================================
 
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
-        if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-            arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
-            gerar_KML(pontos_reproj, arquivo_kml, crs_wgs, param_KML, feedback)
+        if caminho_kmz and caminho_kmz != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kmz):
+            arquivo_kmz = os.path.join(caminho_kmz, "Pontos Fotos.kmz")
+            gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
 
-            arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
-            gerar_KML(linha_voo_reproj, arquivo_kml, crs_wgs, param_KML, feedback)
+            arquivo_kmz = os.path.join(caminho_kmz, "Linha de Voo.kmz")
+            gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
         else:
-            feedback.pushInfo("KML path not specified. Export step skipped.")
+            feedback.pushInfo("kmz path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
@@ -626,9 +624,9 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
     texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (<b>Manually placed Side and Front distance dat</b>).<br>
-It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
-<p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
-<b>Requirements: </b>Plugins <b>LFTools</b>, <b>Open Topography</b>, and <b>KML Tools</b> installed in QGIS.</p>
+It generates <b>kmz</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
+<p>It can also be used with other flight applications by utilizing the kmz files for flight lines and waypoints.</p>
+<b>Requirements: </b>Plugins <b>LFTools</b>, and <b>KML Tools</b> installed in QGIS.</p>
 <p><b>Tips:</b><o:p></o:p></p>
 <ul style="margin-top: 0cm;" type="disc">
   <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the API Key for the Open Topography plugin</a><o:p></o:p></span></li>

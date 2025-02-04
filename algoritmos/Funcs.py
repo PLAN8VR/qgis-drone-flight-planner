@@ -132,30 +132,60 @@ def criarLinhaVoo(flight_type, point_layer, crs_wgs, transformador, feedback=Non
 
    return linha_voo_reproj
 
-def gerar_KML(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
+def gerar_kmz(layer, arquivo_kmz, crs_wgs, altitude_mode, feedback=None):
    campos = [field.name() for field in layer.fields()]
    
-   result = processing.run("kmltools:exportkmz", {
-         'InputLayer': layer,
-         'NameField': 'id',                     # Campo para o nome das feições no KML
-         'UseGoogleIcon': 1,                    # Ícone padrão do Google Earth
-         'AltitudeInterpretation': 1,           # Interpretar altitude
-         'AltitudeMode': altitude_mode,         # Altitude relativa ao terreno=1 e absoluta=2
-         'AltitudeModeField': '',
-         'AltitudeField': 'altitude',           # Campo com o valor Z
-         'AltitudeAddend': 0,                   # Adicionar valor extra à altitude
-         'OutputKmz': arquivo_kml,              # Arquivo de saída
-         'LineWidthFactor': 2,                  # Define a largura das linhas no KML
-         'UseDescBR': True,                     # Usar descrição em formato brasileiro
-         'DateStampField': '',
-         'TimeStampField': '',
-         'DateBeginField': '',
-         'TimeBeginField': '',
-         'DateEndField': '',
-         'TimeEndField': ''
-   }, feedback=feedback)
+   # result = processing.run("kmltools:exportkmz", {
+   #       'InputLayer': layer,
+   #       'NameField': 'id',                     # Campo para o nome das feições no kmz
+   #       'UseGoogleIcon': 1,                    # Ícone padrão do Google Earth
+   #       'AltitudeInterpretation': 1,           # Interpretar altitude
+   #       'AltitudeMode': altitude_mode,         # Altitude relativa ao terreno=1 e absoluta=2
+   #       'AltitudeModeField': '',
+   #       'AltitudeField': 'altitude',           # Campo com o valor Z
+   #       'AltitudeAddend': 0,                   # Adicionar valor extra à altitude
+   #       'OutputKmz': arquivo_kmz,              # Arquivo de saída
+   #       'LineWidthFactor': 2,                  # Define a largura das linhas no kmz
+   #       'UseDescBR': True,                     # Usar descrição em formato brasileiro
+   #       'DateStampField': '',
+   #       'TimeStampField': '',
+   #       'DateBeginField': '',
+   #       'TimeBeginField': '',
+   #       'DateEndField': '',
+   #       'TimeEndField': ''
+   # }, feedback=feedback)
    
-   feedback.pushInfo(f"KML successfully exported to: {arquivo_kml}")
+   
+   result = processing.run("kmltools:exportkmz", {
+      'InputLayer':layer,
+      'SelectedFeaturesOnly':False,
+      'NameField':'id',                       # Campo para o nome das feições no kmz
+      'HiddenPolygonPointLabel':False,
+      'DescriptionField':['id'],
+      'ExportStyle':True,
+      'UseGoogleIcon':1,                      # Ícone padrão do Google Earth
+      'AltitudeInterpretation':1,
+      'AltitudeMode':altitude_mode,           # Altitude relativa ao terreno=1 e absoluta=2
+      'AltitudeModeField':'altitude',         # Campo com o valor Z; pode ser zero se não tiver Raster selecionado
+      'AltitudeField':'',
+      'AltitudeAddend':0,
+      'ExtendSidesToGround':False,
+      'DateTimeStampField':'',
+      'DateTimeBeginField':'',
+      'DateTimeEndField':'',
+      'PhotoField':'',
+      'OutputKmz':arquivo_kmz,                 # Arquivo de saída
+      'LineWidthFactor':2,                     # Define a largura das linhas no kmz
+      'SubFolderField':'',
+      'UseDescBR':True,                        # Usar descrição em formato brasileiro
+      'DateStampField':'',
+      'TimeStampField':'',
+      'DateBeginField':'',
+      'TimeBeginField':'',
+      'DateEndField':'',
+      'TimeEndField':''})
+   
+   feedback.pushInfo(f"kmz successfully exported to: {arquivo_kmz}")
    
    return result
 
@@ -164,19 +194,19 @@ def gerar_KML(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
    options = QgsVectorFileWriter.SaveVectorOptions()
    options.fileEncoding = 'UTF-8'
    options.crs = crs_wgs
-   options.driverName = 'KML'
+   options.driverName = 'kmz'
    options.includeZ = True
    #options.fieldName = 'id'
    options.altitudemode = 'absolute'
    #options.layerOptions = ['ALTITUDE_MODE=absolute']
    
-   # Escrever a camada no arquivo KML
-   grava = QgsVectorFileWriter.writeAsVectorFormat(layer, arquivo_kml, options)
+   # Escrever a camada no arquivo kmz
+   grava = QgsVectorFileWriter.writeAsVectorFormat(layer, arquivo_kmz, options)
 
    if grava == QgsVectorFileWriter.NoError:
-      feedback.pushInfo(f"Arquivo KML exportado com sucesso para: {arquivo_kml}")
+      feedback.pushInfo(f"Arquivo kmz exportado com sucesso para: {arquivo_kmz}")
    else:
-      feedback.pushInfo(f"Erro ao exportar o arquivo KML: {grava}")
+      feedback.pushInfo(f"Erro ao exportar o arquivo kmz: {grava}")
    
    return {}
    """
@@ -650,7 +680,7 @@ def loadParametros(tipoVoo):
       hVoo = my_settings.value("qgis-drone-flight-planner/hVooM", 100)
       ab_groundM = my_settings.value("qgis-drone-flight-planner/ab_groundM", True)
       dl_manualH = my_settings.value("qgis-drone-flight-planner/dl_manualH", 10)
-      df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 5)
+      df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 0)
       t_fotoH = my_settings.value("qgis-drone-flight-planner/t_foto", 0)
       velocH = my_settings.value("qgis-drone-flight-planner/velocHm", 8)
       tStayH = my_settings.value("qgis-drone-flight-planner/tStayHm", 0)
@@ -669,19 +699,19 @@ def loadParametros(tipoVoo):
       velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 1)
       tStayVC = my_settings.value("qgis-drone-flight-planner/tStayVC", 2)
       
-   sKML = my_settings.value("qgis-drone-flight-planner/sKML", "")
+   skmz = my_settings.value("qgis-drone-flight-planner/skmz", "")
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
       
    if tipoVoo == "H_Sensor":
-      return hVoo, ab_groundS, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, sKML, sCSV
+      return hVoo, ab_groundS, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, skmz, sCSV
    elif tipoVoo == "H_Manual":
-      return hVoo, ab_groundM, dl_manualH, df_manualH, t_fotoH, velocH, tStayH, sKML, sCSV
+      return hVoo, ab_groundM, dl_manualH, df_manualH, t_fotoH, velocH, tStayH, skmz, sCSV
    elif tipoVoo == "VF":
-      return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, sKML, sCSV
+      return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, skmz, sCSV
    elif tipoVoo == "VC":
-      return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, sKML, sCSV
+      return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skmz, sCSV
    
-def saveParametros(tipoVoo, h, v, t, sKML, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, df=None, t_foto=None, aM=None, nVC=None, dVC=None):
+def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, df=None, t_foto=None, aM=None, nVC=None, dVC=None):
    my_settings = QgsSettings()
    
    if tipoVoo == "H_Sensor":
@@ -717,7 +747,7 @@ def saveParametros(tipoVoo, h, v, t, sKML, sCSV, ab_ground=None, sensorH=None, s
       my_settings.setValue("qgis-drone-flight-planner/velocVC", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayVC", t)
    
-   my_settings.setValue("qgis-drone-flight-planner/sKML", sKML)
+   my_settings.setValue("qgis-drone-flight-planner/skmz", skmz)
    my_settings.setValue("qgis-drone-flight-planner/sCSV", sCSV)
 
    return
