@@ -104,29 +104,18 @@ import csv
    
 #    return camadaMDE
  
-def criarLinhaVoo(flight_type, point_layer, crs_wgs, transformador, feedback=None):
-   result = processing.run("native:pointstopath", {
-         'INPUT': point_layer,
-         'CLOSE_PATH': False,
-         'ORDER_EXPRESSION': '"id"', 
-         'NATURAL_SORT': False,
-         'GROUP_EXPRESSION': '',
-         'OUTPUT': 'TEMPORARY_OUTPUT'
-      }, feedback=feedback)
-
-   linha_voo_layer = result['OUTPUT']
-
+def criarLinhaVoo(flight_type, layer, crs_wgs, transformador, feedback=None):
    # Reprojetar linha_voo_layer para WGS84 (4326)
-   linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
+   linha_voo_reproj = reprojeta_camada_WGS84(layer, crs_wgs, transformador)
 
    # Polygon para PolygonZ
-   linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+   linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude")
 
    # Configurar simbologia de seta
    simbologiaLinhaVoo(flight_type, linha_voo_reproj)
 
    # ===== LINHA DE VOO ==============================
-   linha_voo_reproj.setName("Linha de Voo")
+   linha_voo_reproj.setName("Flight Line")
    
    QgsProject.instance().addMapLayer(linha_voo_reproj)
 
@@ -680,6 +669,7 @@ def loadParametros(tipoVoo):
       hVoo = my_settings.value("qgis-drone-flight-planner/hVooM", 100)
       ab_groundM = my_settings.value("qgis-drone-flight-planner/ab_groundM", True)
       dl_manualH = my_settings.value("qgis-drone-flight-planner/dl_manualH", 10)
+      df_op = my_settings.value("qgis-drone-flight-planner/df_op", 0)
       df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 10)
       velocH = my_settings.value("qgis-drone-flight-planner/velocHm", 8)
       tStayH = my_settings.value("qgis-drone-flight-planner/tStayHm", 0)
@@ -704,13 +694,13 @@ def loadParametros(tipoVoo):
    if tipoVoo == "H_Sensor":
       return hVoo, ab_groundS, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, skmz, sCSV
    elif tipoVoo == "H_Manual":
-      return hVoo, ab_groundM, dl_manualH, df_manualH, velocH, tStayH, skmz, sCSV
+      return hVoo, ab_groundM, dl_manualH, df_op, df_manualH, velocH, tStayH, skmz, sCSV
    elif tipoVoo == "VF":
       return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, skmz, sCSV
    elif tipoVoo == "VC":
       return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skmz, sCSV
    
-def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, df=None, aM=None, nVC=None, dVC=None):
+def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, dfop=None, df=None, aM=None, nVC=None, dVC=None):
    my_settings = QgsSettings()
    
    if tipoVoo == "H_Sensor":
@@ -727,6 +717,7 @@ def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, s
       my_settings.setValue("qgis-drone-flight-planner/hVooM", h)
       my_settings.setValue("qgis-drone-flight-planner/ab_groundM", ab_ground)
       my_settings.setValue("qgis-drone-flight-planner/dl_manualH", dl)
+      my_settings.setValue("qgis-drone-flight-planner/df_op", dfop)
       my_settings.setValue("qgis-drone-flight-planner/df_manualH", df)
       my_settings.setValue("qgis-drone-flight-planner/velocHm", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayHm", t)

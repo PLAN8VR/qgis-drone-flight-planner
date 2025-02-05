@@ -155,7 +155,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
 
         # =========================================================================
-        # ===== Criar Polígono Circunscrito =======================================
+        # ===== Criar Polígono Inscrito ===========================================
         # Calcular vértices do polígono inscrito
         pontos = []
         for i in range(num_partes):
@@ -168,13 +168,12 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         polygon_geometry = QgsGeometry.fromPolygonXY([pontos])
 
         # Criar uma camada Polígono que será a Linha de Voo
-        linhas_circulares_layer = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Linha de Voo', 'memory')
+        linhas_circulares_layer = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Flight Line', 'memory')
         linhas_circulares_provider = linhas_circulares_layer.dataProvider()
 
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
-        campos.append(QgsField("altitude", QVariant.Double))
         campos.append(QgsField("alturavoo", QVariant.Double))
         linhas_circulares_provider.addAttributes(campos)
         linhas_circulares_layer.updateFields()
@@ -187,7 +186,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         for altura in alturas:
             feature = QgsFeature()
             feature.setGeometry(polygon_geometry)  # Reutilizar a mesma geometria
-            feature.setAttributes([linha_id, 0, altura])  # Atribuir ID e alturavoo
+            feature.setAttributes([linha_id, altura])  # Atribuir ID e alturavoo
             linhas_circulares_provider.addFeature(feature)
 
             linha_id += 1
@@ -195,9 +194,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Atualizar a camada
         linhas_circulares_layer.updateExtents()
         linhas_circulares_layer.commitChanges()
+        
+        linha_voo_reproj = criarLinhaVoo("VC", linhas_circulares_layer, crs_wgs, transformador, feedback)
 
-        # ==========================================================================================================
-        # ===== Determinar o vértice mais próximo ao ponto inicial e depois deslocar ===============================
+        # ==========================================================================================
+        # =====Criar a camada Pontos de Fotos=======================================================
+
+        # Determinar o vértice mais próximo ao ponto inicial e depois deslocar
         ponto_inicial_xy = ponto_inicial_geom.asPoint()
         menor_distancia = float('inf')
         vertice_mais_proximo = None
@@ -225,12 +228,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         ponto_inicial_move.commitChanges()
         ponto_inicial_move.triggerRepaint()
-
-        # ==========================================================================================
-        # =====Criar a camada Pontos de Fotos=======================================================
-
+        
         # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
-        pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
+        pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Photo Points', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
 
         # Definir campos
@@ -245,6 +245,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
 
+        pontos_fotos.startEditing()
+        
         pontoID = 1
 
         # Criar os vértices da primeira carreira de pontos
@@ -256,14 +258,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Remover o último vértice -  Um polígono fechado, o primeiro e o último vértice têm as mesmas coordenadas
         vertices = vertices[:-1]
 
-        # feedback.pushInfo(f"Ponto Incial {i}: {ponto_inicial}     Area {polygon_geometry.area()}")
-        # feedback.pushInfo(f"Vértices: {vertices}")
-
         # Garantir que os vértices estejam no sentido horário
         if polygon_geometry.area() > 0:  # Se a área for positiva, os vértices estão no sentido anti-horário
             vertices.reverse()
-
-        # feedback.pushInfo(f"Vértices: {vertices}")
 
         # Determinar o ponto inicial
         ponto_inicial_geom = ponto_inicial_move.getFeatures().__next__().geometry()
@@ -275,8 +272,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             if QgsPointXY(v).distance(ponto_inicial) < 1e-6:  # Tolera um pequeno erro de precisão
                 idx_ponto_inicial = i
                 break
-
-        # feedback.pushInfo(f"IDX: {idx_ponto_inicial}")
 
         # Se o ponto inicial está na posição 0 não precisamos fazer nada; só verificar a ordem a seguir
         if idx_ponto_inicial != 0:
@@ -322,55 +317,43 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 pontoID += 1
 
         # Atualizar a camada
-        pontos_fotos.updateExtents()
         pontos_fotos.commitChanges()
+        pontos_fotos.updateExtents()
 
         # Point para PointZ
         pontos_fotos = set_Z_value(pontos_fotos, z_field="alturavoo")
 
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
-        pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
+        pontos_fotos = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
 
         # Point para PointZ
-        pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
+        pontos_fotos = set_Z_value(pontos_fotos, z_field="alturavoo")
 
         # Simbologia
-        simbologiaPontos(pontos_reproj)
-
+        simbologiaPontos(pontos_fotos)
+        
         # ===== PONTOS FOTOS ==========================
-        QgsProject.instance().addMapLayer(pontos_reproj)
-
-        # ===== Final Pontos Fotos ============================================
-        # =====================================================================
-
-
-        # ===== Linha de Voo com Altitudes  ===================================
-        # =====================================================================
-
-        linha_voo_reproj = criarLinhaVoo("VC", pontos_fotos, crs_wgs, transformador, feedback)
-
-        # ===== Final Linha de Voo ============================================
-        # =====================================================================
+        QgsProject.instance().addMapLayer(pontos_fotos)
 
         feedback.pushInfo("")
         feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
 
-        # =========Exportar para o Google  E a r t h   P r o  (kmz)================================================
+        # ========= Exportar para o Google  E a r t h   P r o  (kmz) =======================
 
         # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
         if caminho_kmz and caminho_kmz != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kmz):
             arquivo_kmz = os.path.join(caminho_kmz, "Pontos Fotos.kmz")
-            gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+            #gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
 
             arquivo_kmz = os.path.join(caminho_kmz, "Linha de Voo.kmz")
-            gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+            #gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
         else:
             feedback.pushInfo("kmz path not specified. Export step skipped.")
 
-        # =============L I T C H I==========================================================
+        # ============= L I T C H I ================================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("VC", pontos_reproj, arquivo_csv, velocidade, tempo, deltaH, 0, H)
+            gerar_CSV("VC", pontos_fotos, arquivo_csv, velocidade, tempo, deltaH, 0, H)
         else:
             feedback.pushInfo("CSV path not specified. Export step skipped.")
 

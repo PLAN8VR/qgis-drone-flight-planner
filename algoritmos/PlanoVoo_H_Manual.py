@@ -41,7 +41,7 @@ import csv
 
 class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, ab_ground, dl_manual, df_manual, veloc, tStay, skmz, sCSV = loadParametros("H_Manual")
+        hVoo, ab_ground, dl_manual, df_op, df_manual, veloc, tStay, skmz, sCSV = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
@@ -52,7 +52,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manual))
         
         frontal = [self.tr('Distance between Photos (meters)'), self.tr('Time between Photos (seconds)')]
-        self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Frontal Side between Photos -- Options'), options = frontal, defaultValue= df_manual))
+        self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Frontal Side between Photos -- Options'), options = frontal, defaultValue= df_op))
         self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos -- Value',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=df_manual))
         
@@ -85,7 +85,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kmz, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df'])
+        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kmz, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df_op'], parameters['df'])
         
         # ===== Verificações =====================================================
         # print(f"✅ {pontoID - 1} pontos gerados ao longo da linha.")
