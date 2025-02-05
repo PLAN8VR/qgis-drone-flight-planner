@@ -110,7 +110,7 @@ def criarLinhaVoo(flight_type, point_layer, crs_wgs, transformador, feedback=Non
          'CLOSE_PATH': False,
          'ORDER_EXPRESSION': '"id"', 
          'NATURAL_SORT': False,
-         'GROUP_EXPRESSION': 'altitude',
+         'GROUP_EXPRESSION': '',
          'OUTPUT': 'TEMPORARY_OUTPUT'
       }, feedback=feedback)
 
@@ -680,8 +680,7 @@ def loadParametros(tipoVoo):
       hVoo = my_settings.value("qgis-drone-flight-planner/hVooM", 100)
       ab_groundM = my_settings.value("qgis-drone-flight-planner/ab_groundM", True)
       dl_manualH = my_settings.value("qgis-drone-flight-planner/dl_manualH", 10)
-      df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 0)
-      t_fotoH = my_settings.value("qgis-drone-flight-planner/t_foto", 0)
+      df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 10)
       velocH = my_settings.value("qgis-drone-flight-planner/velocHm", 8)
       tStayH = my_settings.value("qgis-drone-flight-planner/tStayHm", 0)
    elif tipoVoo == "VF":
@@ -705,13 +704,13 @@ def loadParametros(tipoVoo):
    if tipoVoo == "H_Sensor":
       return hVoo, ab_groundS, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, skmz, sCSV
    elif tipoVoo == "H_Manual":
-      return hVoo, ab_groundM, dl_manualH, df_manualH, t_fotoH, velocH, tStayH, skmz, sCSV
+      return hVoo, ab_groundM, dl_manualH, df_manualH, velocH, tStayH, skmz, sCSV
    elif tipoVoo == "VF":
       return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, skmz, sCSV
    elif tipoVoo == "VC":
       return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skmz, sCSV
    
-def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, df=None, t_foto=None, aM=None, nVC=None, dVC=None):
+def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, df=None, aM=None, nVC=None, dVC=None):
    my_settings = QgsSettings()
    
    if tipoVoo == "H_Sensor":
@@ -729,7 +728,6 @@ def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, s
       my_settings.setValue("qgis-drone-flight-planner/ab_groundM", ab_ground)
       my_settings.setValue("qgis-drone-flight-planner/dl_manualH", dl)
       my_settings.setValue("qgis-drone-flight-planner/df_manualH", df)
-      my_settings.setValue("qgis-drone-flight-planner/t_fotoH", t_foto)
       my_settings.setValue("qgis-drone-flight-planner/velocHm", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayHm", t)
    elif tipoVoo == "VF":

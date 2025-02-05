@@ -41,7 +41,7 @@ import csv
 
 class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, ab_ground, dl_manual, df_manual, tFoto, veloc, tStay, skmz, sCSV = loadParametros("H_Manual")
+        hVoo, ab_ground, dl_manual, df_manual, veloc, tStay, skmz, sCSV = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
@@ -49,11 +49,13 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVoo))    
         self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_ground))       
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Side between Flight Lines (m)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manual))  
-        self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos (m) or Time between Photos (seconds)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=0,defaultValue=df_manual))
-        self.addParameter(QgsProcessingParameterNumber('tempo_foto','Time between one Photo and the next (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tFoto))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manual))
+        
+        frontal = [self.tr('Distance between Photos (meters)'), self.tr('Time between Photos (seconds)')]
+        self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Frontal Side between Photos -- Options'), options = frontal, defaultValue= df_manual))
+        self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos -- Value',
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=df_manual))
+        
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
@@ -74,31 +76,24 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
 
         H = parameters['H']
         terrain = parameters['above_ground']
-        deltaLat = parameters['dl']       # Distância das linhas de voo paralelas - sem cálculo
-        deltaFront = parameters['df']     # Espaçamento Frontal entre as fotografias- sem cálculo
-        t_foto = parameters['tempo_foto'] # tempo entre uma Foto e outra - daí não precisa de deltaFront que deve ser zero
+        deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
+        deltaFront_op = parameters['df_op']  # metros ou segundos
+        deltaFront = parameters['df']        # Espaçamento Frontal entre as fotografias- sem cálculo
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         caminho_kmz = self.parameterAsFile(parameters, 'saida_kmz', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kmz, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df'], parameters['tempo_foto'])
+        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kmz, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df'])
         
         # ===== Verificações =====================================================
-
-        # Verificar delatFronta e Tempo entre Fotos
-        if deltaFront != 0 and t_foto != 0:
-            raise ValueError("Front Distance and Time between Photos - At least one must be zero.")
-        
-        if deltaFront == 0 and t_foto == 0:
-            raise ValueError("Front Distance and Time between Photos - At least one must be different from zero.")
-        
+        # print(f"✅ {pontoID - 1} pontos gerados ao longo da linha.")
         # Verificar o SRC das Camadas
         crs = area_layer.crs()
         crsL = primeira_linha.crs() # não usamos o crsL, apenas para verificar a camada
         if crs != crsL:
-            raise ValueError("Both layers must be from the same CRS.")
+            raise ValueError("❌ Both layers must be from the same CRS.")
 
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Area' is already in CRS UTM.")
@@ -107,7 +102,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             nome = area_layer.name() + "_reproject"
             area_layer = QgsProject.instance().mapLayersByName(nome)[0]
         else:
-            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
+            raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         if "UTM" in crsL.description().upper():
             feedback.pushInfo(f"The layer 'First line - direction flight' is already in CRS UTM.")
@@ -116,7 +111,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             nome = primeira_linha.name() + "_reproject"
             primeira_linha = QgsProject.instance().mapLayersByName(nome)[0]
         else:
-            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
+            raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
         plugins_verificar = ["lftools", "kmltools"]
@@ -134,15 +129,18 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             linha_geom = linha_geom.asGeometryCollection()[0]
 
         if area_layer.featureCount() != 1:
-            raise ValueError("The Area must contain only one polygon.")
+            raise ValueError("❌ The Area must contain only one polygon.")
 
         if primeira_linha.featureCount() != 1:
-            raise ValueError("The First Line must contain only one line.")
+            raise ValueError("❌ The First Line must contain only one line.")
 
         # ===== Sobreposições digitadas manualmente ====================================================
-
-        feedback.pushInfo(f"Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}, Time between Photos: {round(t_foto,2)}")
-
+        
+        if deltaFront_op == 0:
+            feedback.pushInfo(f"✅ Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
+        else:
+            feedback.pushInfo(f"✅ Lateral Spacing: {round(deltaLat,2)}, Frontal Time: {round(deltaFront,2)}")
+            
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
         crs_wgs = QgsCoordinateReferenceSystem(4326)
@@ -464,57 +462,127 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             QgsProject.instance().addMapLayer(linhas_unidas_layer)
         
         # ===============================================================================
+        # ===== Criar a camada "Linha de Voo" ===========================================
+
+        # Unir todas as linhas em uma única geometria, criando a Linha de Voo
+        linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Flight Line', 'memory')
+        linha_provider = linha_voo_layer.dataProvider()
+        linha_provider.addAttributes([QgsField('id', QVariant.Int)])
+        linha_provider.addAttributes([QgsField("altitude", QVariant.Double)])
+        linha_voo_layer.updateFields()
+        
+        # Obter todas as linhas da camada "linhas_unidas_layer"
+        linhas = list(linhas_unidas_layer.getFeatures())
+
+        # Unir todas as linhas em uma única geometria
+        geometrias = [linha.geometry() for linha in linhas if linha.geometry() and linha.geometry().isGeosValid()]
+
+        linha_unica = QgsGeometry.unaryUnion(geometrias)  # Une todas as linhas
+
+        # Converter para uma única LineString se for MultiLineString
+        if linha_unica.isMultipart():
+            partes = linha_unica.asMultiPolyline()
+            linha_unica = QgsGeometry.fromPolylineXY([p for parte in partes for p in parte])  # Achata para LineString
+
+        # Criar e adicionar a feature "Linha de Voo"
+        linha_voo_feature = QgsFeature()
+        linha_voo_feature.setFields(linha_voo_layer.fields())
+        linha_voo_feature.setAttribute("id", 1)
+        linha_voo_feature.setAttribute("altitude", 0)
+        linha_voo_feature.setGeometry(linha_unica)
+        linha_provider.addFeature(linha_voo_feature)
+
+        feedback.pushInfo("✅ Flight Line generated.")
+        
+        # Adicionar a camada "Linha de Voo" ao projeto
+        QgsProject.instance().addMapLayer(linha_voo_layer)
+         
+        # ===============================================================================
         # =====Criar a camada Pontos de Fotos============================================
 
         # Criar uma camada Ponto com os deltaFront sobre a linha
-        pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
+        pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Photo Points', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
 
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
-        campos.append(QgsField("linha", QVariant.Int))
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
         campos.append(QgsField("alturavoo", QVariant.Double))
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
+        
+        pontos_fotos.startEditing()
+        
+        linha_voo_feature = next(linha_voo_layer.getFeatures(), None)
+        linha_voo_geom = linha_voo_feature.geometry()
 
-        linhas = list(linhas_unidas_layer.getFeatures())
-        tolerancia = 3  # Margem de 3 metros
-        poligono_com_tolerancia = poligono_geom.buffer(tolerancia, 5)
+        # Temporary list to store points before inserting them into the layer
+        pontos_lista = []
+        vertices_adicionados = []
 
-        # Gerar pontos ao longo das linhas
-        pontoID = 1
-        for linha in linhas:
-            geom_linha = linha.geometry()
-            comprimento = geom_linha.length()
+        # First, add the vertices of the flight line
+        for ponto in linha_voo_geom.asPolyline():
+            dist = linha_voo_geom.lineLocatePoint(QgsGeometry.fromPointXY(ponto))  # Distance along the line
+            pontos_lista.append((dist, QgsPointXY(ponto)))  # Add with distance
+            vertices_adicionados.append(QgsPointXY(ponto))  # Store vertex positions
+
+        # Then, add points along the flight line
+        if deltaFront_op == 0:
+            comprimento = linha_voo_geom.length()
             distAtual = 0
 
             while distAtual <= comprimento:
-                ponto = geom_linha.interpolate(distAtual).asPoint()
-                ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
+                ponto = linha_voo_geom.interpolate(distAtual).asPoint()
+                ponto_xy = QgsPointXY(ponto)
+                
+                # Check if the point is at least 1 meter away from any vertex
+                too_close = any(ponto_xy.distance(v) < 1 for v in vertices_adicionados)
 
-                # Verificar se o ponto está dentro do polígono
-                if poligono_com_tolerancia.contains(ponto_geom):
-                    ponto_feature = QgsFeature()
-                    ponto_feature.setFields(campos)
-                    ponto_feature.setAttribute("id", pontoID)
-                    ponto_feature.setAttribute("linha", linha["id"])  # Campo 'id' da linha
-                    ponto_feature.setAttribute("latitude", ponto.y())
-                    ponto_feature.setAttribute("longitude", ponto.x())
-                    ponto_feature.setGeometry(ponto_geom)
-                    pontos_provider.addFeature(ponto_feature)
-                    pontoID += 1
+                # Only add if it's not too close to an existing vertex
+                if not too_close and all(p[1] != ponto_xy for p in pontos_lista):
+                    pontos_lista.append((distAtual, ponto_xy))
 
                 distAtual += deltaFront
-        # Atualizar a camada
+
+        # Sort points by distance along the line
+        pontos_lista.sort()
+        
+        # Add points to the layer Pontos Fotos
+        pontoID = 1
+        vertices_adicionados = set()  # Set to avoid duplication
+
+        for _, ponto in pontos_lista:
+            if (ponto.x(), ponto.y()) not in vertices_adicionados:
+                ponto_geom = QgsGeometry.fromPointXY(ponto)
+
+                ponto_feature = QgsFeature()
+                ponto_feature.setFields(pontos_fotos.fields())
+                ponto_feature.setAttribute("id", pontoID)
+                ponto_feature.setAttribute("latitude", ponto.y())
+                ponto_feature.setAttribute("longitude", ponto.x())
+                ponto_feature.setGeometry(ponto_geom)
+
+                if not pontos_provider.addFeature(ponto_feature):
+                    feedback.pushInfo(f"❌ ERROR adding point {pontoID}")
+
+                pontoID += 1
+                vertices_adicionados.add((ponto.x(), ponto.y()))
+
+        feedback.pushInfo(f"✅ {pontoID - 1} Photo Points generated.")
+
+        # Update the layer
+        if not pontos_fotos.commitChanges():
+            feedback.pushInfo("❌ ERROR: Failed to save points in the 'Photo Points' layer!")
+
         pontos_fotos.updateExtents()
+        pontos_fotos.triggerRepaint()
         
         # Obter a altitude dos pontos a partir do MDE se tiver sido fornecido
         pontos_fotos.startEditing()
-        
+          
         if camadaMDE:
             param_kmz = 2 # Altitude relativa ao terreno=1 e absoluta=2 para a geração do kmz
             transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
@@ -558,17 +626,8 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         # ===== Final Pontos Fotos ============================================
         # =====================================================================
         
-        
-        # ===============================================================================
-        # ===== Criar Linha de Voo ======================================================
-        
-        linha_voo_reproj = criarLinhaVoo("H", pontos_fotos, crs_wgs, transformador, feedback)
-        
-        # ===== Final Linha de Voo ============================================ 
-        # =====================================================================
-        
         feedback.pushInfo("")
-        feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
+        feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
 
         # =========Exportar para o Google  E a r t h   P r o  (kmz)================================================
 
@@ -578,16 +637,16 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
 
             arquivo_kmz = os.path.join(caminho_kmz, "Linha de Voo.kmz")
-            gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+            #gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
         else:
-            feedback.pushInfo("kmz path not specified. Export step skipped.")
+            feedback.pushInfo("❌ kmz path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
         else:
-            feedback.pushInfo("CSV path not specified. Export step skipped.")
+            feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 
         # ============= Remover Camadas Reproject ===================================================
         
@@ -595,7 +654,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
-        feedback.pushInfo("Horizontal Flight Plan successfully executed.")
+        feedback.pushInfo("✅ Horizontal Flight Plan successfully executed.")
         
         return {}
 
