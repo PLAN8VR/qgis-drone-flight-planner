@@ -578,12 +578,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                 
         feedback.pushInfo(f"✅ {pontoID - 1} Photo Points generated.")
         
-        # Update the layer
-        if not pontos_fotos.commitChanges():
-            feedback.pushInfo("❌ ERROR: Failed to save points in the 'Photo Points' layer!")
-            
-        pontos_fotos.updateExtents()
-        pontos_fotos.triggerRepaint()
+        pontos_fotos.commitChanges()
         
         # Obter a altitude dos pontos a partir do MDE se tiver sido fornecido
         pontos_fotos.startEditing()
@@ -613,6 +608,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                 
         pontos_fotos.commitChanges()
         pontos_fotos.updateExtents()
+        pontos_fotos.triggerRepaint()
 
          # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
@@ -652,7 +648,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            #gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
         
             feedback.pushInfo("✅ CSV File created.")
         else:
@@ -665,6 +661,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("✅ Horizontal Flight Plan successfully executed.")
+        feedback.pushInfo("")
         
         return {}
 

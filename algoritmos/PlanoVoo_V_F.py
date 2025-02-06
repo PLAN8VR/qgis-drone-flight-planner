@@ -143,7 +143,6 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # ===== Sobreposições digitadas manualmente ====================================================
 
-        feedback.pushInfo("")
         feedback.pushInfo(f"✅ Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
 
         # Obtem as alturas das linhas de Voo (range só para números inteiros)
@@ -159,52 +158,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         # ===============================================================================
 
-        # ===============================================================================
-        # ===== Criar a camada "Linha de Voo" ===========================================
-
-        # linhas_circulares_layer = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Flight Line', 'memory')
-        # linhas_circulares_provider = linhas_circulares_layer.dataProvider()
-
-        # # Definir campos
-        # campos = QgsFields()
-        # campos.append(QgsField("id", QVariant.Int))
-        # campos.append(QgsField("alturavoo", QVariant.Double))
-        # linhas_circulares_provider.addAttributes(campos)
-        # linhas_circulares_layer.updateFields()
-
-        # linhas_circulares_layer.startEditing
-
-        # # Adicionar polígonos com alturas diferentes
-        # linha_id = 1
-
-        # for altura in alturas:
-        #     feature = QgsFeature()
-        #     feature.setGeometry(polygon_geometry)  # Reutilizar a mesma geometria
-        #     feature.setAttributes([linha_id, altura])  # Atribuir ID e alturavoo
-        #     linhas_circulares_provider.addFeature(feature)
-
-        #     linha_id += 1
-
-        # linhas_circulares_layer.commitChanges()
-        
-        #  # Reprojetar linha Voo para WGS84 (4326)
-        # linha_voo_reproj = reprojeta_camada_WGS84(linhas_circulares_layer, crs_wgs, transformador)
-
-        # # LineString paraLineStringZ
-        # linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
-
-        # # Configurar simbologia
-        # simbologiaLinhaVoo('VC', linha_voo_reproj)
-
-        # # ===== LINHA VOO =================================
-        # QgsProject.instance().addMapLayer(linha_voo_reproj)
-        
-        # feedback.pushInfo("")
-        # feedback.pushInfo("✅ Flight Line generated.")
-
-
-
-
+  
         # =============================================================================================
         # ===== Criar a camada Pontos de Fotos ========================================================
 
@@ -256,7 +210,6 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             angulo_perpendicular += 180
             angulo_perpendicular %= 360
 
-        feedback.pushInfo(f"✅ Ângulo da linha base: {angulo_linha_base:.2f}°")
         feedback.pushInfo(f"✅ Ângulo da perpendicular em relação ao Norte: {angulo_perpendicular:.2f}°")
 
         # Criar as carreiras de pontos
@@ -315,8 +268,62 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         QgsProject.instance().addMapLayer(pontos_reproj)
         
         feedback.pushInfo("")
-        feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
+        feedback.pushInfo("✅ Photo Spots generated.")
+        
+        # ===============================================================================
+        # ===== Criar a camada "Linha de Voo" ===========================================
 
+        linhas_facade_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Flight Line', 'memory')
+        linhas_facade_provider = linhas_facade_layer.dataProvider()
+
+        # Definir campos
+        campos = QgsFields()
+        campos.append(QgsField("id", QVariant.Int))
+        campos.append(QgsField("alturavoo", QVariant.Double))
+        linhas_facade_provider.addAttributes(campos)
+        linhas_facade_layer.updateFields()
+
+        linhas_facade_layer.startEditing()
+
+        linha_id = 1  # Inicializa ID das linhas
+
+        altura_atual = h  # Começa na altura mínima
+
+        while altura_atual <= H + h:
+            nova_linha_geom = QgsGeometry.fromWkt(linha_base_geom.asWkt())
+
+            # Extrair coordenadas da linha base e adicionar o valor de Z (altura)
+            coordenadas = nova_linha_geom.asPolyline()
+            coordenadas_z = [QgsPoint(pt.x(), pt.y(), altura_atual) for pt in coordenadas]
+            
+            nova_linha_geom = QgsGeometry.fromPolyline(coordenadas_z)
+
+            feature = QgsFeature()
+            feature.setGeometry(nova_linha_geom)
+            feature.setAttributes([linha_id, altura_atual])
+            
+            linhas_facade_provider.addFeature(feature)
+
+            linha_id += 1
+            altura_atual += deltaLat  # Atualiza para a próxima altura
+
+        linhas_facade_layer.commitChanges()
+        
+         # Reprojetar linha Voo para WGS84 (4326)
+        linha_voo_reproj = reprojeta_camada_WGS84(linhas_facade_layer, crs_wgs, transformador)
+
+        # LineString paraLineStringZ
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+
+        # Configurar simbologia
+        simbologiaLinhaVoo('VC', linha_voo_reproj)
+
+        # ===== LINHA VOO =================================
+        QgsProject.instance().addMapLayer(linha_voo_reproj)
+        
+        feedback.pushInfo("")
+        feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
+        
         # =========Exportar para o Google  E a r t h   P r o  (kmz)================================================
 
         feedback.pushInfo("")
@@ -350,6 +357,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("✅ Facade Vertical Flight Plan successfully executed.")
+        feedback.pushInfo("")
         
         return {}
 

@@ -85,7 +85,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['above_ground'], parameters['dl'], parameters['df_op'], parameters['df'], None, None, None, None, None, None)
+        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], parameters['df_op'], parameters['df'], None, None)
         
         # ===== Verificações =====================================================
         # print(f"✅ {pontoID - 1} pontos gerados ao longo da linha.")
@@ -658,7 +658,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         feedback.pushInfo("")
         
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            #gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain, deltaFront_op)
             
             feedback.pushInfo("✅ CSV File created.")
         else:
@@ -671,6 +671,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("✅ Horizontal Flight Plan successfully executed.")
+        feedback.pushInfo("")
         
         return {}
 

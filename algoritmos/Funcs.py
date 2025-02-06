@@ -183,7 +183,7 @@ def gerar_kmz(layer, arquivo_kmz, crs_wgs, altitude_mode, feedback=None):
    return {}
    """
    
-def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None):
+def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None):
     # Definir novos campos xcoord e ycoord com coordenadas geográficas
    pontos_fotos.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
    pontos_fotos.updateFields()
@@ -332,6 +332,14 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
             t2 = tempo*1000 
             t3 = 1          # TAKE_PHOTO
             t4 = 0
+         
+         if deltaFront_op == 0: # photo_timeinterval caso tenha sido escolhido por tempo no Voo Horizonta Manual
+            photo_timeinterval = delta
+            photo_distinterval = -1 
+         else:
+            photo_timeinterval = -1
+            photo_distinterval = delta
+            
             
          # Ler os dados da camada Pontos
          for f in pontos_fotos.getFeatures():
@@ -638,7 +646,7 @@ def loadParametros(tipoVoo):
    if tipoVoo == "H_Sensor":
       hVooS = my_settings.value("qgis-drone-flight-planner/hVooS", 100)
       ab_groundS = my_settings.value("qgis-drone-flight-planner/ab_groundS", True)
-      sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2)
+      sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2) # Air 2S
       sensorV = my_settings.value("qgis-drone-flight-planner/sensorV", 8.8)
       dFocal = my_settings.value("qgis-drone-flight-planner/dFocal", 8.38)
       sLateral = my_settings.value("qgis-drone-flight-planner/sLateral", 0.75)
@@ -689,8 +697,8 @@ def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, s
       my_settings.setValue("qgis-drone-flight-planner/sensorH", sensorH)
       my_settings.setValue("qgis-drone-flight-planner/sensorV", sensorV)
       my_settings.setValue("qgis-drone-flight-planner/dFocal", dFocal)
-      my_settings.setValue("qgis-drone-flight-planner/sLateralH", sLateral)
-      my_settings.setValue("qgis-drone-flight-planner/sFrontalH", sFrontal)
+      my_settings.setValue("qgis-drone-flight-planner/sLateral", sLateral)
+      my_settings.setValue("qgis-drone-flight-planner/sFrontal", sFrontal)
       my_settings.setValue("qgis-drone-flight-planner/velocHs", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayHs", t)
    elif tipoVoo == "H_Manual":

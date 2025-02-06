@@ -382,6 +382,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("✅ Circular Vertical Flight Plan successfully executed.")
+        feedback.pushInfo("")
         
         return {}
 
