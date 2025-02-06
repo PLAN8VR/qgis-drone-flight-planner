@@ -42,24 +42,24 @@ import csv
 
 class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hFac, altMin, dl_manual, df_manual, veloc, tStay, skmz, sCSV = loadParametros("VF")
+        hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, skmz, sCSV = loadParametros("VF")
 
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Flight Base Line', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position Point of the Facade', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Facade Height (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hFac))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMin))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMinVF))
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Side between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.5,defaultValue=dl_manual))  
+                                                       minValue=0.5,defaultValue=dl_manualVF))  
         self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.5,defaultValue=df_manual)) 
+                                                       minValue=0.5,defaultValue=df_manualVF)) 
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=velocVF))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayVF))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kmz', 'Output Folder for kmz (Google Earth)', defaultValue=skmz))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -84,7 +84,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['dl'], parameters['df'], parameters['alturaMin'])
+        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], None, None, None, None, None, None, parameters['dl'], None, parameters['df'], parameters['alturaMin'], None)
         
         # ===== Verificações ===================================================================================
 

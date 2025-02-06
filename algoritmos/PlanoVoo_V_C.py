@@ -41,22 +41,22 @@ import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hObj, altMin, nPartes, dVertical, veloc, tStay, skmz, sCSV = loadParametros("VC")
+        hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skmz, sCSV = loadParametros("VC")
 
         self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight Base Circle', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Start Point', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Object Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hObj))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0.5,defaultValue=altMin))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0.5,defaultValue=altMinVC))
         self.addParameter(QgsProcessingParameterNumber('num_partes','Horizontal Division into PARTS of Base Circle',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=nPartes))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=nPartesVC))
         self.addParameter(QgsProcessingParameterNumber('deltaVertical','Vertical Spacing (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0.5,defaultValue=dVertical))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0.5,defaultValue=dVertVC))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=velocVC))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayVC))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kmz', 'Output Folder for kmz (Google Earth)', defaultValue=skmz))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -81,7 +81,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['alturaMin'], parameters['num_partes'], parameters['deltaVertical'])
+        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], None, None, None, None, None, None, parameters['deltaVertical'], None, None, parameters['alturaMin'], parameters['num_partes'])
         
         # ===== Verificações =================================================================
 
@@ -195,7 +195,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         linhas_circulares_layer.updateExtents()
         linhas_circulares_layer.commitChanges()
         
-        linha_voo_reproj = criarLinhaVoo("VC", linhas_circulares_layer, crs_wgs, transformador, feedback)
+        linhas_circulares_layer = criarLinhaVoo("VC", linhas_circulares_layer, crs_wgs, transformador, feedback)
 
         # ==========================================================================================
         # =====Criar a camada Pontos de Fotos=======================================================
@@ -352,10 +352,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         # ============= L I T C H I ================================================================
 
-        if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("VC", pontos_fotos, arquivo_csv, velocidade, tempo, deltaH, 0, H)
-        else:
-            feedback.pushInfo("CSV path not specified. Export step skipped.")
+        # if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
+        #     gerar_CSV("VC", pontos_fotos, arquivo_csv, velocidade, tempo, deltaH, 0, H)
+        # else:
+        #     feedback.pushInfo("CSV path not specified. Export step skipped.")
 
         # ============= Remover Camadas Reproject e Move =============================================
         

@@ -200,19 +200,19 @@ def gerar_kmz(layer, arquivo_kmz, crs_wgs, altitude_mode, feedback=None):
    return {}
    """
    
-def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None):
+def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None):
     # Definir novos campos xcoord e ycoord com coordenadas geográficas
-   pontos_reproj.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
-   pontos_reproj.updateFields()
+   pontos_fotos.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
+   pontos_fotos.updateFields()
 
    # Obtenha o índice dos novos campos
-   idx_x = pontos_reproj.fields().indexFromName('xcoord')
-   idx_y = pontos_reproj.fields().indexFromName('ycoord')
+   idx_x = pontos_fotos.fields().indexFromName('xcoord')
+   idx_y = pontos_fotos.fields().indexFromName('ycoord')
 
    # Inicie a edição da camada
-   pontos_reproj.startEditing()
+   pontos_fotos.startEditing()
 
-   for f in pontos_reproj.getFeatures():
+   for f in pontos_fotos.getFeatures():
          geom = f.geometry()
          if geom.isEmpty():
             continue
@@ -224,37 +224,34 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
          f.setAttribute(idx_x, x)
          f.setAttribute(idx_y, y)
 
-         pontos_reproj.updateFeature(f)
+         pontos_fotos.updateFeature(f)
 
-   pontos_reproj.commitChanges()
+   pontos_fotos.commitChanges()
 
    # deletar campos desnecessários
    campos = ['latitude', 'longitude']
    
-   pontos_reproj.startEditing()
+   pontos_fotos.startEditing()
+   indices = [pontos_fotos.fields().indexFromName(campo) for campo in campos if campo in pontos_fotos.fields().names()]
+   pontos_fotos.deleteAttributes(indices)
    
-   # Obtem os índices dos campos a serem deletados
-   indices = [pontos_reproj.fields().indexFromName(campo) for campo in campos if campo in pontos_reproj.fields().names()]
-   
-   pontos_reproj.deleteAttributes(indices)
-   
-   pontos_reproj.commitChanges()
+   pontos_fotos.commitChanges()
          
    # Mudar Sistema numérico - ponto no lugar de vírgula para separa a parte decimal - Campos Double para String        
-   pontos_reproj.startEditing()
+   pontos_fotos.startEditing()
 
    # Adicionar campos de texto em Pontos Reordenados
-   addCampo(pontos_reproj, 'xcoord ', QVariant.String) # o espaço é para diferenciar; depois vamos deletar os campos antigos
-   addCampo(pontos_reproj, 'ycoord ', QVariant.String)
+   addCampo(pontos_fotos, 'xcoord ', QVariant.String) # o espaço é para diferenciar; depois vamos deletar os campos antigos
+   addCampo(pontos_fotos, 'ycoord ', QVariant.String)
    
    if flight_type == "VF":
-      addCampo(pontos_reproj, 'alturasolo ', QVariant.String)
+      addCampo(pontos_fotos, 'alturasolo ', QVariant.String)
       
    if flight_type == "VC":
-      addCampo(pontos_reproj, 'alturasolo ', QVariant.String)
-      addCampo(pontos_reproj, 'angulo ', QVariant.String)   
+      addCampo(pontos_fotos, 'alturasolo ', QVariant.String)
+      addCampo(pontos_fotos, 'angulo ', QVariant.String)   
    
-   for f in pontos_reproj.getFeatures():
+   for f in pontos_fotos.getFeatures():
          x1= str(f['xcoord']).replace(',', '.')
          x2 = str(f['ycoord']).replace(',', '.')
          
@@ -287,11 +284,11 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
             f['alturasolo '] = x3
             f['angulo '] = x4
 
-         pontos_reproj.updateFeature(f)
+         pontos_fotos.updateFeature(f)
 
-   pontos_reproj.commitChanges()
+   pontos_fotos.commitChanges()
 
-   # Lista de campos Double a serem removidos de Pontos Reprojetados
+   # Lista de campos Double a serem removidos de Pontos
    if flight_type == "H":
       camposDel = ['xcoord', 'ycoord'] # sem o espaço
    elif flight_type == "VF":
@@ -299,9 +296,9 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
    elif flight_type == "VC":
       camposDel = ['xcoord', 'ycoord', 'alturasolo', 'angulo']
       
-   pontos_reproj.startEditing()
-   pontos_reproj.dataProvider().deleteAttributes([pontos_reproj.fields().indexOf(campo) for campo in camposDel if pontos_reproj.fields().indexOf(campo) != -1])
-   pontos_reproj.commitChanges()
+   pontos_fotos.startEditing()
+   pontos_fotos.dataProvider().deleteAttributes([pontos_fotos.fields().indexOf(campo) for campo in camposDel if pontos_fotos.fields().indexOf(campo) != -1])
+   pontos_fotos.commitChanges()
    
    # Formatar os valores como strings com ponto como separador decimal
    v = str(velocidade).replace(',', '.')
@@ -354,7 +351,7 @@ def gerar_CSV(flight_type, pontos_reproj, arquivo_csv, velocidade, tempo, delta,
             t4 = 0
             
          # Ler os dados da camada Pontos
-         for f in pontos_reproj.getFeatures():
+         for f in pontos_fotos.getFeatures():
             # Extrair os valores dos campos da camada
             x_coord = f['xcoord '] 
             y_coord = f['ycoord ']
@@ -656,23 +653,23 @@ def loadParametros(tipoVoo):
    my_settings = QgsSettings()
    
    if tipoVoo == "H_Sensor":
-      hVoo = my_settings.value("qgis-drone-flight-planner/hVooS", 100)
+      hVooS = my_settings.value("qgis-drone-flight-planner/hVooS", 100)
       ab_groundS = my_settings.value("qgis-drone-flight-planner/ab_groundS", True)
       sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2)
       sensorV = my_settings.value("qgis-drone-flight-planner/sensorV", 8.8)
       dFocal = my_settings.value("qgis-drone-flight-planner/dFocal", 8.38)
-      sLateralH = my_settings.value("qgis-drone-flight-planner/sLateralH", 0.75)
-      sFrontalH = my_settings.value("qgis-drone-flight-planner/sFrontalH", 0.85)
-      velocH = my_settings.value("qgis-drone-flight-planner/velocHs", 8)
-      tStayH = my_settings.value("qgis-drone-flight-planner/tStayHs", 0)
+      sLateral = my_settings.value("qgis-drone-flight-planner/sLateral", 0.75)
+      sFrontal = my_settings.value("qgis-drone-flight-planner/sFrontal", 0.85)
+      velocHs = my_settings.value("qgis-drone-flight-planner/velocHs", 8)
+      tStayHs = my_settings.value("qgis-drone-flight-planner/tStayHs", 0)
    elif tipoVoo == "H_Manual":
-      hVoo = my_settings.value("qgis-drone-flight-planner/hVooM", 100)
+      hVooM = my_settings.value("qgis-drone-flight-planner/hVooM", 100)
       ab_groundM = my_settings.value("qgis-drone-flight-planner/ab_groundM", True)
       dl_manualH = my_settings.value("qgis-drone-flight-planner/dl_manualH", 10)
       df_op = my_settings.value("qgis-drone-flight-planner/df_op", 0)
       df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 10)
-      velocH = my_settings.value("qgis-drone-flight-planner/velocHm", 8)
-      tStayH = my_settings.value("qgis-drone-flight-planner/tStayHm", 0)
+      velocHm = my_settings.value("qgis-drone-flight-planner/velocHm", 8)
+      tStayHm = my_settings.value("qgis-drone-flight-planner/tStayHm", 0)
    elif tipoVoo == "VF":
       hFac = my_settings.value("qgis-drone-flight-planner/hFac", 15)
       altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 0.5)
@@ -692,15 +689,15 @@ def loadParametros(tipoVoo):
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
       
    if tipoVoo == "H_Sensor":
-      return hVoo, ab_groundS, sensorH, sensorV, dFocal, sLateralH, sFrontalH, velocH, tStayH, skmz, sCSV
+      return hVooS, ab_groundS, sensorH, sensorV, dFocal, sLateral, sFrontal, velocHs, tStayHs, skmz, sCSV
    elif tipoVoo == "H_Manual":
-      return hVoo, ab_groundM, dl_manualH, df_op, df_manualH, velocH, tStayH, skmz, sCSV
+      return hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, skmz, sCSV
    elif tipoVoo == "VF":
       return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, skmz, sCSV
    elif tipoVoo == "VC":
       return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skmz, sCSV
    
-def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, dfop=None, df=None, aM=None, nVC=None, dVC=None):
+def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, dfop=None, df=None, alt_min=None, nPartesVC=None):
    my_settings = QgsSettings()
    
    if tipoVoo == "H_Sensor":
@@ -723,16 +720,16 @@ def saveParametros(tipoVoo, h, v, t, skmz, sCSV, ab_ground=None, sensorH=None, s
       my_settings.setValue("qgis-drone-flight-planner/tStayHm", t)
    elif tipoVoo == "VF":
       my_settings.setValue("qgis-drone-flight-planner/hFac", h)
-      my_settings.setValue("qgis-drone-flight-planner/altMinVF", aM)
+      my_settings.setValue("qgis-drone-flight-planner/altMinVF", alt_min)
       my_settings.setValue("qgis-drone-flight-planner/dl_manualVF", dl)
       my_settings.setValue("qgis-drone-flight-planner/df_manualVF", df)
       my_settings.setValue("qgis-drone-flight-planner/velocVF", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayVF", t)
    elif tipoVoo == "VC":
       my_settings.setValue("qgis-drone-flight-planner/hObj", h)
-      my_settings.setValue("qgis-drone-flight-planner/altMinVC", aM)
-      my_settings.setValue("qgis-drone-flight-planner/nPartesVC", nVC)
-      my_settings.setValue("qgis-drone-flight-planner/dVertVC", dVC)
+      my_settings.setValue("qgis-drone-flight-planner/altMinVC", alt_min)
+      my_settings.setValue("qgis-drone-flight-planner/nPartesVC", nPartesVC)
+      my_settings.setValue("qgis-drone-flight-planner/dVertVC", dl)
       my_settings.setValue("qgis-drone-flight-planner/velocVC", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayVC", t)
    

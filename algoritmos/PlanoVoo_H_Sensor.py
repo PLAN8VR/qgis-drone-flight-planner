@@ -41,13 +41,13 @@ import csv
 
 class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, ab_ground, sensorH, sensorV, dFocal, sLateral, sFrontal, veloc, tStay, skmz, sCSV = loadParametros("H_Sensor")
+        hVooS, ab_groundS, sensorH, sensorV, dFocal, sLateral, sFrontal, velocHs, tStayHs, skmz, sCSV = loadParametros("H_Sensor")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterNumber('H','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVoo))
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_ground))
+        self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooS))
+        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundS))
         self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=sensorH)) # default p/o Air 2S
@@ -64,9 +64,9 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.60,defaultValue=sFrontal))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=velocHs))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayHs))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kmz', 'Output Folder for KMZ (Google Earth)', defaultValue=skmz))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -81,7 +81,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
-        H = parameters['H']
+        H = parameters['altura']
         terrain = parameters['above_ground']
         dc = parameters['dc']
         dl = parameters['dl']
@@ -94,7 +94,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Sensor", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kmz, arquivo_csv, parameters['above_ground'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'])
+        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['above_ground'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'], None, None, None, None, None)
         
         # ===== Verificações =====================================================
 

@@ -41,25 +41,25 @@ import csv
 
 class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVoo, ab_ground, dl_manual, df_op, df_manual, veloc, tStay, skmz, sCSV = loadParametros("H_Manual")
+        hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, skmz, sCSV = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterNumber('H','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVoo))    
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_ground))       
+        self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooM))    
+        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundM))       
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Side between Flight Lines (m)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manual))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manualH))
         
         frontal = [self.tr('Distance between Photos (meters)'), self.tr('Time between Photos (seconds)')]
         self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Frontal Side between Photos -- Options'), options = frontal, defaultValue= df_op))
         self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos -- Value',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=df_manual))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=df_manualH))
         
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=veloc))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=velocHm))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStay))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayHm))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kmz', 'Output Folder for kmz (Google Earth)', defaultValue=skmz))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -74,7 +74,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
-        H = parameters['H']
+        H = parameters['altura']
         terrain = parameters['above_ground']
         deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
         deltaFront_op = parameters['df_op']  # metros ou segundos
@@ -85,7 +85,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['H'], parameters['velocidade'], parameters['tempo'], caminho_kmz, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df_op'], parameters['df'])
+        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['above_ground'], parameters['dl'], parameters['df_op'], parameters['df'], None, None, None, None, None, None)
         
         # ===== Verificações =====================================================
         # print(f"✅ {pontoID - 1} pontos gerados ao longo da linha.")
