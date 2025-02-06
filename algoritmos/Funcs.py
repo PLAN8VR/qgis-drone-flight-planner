@@ -103,23 +103,6 @@ import csv
 #    feedback.pushInfo("DEM successfully processed!")
    
 #    return camadaMDE
- 
-def criarLinhaVoo(flight_type, layer, crs_wgs, transformador, feedback=None):
-   # Reprojetar linha_voo_layer para WGS84 (4326)
-   linha_voo_reproj = reprojeta_camada_WGS84(layer, crs_wgs, transformador)
-
-   # Polygon para PolygonZ
-   linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="altitude")
-
-   # Configurar simbologia de seta
-   simbologiaLinhaVoo(flight_type, linha_voo_reproj)
-
-   # ===== LINHA DE VOO ==============================
-   linha_voo_reproj.setName("Flight Line")
-   
-   QgsProject.instance().addMapLayer(linha_voo_reproj)
-
-   return linha_voo_reproj
 
 def gerar_kmz(layer, arquivo_kmz, crs_wgs, altitude_mode, feedback=None):
    campos = [field.name() for field in layer.fields()]

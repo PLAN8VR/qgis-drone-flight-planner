@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
+from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -102,7 +102,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         crs = area_layer.crs()
         crsL = primeira_linha.crs() # não usamos o crsL, apenas para verificar a camada
         if crs != crsL:
-            raise ValueError("Both layers must be from the same CRS.")
+            raise ValueError("❌ Both layers must be from the same CRS.")
 
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Area' is already in CRS UTM.")
@@ -111,7 +111,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             nome = area_layer.name() + "_reproject"
             area_layer = QgsProject.instance().mapLayersByName(nome)[0]
         else:
-            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
+            raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         if "UTM" in crsL.description().upper():
             feedback.pushInfo(f"The layer 'First line - direction flight' is already in CRS UTM.")
@@ -120,7 +120,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             nome = primeira_linha.name() + "_reproject"
             primeira_linha = QgsProject.instance().mapLayersByName(nome)[0]
         else:
-            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
+            raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
         plugins_verificar = ["lftools", "kmltools"]
@@ -138,10 +138,10 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             linha_geom = linha_geom.asGeometryCollection()[0]
 
         if area_layer.featureCount() != 1:
-            raise ValueError("The Area must contain only one polygon.")
+            raise ValueError("❌ The Area must contain only one polygon.")
 
         if primeira_linha.featureCount() != 1:
-            raise ValueError("The First Line must contain only one line.")
+            raise ValueError("❌ The First Line must contain only one line.")
 
          # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
@@ -158,7 +158,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         h1 = SD_front / (2 * tg_alfa_2)
         deltaFront = SD_front * (H / h1 - 1)
 
-        feedback.pushInfo(f"Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
+        feedback.pushInfo(f"✅ Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -481,16 +481,63 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             QgsProject.instance().addMapLayer(linhas_unidas_layer)
         
         # ===============================================================================
+        # ===== Criar a camada "Linha de Voo" ===========================================
+
+        # Unir todas as linhas em uma única geometria, criando a Linha de Voo
+        linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Flight Line', 'memory')
+        linha_provider = linha_voo_layer.dataProvider()
+        linha_provider.addAttributes([QgsField('id', QVariant.Int)])
+        linha_provider.addAttributes([QgsField("alturavoo", QVariant.Double)])
+        linha_voo_layer.updateFields()
+        
+        # Obter todas as linhas da camada "linhas_unidas_layer"
+        linhas = list(linhas_unidas_layer.getFeatures())
+
+        # Unir todas as linhas em uma única geometria
+        geometrias = [linha.geometry() for linha in linhas if linha.geometry() and linha.geometry().isGeosValid()]
+
+        linha_unica = QgsGeometry.unaryUnion(geometrias)  # Une todas as linhas
+
+        # Converter para uma única LineString se for MultiLineString
+        if linha_unica.isMultipart():
+            partes = linha_unica.asMultiPolyline()
+            linha_unica = QgsGeometry.fromPolylineXY([p for parte in partes for p in parte])  # Achata para LineString
+
+        # Criar e adicionar a feature "Linha de Voo"
+        linha_voo_feature = QgsFeature()
+        linha_voo_feature.setFields(linha_voo_layer.fields())
+        linha_voo_feature.setAttribute("id", 1)
+        linha_voo_feature.setAttribute("alturavoo", H)
+        linha_voo_feature.setGeometry(linha_unica)
+        linha_provider.addFeature(linha_voo_feature)
+
+        linha_voo_layer.commitChanges()
+        
+        # Reprojetar linha Voo para WGS84 (4326)
+        linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
+
+        # LineString paraLineStringZ
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+
+        # Configurar simbologia de seta
+        simbologiaLinhaVoo('H', linha_voo_reproj)
+
+        # ===== LINHA VOO =================================
+        QgsProject.instance().addMapLayer(linha_voo_reproj)
+        
+        feedback.pushInfo("")
+        feedback.pushInfo("✅ Flight Line generated.")
+        
+        # ===============================================================================
         # =====Criar a camada Pontos de Fotos============================================
 
         # Criar uma camada Ponto com os deltaFront sobre a linha
-        pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Pontos Fotos', 'memory')
+        pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Photo Points', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
 
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
-        campos.append(QgsField("linha", QVariant.Int))
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
@@ -518,16 +565,25 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                     ponto_feature = QgsFeature()
                     ponto_feature.setFields(campos)
                     ponto_feature.setAttribute("id", pontoID)
-                    ponto_feature.setAttribute("linha", linha["id"])  # Campo 'id' da linha
                     ponto_feature.setAttribute("latitude", ponto.y())
                     ponto_feature.setAttribute("longitude", ponto.x())
                     ponto_feature.setGeometry(ponto_geom)
-                    pontos_provider.addFeature(ponto_feature)
+                    
+                    if not pontos_provider.addFeature(ponto_feature):
+                        feedback.pushInfo(f"❌ ERROR adding point {pontoID}")
+                    
                     pontoID += 1
 
                 distAtual += deltaFront
-        # Atualizar a camada
+                
+        feedback.pushInfo(f"✅ {pontoID - 1} Photo Points generated.")
+        
+        # Update the layer
+        if not pontos_fotos.commitChanges():
+            feedback.pushInfo("❌ ERROR: Failed to save points in the 'Photo Points' layer!")
+            
         pontos_fotos.updateExtents()
+        pontos_fotos.triggerRepaint()
         
         # Obter a altitude dos pontos a partir do MDE se tiver sido fornecido
         pontos_fotos.startEditing()
@@ -556,55 +612,51 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                 pontos_fotos.updateFeature(f)
                 
         pontos_fotos.commitChanges()
+        pontos_fotos.updateExtents()
 
-        # Point para PointZ
-        pontos_fotos = set_Z_value(pontos_fotos, z_field="altitude")
-
-        # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
+         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
 
-        # Reprojetar a camada para WGS 84
-        pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
-
+        # Point para PointZ
+        if param_kmz == 2:
+            pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
+        else:
+            pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
+            
         # Simbologia
         simbologiaPontos(pontos_reproj)
 
         # ===== PONTOS FOTOS ==========================
         QgsProject.instance().addMapLayer(pontos_reproj)
-
-        # ===== Final Pontos Fotos ============================================
-        # =====================================================================
-        
-        
-        # ===============================================================================
-        # ===== Criar Linha de Voo ======================================================
-        
-        linha_voo_reproj = criarLinhaVoo("H", pontos_fotos, crs_wgs, transformador, feedback)
-        
-        # ===== Final Linha de Voo ============================================ 
-        # =====================================================================
         
         feedback.pushInfo("")
-        feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
+        feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
 
         # =========Exportar para o Google  E a r t h   P r o  (kmz)================================================
 
-        # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
+        feedback.pushInfo("")
+        
         if caminho_kmz and caminho_kmz != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kmz):
             arquivo_kmz = os.path.join(caminho_kmz, "Pontos Fotos.kmz")
-            gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+            #gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
 
             arquivo_kmz = os.path.join(caminho_kmz, "Linha de Voo.kmz")
             #gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+            
+            feedback.pushInfo("✅ KMZ Files created.")
         else:
-            feedback.pushInfo("kmz path not specified. Export step skipped.")
+            feedback.pushInfo("❌ kmz path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
+        feedback.pushInfo("")
+
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
+            #gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
+        
+            feedback.pushInfo("✅ CSV File created.")
         else:
-            feedback.pushInfo("CSV path not specified. Export step skipped.")
+            feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 
         # ============= Remover Camadas Reproject ===================================================
         
@@ -612,7 +664,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
-        feedback.pushInfo("Horizontal Flight Plan successfully executed.")
+        feedback.pushInfo("✅ Horizontal Flight Plan successfully executed.")
         
         return {}
 

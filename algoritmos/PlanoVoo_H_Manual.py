@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
+from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -85,7 +85,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # Grava Parâmetros
-        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['above_ground'], parameters['dl'], parameters['df_op'], parameters['df'], None, None, None, None, None, None)
+        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], parameters['above_ground'], parameters['dl'], parameters['df_op'], parameters['df'], None, None, None, None, None, None)
         
         # ===== Verificações =====================================================
         # print(f"✅ {pontoID - 1} pontos gerados ao longo da linha.")
@@ -468,7 +468,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Flight Line', 'memory')
         linha_provider = linha_voo_layer.dataProvider()
         linha_provider.addAttributes([QgsField('id', QVariant.Int)])
-        linha_provider.addAttributes([QgsField("altitude", QVariant.Double)])
+        linha_provider.addAttributes([QgsField("alturavoo", QVariant.Double)])
         linha_voo_layer.updateFields()
         
         # Obter todas as linhas da camada "linhas_unidas_layer"
@@ -488,14 +488,26 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         linha_voo_feature = QgsFeature()
         linha_voo_feature.setFields(linha_voo_layer.fields())
         linha_voo_feature.setAttribute("id", 1)
-        linha_voo_feature.setAttribute("altitude", 0)
+        linha_voo_feature.setAttribute("alturavoo", H)
         linha_voo_feature.setGeometry(linha_unica)
         linha_provider.addFeature(linha_voo_feature)
 
-        feedback.pushInfo("✅ Flight Line generated.")
+        linha_voo_layer.commitChanges()
         
-        # Adicionar a camada "Linha de Voo" ao projeto
-        QgsProject.instance().addMapLayer(linha_voo_layer)
+        # Reprojetar linha Voo para WGS84 (4326)
+        linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
+
+        # LineString paraLineStringZ
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+
+        # Configurar simbologia de seta
+        simbologiaLinhaVoo('H', linha_voo_reproj)
+
+        # ===== LINHA VOO =================================
+        QgsProject.instance().addMapLayer(linha_voo_reproj)
+        
+        feedback.pushInfo("")
+        feedback.pushInfo("✅ Flight Line generated.")
          
         # ===============================================================================
         # =====Criar a camada Pontos de Fotos============================================
@@ -608,43 +620,47 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                 
         pontos_fotos.commitChanges()
 
-        # Point para PointZ
-        pontos_fotos = set_Z_value(pontos_fotos, z_field="altitude")
-
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
 
-        # Reprojetar a camada para WGS 84
-        pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
-
+        # Point para PointZ
+        if param_kmz == 2:
+            pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
+        else:
+            pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
+            
         # Simbologia
         simbologiaPontos(pontos_reproj)
 
         # ===== PONTOS FOTOS ==========================
         QgsProject.instance().addMapLayer(pontos_reproj)
-
-        # ===== Final Pontos Fotos ============================================
-        # =====================================================================
         
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
 
         # =========Exportar para o Google  E a r t h   P r o  (kmz)================================================
 
-        # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
+        feedback.pushInfo("")
+        
         if caminho_kmz and caminho_kmz != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kmz):
             arquivo_kmz = os.path.join(caminho_kmz, "Pontos Fotos.kmz")
-            gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+            #gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
 
             arquivo_kmz = os.path.join(caminho_kmz, "Linha de Voo.kmz")
             #gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+            
+            feedback.pushInfo("✅ KMZ Files created.")
         else:
             feedback.pushInfo("❌ kmz path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
+        feedback.pushInfo("")
+        
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
+            #gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
+            
+            feedback.pushInfo("✅ CSV File created.")
         else:
             feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 

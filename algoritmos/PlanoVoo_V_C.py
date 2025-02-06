@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj, criarLinhaVoo
+from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -89,7 +89,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         crs = circulo_base.crs()
         crsP = ponto_inicial.crs() # não usamos o crsP, apenas para verificar a camada
         if crs != crsP:
-            raise ValueError("Both layers must be from the same CRS.")
+            raise ValueError("❌ Both layers must be from the same CRS.")
 
         if "UTM" in crs.description().upper():
             feedback.pushInfo(f"The layer 'Flight Base Circle' is already in CRS UTM.")
@@ -98,7 +98,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             nome = circulo_base.name() + "_reproject"
             circulo_base = QgsProject.instance().mapLayersByName(nome)[0]
         else:
-            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
+            raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         if "UTM" in crsP.description().upper():
             feedback.pushInfo(f"The layer 'Start Point' is already in CRS UTM.")
@@ -112,7 +112,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             nome = ponto_inicial.name() + "_move"
             ponto_inicial_move = QgsProject.instance().mapLayersByName(nome)[0]
         else:
-            raise Exception(f"Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
+            raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
         plugins_verificar = ["lftools", "kmltools"]
@@ -120,10 +120,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         # Verificar as Geometrias
         if circulo_base.featureCount() != 1:
-            raise ValueError("Flight base Circle must contain only one circle.")
+            raise ValueError("❌ Flight base Circle must contain only one circle.")
 
         if ponto_inicial.featureCount() != 1:
-            raise ValueError("Start Point must contain only on point.")
+            raise ValueError("❌ Start Point must contain only on point.")
 
         # ===== Cálculos Iniciais ================================================
 
@@ -147,7 +147,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         alturas = [i for i in range(h, H + h + 1, deltaV)]
 
-        feedback.pushInfo(f"Height: {H}, Horizontal Spacing: {round(deltaH,2)}, Vertical Spacing: {deltaV}")
+        feedback.pushInfo(f"✅ Height: {H}, Horizontal Spacing: {round(deltaH,2)}, Vertical Spacing: {deltaV}")
 
         # =========================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -167,7 +167,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # Criar geometria do polígono
         polygon_geometry = QgsGeometry.fromPolygonXY([pontos])
 
-        # Criar uma camada Polígono que será a Linha de Voo
+        # ===============================================================================
+        # ===== Criar a camada "Linha de Voo" ===========================================
+
         linhas_circulares_layer = QgsVectorLayer('Polygon?crs=' + crs.authid(), 'Flight Line', 'memory')
         linhas_circulares_provider = linhas_circulares_layer.dataProvider()
 
@@ -191,11 +193,22 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
             linha_id += 1
 
-        # Atualizar a camada
-        linhas_circulares_layer.updateExtents()
         linhas_circulares_layer.commitChanges()
         
-        linhas_circulares_layer = criarLinhaVoo("VC", linhas_circulares_layer, crs_wgs, transformador, feedback)
+         # Reprojetar linha Voo para WGS84 (4326)
+        linha_voo_reproj = reprojeta_camada_WGS84(linhas_circulares_layer, crs_wgs, transformador)
+
+        # LineString paraLineStringZ
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+
+        # Configurar simbologia
+        simbologiaLinhaVoo('VC', linha_voo_reproj)
+
+        # ===== LINHA VOO =================================
+        QgsProject.instance().addMapLayer(linha_voo_reproj)
+        
+        feedback.pushInfo("")
+        feedback.pushInfo("✅ Flight Line generated.")
 
         # ==========================================================================================
         # =====Criar a camada Pontos de Fotos=======================================================
@@ -285,13 +298,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(v.x(), v.y()))
 
                 # Obter altitude do MDE
+                param_kmz = 1
                 if camadaMDE:
                     param_kmz = 2 # Altitude relativa ao terreno=1 e absoluta=2 para a geração do kmz
                     ponto_wgs = transformador.transform(QgsPointXY(v.x(), v.y()))
                     value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Amostragem no raster
                     a = value if result else 0
                 else:
-                    param_kmz = 1
                     a = 0
 
                 # Calcular o ângulo do ponto
@@ -320,42 +333,46 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         pontos_fotos.commitChanges()
         pontos_fotos.updateExtents()
 
-        # Point para PointZ
-        pontos_fotos = set_Z_value(pontos_fotos, z_field="alturavoo")
-
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
-        pontos_fotos = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
+        pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
 
         # Point para PointZ
-        pontos_fotos = set_Z_value(pontos_fotos, z_field="alturavoo")
+        pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
 
         # Simbologia
-        simbologiaPontos(pontos_fotos)
+        simbologiaPontos(pontos_reproj)
         
         # ===== PONTOS FOTOS ==========================
-        QgsProject.instance().addMapLayer(pontos_fotos)
+        QgsProject.instance().addMapLayer(pontos_reproj)
 
         feedback.pushInfo("")
-        feedback.pushInfo("Flight Line and Photo Spots completed successfully!")
-
+        feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
+        
         # ========= Exportar para o Google  E a r t h   P r o  (kmz) =======================
 
-        # Verifica se o caminho é válido, não é 'TEMPORARY OUTPUT' e é um diretório
+        feedback.pushInfo("")
+        
         if caminho_kmz and caminho_kmz != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kmz):
             arquivo_kmz = os.path.join(caminho_kmz, "Pontos Fotos.kmz")
             #gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
 
             arquivo_kmz = os.path.join(caminho_kmz, "Linha de Voo.kmz")
             #gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+        
+            feedback.pushInfo("✅ KMZ Files created.")
         else:
-            feedback.pushInfo("kmz path not specified. Export step skipped.")
+            feedback.pushInfo("❌ kmz path not specified. Export step skipped.")
 
         # ============= L I T C H I ================================================================
 
-        # if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-        #     gerar_CSV("VC", pontos_fotos, arquivo_csv, velocidade, tempo, deltaH, 0, H)
-        # else:
-        #     feedback.pushInfo("CSV path not specified. Export step skipped.")
+        feedback.pushInfo("")
+
+        if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
+            #gerar_CSV("VC", pontos_fotos, arquivo_csv, velocidade, tempo, deltaH, 0, H)
+        
+            feedback.pushInfo("✅ CSV File created.")
+        else:
+            feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 
         # ============= Remover Camadas Reproject e Move =============================================
         
@@ -364,7 +381,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
-        feedback.pushInfo("Circular Vertical Flight Plan successfully executed.")
+        feedback.pushInfo("✅ Circular Vertical Flight Plan successfully executed.")
         
         return {}
 
