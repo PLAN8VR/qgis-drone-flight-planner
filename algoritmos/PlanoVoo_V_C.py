@@ -368,7 +368,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            #gerar_CSV("VC", pontos_fotos, arquivo_csv, velocidade, tempo, deltaH, 0, H)
+            gerar_CSV("VC", pontos_reproj, arquivo_csv, velocidade, tempo, deltaH, 0, H)
         
             feedback.pushInfo("✅ CSV File created.")
         else:

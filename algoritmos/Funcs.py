@@ -228,10 +228,10 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
    addCampo(pontos_fotos, 'ycoord ', QVariant.String)
    
    if flight_type == "VF":
-      addCampo(pontos_fotos, 'alturasolo ', QVariant.String)
+      addCampo(pontos_fotos, 'alturavoo ', QVariant.String)
       
    if flight_type == "VC":
-      addCampo(pontos_fotos, 'alturasolo ', QVariant.String)
+      addCampo(pontos_fotos, 'alturavoo ', QVariant.String)
       addCampo(pontos_fotos, 'angulo ', QVariant.String)   
    
    for f in pontos_fotos.getFeatures():
@@ -239,10 +239,10 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
          x2 = str(f['ycoord']).replace(',', '.')
          
          if flight_type == "VF":
-            x3 = str(f['alturasolo']).replace(',', '.')
+            x3 = str(f['alturavoo']).replace(',', '.')
          
          if flight_type == "VC":
-            x3 = str(f['alturasolo']).replace(',', '.')
+            x3 = str(f['alturavoo']).replace(',', '.')
             x4 = str(f['angulo']).replace(',', '.')
          
          # Formatar os valores como strings com ponto como separador decimal
@@ -261,10 +261,10 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
          f['ycoord '] = x2
          
          if flight_type == "VF":
-            f['alturasolo '] = x3
+            f['alturavoo '] = x3
          
          if flight_type == "VC":
-            f['alturasolo '] = x3
+            f['alturavoo '] = x3
             f['angulo '] = x4
 
          pontos_fotos.updateFeature(f)
@@ -275,9 +275,9 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
    if flight_type == "H":
       camposDel = ['xcoord', 'ycoord'] # sem o espaço
    elif flight_type == "VF":
-      camposDel = ['xcoord', 'ycoord', 'alturasolo']
+      camposDel = ['xcoord', 'ycoord', 'alturavoo']
    elif flight_type == "VC":
-      camposDel = ['xcoord', 'ycoord', 'alturasolo', 'angulo']
+      camposDel = ['xcoord', 'ycoord', 'alturavoo', 'angulo']
       
    pontos_fotos.startEditing()
    pontos_fotos.dataProvider().deleteAttributes([pontos_fotos.fields().indexOf(campo) for campo in camposDel if pontos_fotos.fields().indexOf(campo) != -1])
@@ -333,13 +333,15 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
             t3 = 1          # TAKE_PHOTO
             t4 = 0
          
-         if deltaFront_op == 0: # photo_timeinterval caso tenha sido escolhido por tempo no Voo Horizonta Manual
-            photo_timeinterval = delta
-            photo_distinterval = -1 
-         else:
-            photo_timeinterval = -1
-            photo_distinterval = delta
-            
+         if deltaFront_op == 1:   # valor = 1 is seconds; caso tenha sido escolhido por tempo no Voo Horizontal Manual
+            time_interval = delta
+            dist_interval = -1 
+         elif deltaFront_op == 0: # valor = 0 is meters
+            time_interval = -1
+            dist_interval = delta
+         else:                  # None para todos os voos que não Horizontal Manual
+            time_interval = -1
+            dist_interval = delta
             
          # Ler os dados da camada Pontos
          for f in pontos_fotos.getFeatures():
@@ -348,9 +350,9 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
             y_coord = f['ycoord ']
             
             if flight_type == "VF":
-               alturavoo = f['alturasolo ']
+               alturavoo = f['alturavoo ']
             elif flight_type == "VC":
-               alturavoo = f['alturasolo ']
+               alturavoo = f['alturavoo ']
                angulo = f['angulo ']
                
             # Criar um dicionário de dados para cada item do CSV
@@ -399,8 +401,8 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
                "poi_longitude": 0,
                "poi_altitude(m)": 0,
                "poi_altitudemode": 0,
-               "photo_timeinterval": -1,
-               "photo_distinterval": delta}
+               "photo_timeinterval": time_interval,
+               "photo_distinterval": dist_interval}
 
             # Escrever a linha no CSV
             writer.writerow(data)
