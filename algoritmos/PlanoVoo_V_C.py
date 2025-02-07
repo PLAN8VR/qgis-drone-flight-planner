@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_kmz, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj
+from .Funcs import verificar_plugins, gerar_kml, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -41,7 +41,7 @@ import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skmz, sCSV = loadParametros("VC")
+        hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skml, sCSV = loadParametros("VC")
 
         self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight Base Circle', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Start Point', types=[QgsProcessing.TypeVectorPoint]))
@@ -58,7 +58,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayVC))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kmz', 'Output Folder for kmz (Google Earth)', defaultValue=skmz))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -77,11 +77,11 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         deltaV = parameters['deltaVertical']
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-        caminho_kmz = self.parameterAsFile(parameters, 'saida_kmz', context)
+        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kmz'], parameters['saida_csv'], None, None, None, None, None, None, parameters['deltaVertical'], None, None, parameters['alturaMin'], parameters['num_partes'])
+        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], None, None, None, None, None, None, parameters['deltaVertical'], None, None, parameters['alturaMin'], parameters['num_partes'])
         
         # ===== Verificações =================================================================
 
@@ -115,7 +115,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
         # Verificar se os plugins estão instalados
-        plugins_verificar = ["lftools", "kmltools"]
+        plugins_verificar = ["lftools"]
         verificar_plugins(plugins_verificar, feedback)
 
         # Verificar as Geometrias
@@ -298,9 +298,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(v.x(), v.y()))
 
                 # Obter altitude do MDE
-                param_kmz = 1
+                param_kml = 'relativeToGround'
                 if camadaMDE:
-                    param_kmz = 2 # Altitude relativa ao terreno=1 e absoluta=2 para a geração do kmz
+                    param_kml = 'absolute'
                     ponto_wgs = transformador.transform(QgsPointXY(v.x(), v.y()))
                     value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Amostragem no raster
                     a = value if result else 0
@@ -348,20 +348,20 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
         
-        # ========= Exportar para o Google  E a r t h   P r o  (kmz) =======================
+        # ========= Exportar para o Google  E a r t h   P r o  (kml) =======================
 
         feedback.pushInfo("")
         
-        if caminho_kmz and caminho_kmz != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kmz):
-            arquivo_kmz = os.path.join(caminho_kmz, "Pontos Fotos.kmz")
-            #gerar_kmz(pontos_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+        if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
+            arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
+            gerar_kml(pontos_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
 
-            arquivo_kmz = os.path.join(caminho_kmz, "Linha de Voo.kmz")
-            #gerar_kmz(linha_voo_reproj, arquivo_kmz, crs_wgs, param_kmz, feedback)
+            arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
+            gerar_kml(linha_voo_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
         
-            feedback.pushInfo("✅ KMZ Files created.")
+            feedback.pushInfo("✅ kml Files created.")
         else:
-            feedback.pushInfo("❌ kmz path not specified. Export step skipped.")
+            feedback.pushInfo("❌ kml path not specified. Export step skipped.")
 
         # ============= L I T C H I ================================================================
 
@@ -418,11 +418,11 @@ It enables the creation of an optimized flight path to capture detailed images o
   <li class="MsoNormal" style=""><b><span>Vertical spacing:</span></b><span> Determines the distance between capture levels along the object's height.<o:p></o:p></span></li>
   <li class="MsoNormal" style=""><b><span>Number of photos per base circle (segments):</span></b><span> Specifies the number of photos to be captured at each circular level.<o:p></o:p></span></li>
 </ul>
-<p><span>The outputs are <b>KMZ</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the kmz files for flight lines and waypoints.</span></p>
-<p><b><span>Requirements:</span></b><span> Plugins <b>LFTools</b>, and <b>KML Tools</b> installed in QGIS.</span></p>
+<p><span>The outputs are <b>kml</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the kml files for flight lines and waypoints.</span></p>
+<p><b><span>Requirements:</span></b><span> Plugin <b>LFTools</b> installed in QGIS.</span></p>
 <p><b>Tips:</b></p>
 <ul>
-  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the API Key for the Open Topography plugin</a></li>
+  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a></li>
   <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a></li>
             """
 
