@@ -583,6 +583,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         # Obter a altitude dos pontos a partir do MDE se tiver sido fornecido
         pontos_fotos.startEditing()
         
+        param_kml = 'relativeToGround'
         if camadaMDE:
             param_kml = 'absolute'
             transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
@@ -600,7 +601,6 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                     f["alturavoo"] = H
                     pontos_fotos.updateFeature(f)
         else:
-            param_kml = 'relativeToGround'
             for f in pontos_fotos.getFeatures():
                 f["altitude"] = 0
                 f["alturavoo"] = H
@@ -638,8 +638,6 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
             arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
             gerar_kml(linha_voo_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
-            
-            feedback.pushInfo("✅ kml Files created.")
         else:
             feedback.pushInfo("❌ kml path not specified. Export step skipped.")
 
@@ -648,9 +646,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
-        
-            feedback.pushInfo("✅ CSV File created.")
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain, feedback)
         else:
             feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 

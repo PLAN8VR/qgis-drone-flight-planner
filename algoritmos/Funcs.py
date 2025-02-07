@@ -127,9 +127,6 @@ def gerar_kml(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
       else:  # relativeToGround → Always use flight_altitude_value
          altitude = flight_altitude_value
 
-      if geom.isEmpty():
-         continue  # Ignore empty geometries
-
       if geom.type() == 0:  # Point
          pt = geom.asPoint()
          p = kml.newpoint(name=f"Feature {feature.id()}", coords=[(pt.x(), pt.y(), altitude)])
@@ -145,17 +142,19 @@ def gerar_kml(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
          ls.extrude = 1
          
          # Apply Red Color and Increase Line Width
-         ls.style.linestyle.color = simplekml.Color.red  # Sets color to red
-         ls.style.linestyle.width = 5  # Makes the line thicker
+         linestyle = simplekml.Style()
+         linestyle.linestyle.color = simplekml.Color.red  # Red color
+         linestyle.linestyle.width = 5  # Line thickness
+         ls.style = linestyle  # Apply the style to the line
 
    # Save the KML file
    kml.save(arquivo_kml)
 
-   feedback.pushInfo(f"✅ KML file successfully generated: {arquivo_kml}")
+   feedback.pushInfo(f"✅ KML files successfully generated: {arquivo_kml}")
    
    return {}
    
-def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None):
+def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None, feedback=None):
     # Definir novos campos xcoord e ycoord com coordenadas geográficas
    pontos_fotos.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
    pontos_fotos.updateFields()
@@ -378,7 +377,9 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
 
             # Escrever a linha no CSV
             writer.writerow(data)
-            
+   
+   feedback.pushInfo("✅ CSV file successfully generated.")
+                       
    return {}
 
 def addCampo(layer, field_name, field_type):

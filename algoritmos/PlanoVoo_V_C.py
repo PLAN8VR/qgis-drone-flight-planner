@@ -358,8 +358,6 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
             arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
             gerar_kml(linha_voo_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
-        
-            feedback.pushInfo("✅ kml Files created.")
         else:
             feedback.pushInfo("❌ kml path not specified. Export step skipped.")
 
@@ -368,9 +366,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("VC", pontos_reproj, arquivo_csv, velocidade, tempo, deltaH, 0, H)
-        
-            feedback.pushInfo("✅ CSV File created.")
+            gerar_CSV("VC", pontos_reproj, arquivo_csv, velocidade, tempo, deltaH, 0, H, feedback)
         else:
             feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 
