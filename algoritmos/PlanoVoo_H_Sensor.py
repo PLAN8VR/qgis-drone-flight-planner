@@ -568,10 +568,8 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                     ponto_feature.setAttribute("latitude", ponto.y())
                     ponto_feature.setAttribute("longitude", ponto.x())
                     ponto_feature.setGeometry(ponto_geom)
-                    
-                    if not pontos_provider.addFeature(ponto_feature):
-                        feedback.pushInfo(f"❌ ERROR adding point {pontoID}")
-                    
+                    pontos_provider.addFeature(ponto_feature)
+                        
                     pontoID += 1
 
                 distAtual += deltaFront
@@ -609,8 +607,8 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         pontos_fotos.commitChanges()
         pontos_fotos.updateExtents()
         pontos_fotos.triggerRepaint()
-
-         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
+        
+        # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
 
         # Point para PointZ
@@ -646,7 +644,9 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain, feedback)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
+            
+            feedback.pushInfo("✅ CSV file successfully generated.")
         else:
             feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 

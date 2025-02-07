@@ -526,8 +526,6 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
         
-        pontos_fotos.startEditing()
-        
         linha_voo_feature = next(linha_voo_layer.getFeatures(), None)
         linha_voo_geom = linha_voo_feature.geometry()
 
@@ -571,26 +569,19 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                 ponto_geom = QgsGeometry.fromPointXY(ponto)
 
                 ponto_feature = QgsFeature()
-                ponto_feature.setFields(pontos_fotos.fields())
+                ponto_feature.setFields(campos)
                 ponto_feature.setAttribute("id", pontoID)
                 ponto_feature.setAttribute("latitude", ponto.y())
                 ponto_feature.setAttribute("longitude", ponto.x())
                 ponto_feature.setGeometry(ponto_geom)
-
-                if not pontos_provider.addFeature(ponto_feature):
-                    feedback.pushInfo(f"❌ ERROR adding point {pontoID}")
+                pontos_provider.addFeature(ponto_feature)
 
                 pontoID += 1
                 vertices_adicionados.add((ponto.x(), ponto.y()))
 
         feedback.pushInfo(f"✅ {pontoID - 1} Photo Points generated.")
 
-        # Update the layer
-        if not pontos_fotos.commitChanges():
-            feedback.pushInfo("❌ ERROR: Failed to save points in the 'Photo Points' layer!")
-
-        pontos_fotos.updateExtents()
-        pontos_fotos.triggerRepaint()
+        pontos_fotos.commitChanges()
         
         # Obter a altitude dos pontos a partir do MDE se tiver sido fornecido
         pontos_fotos.startEditing()
@@ -619,10 +610,12 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                 pontos_fotos.updateFeature(f)
                 
         pontos_fotos.commitChanges()
-
-        # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
+        pontos_fotos.updateExtents()
+        pontos_fotos.triggerRepaint()
+    
+       # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
-
+    
         # Point para PointZ
         if param_kml == 'absolute':
             pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
@@ -656,7 +649,9 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         feedback.pushInfo("")
         
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain, deltaFront_op, feedback)
+            #gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain, deltaFront_op)
+            
+            feedback.pushInfo("✅ CSV file successfully generated.")
         else:
             feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 

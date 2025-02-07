@@ -154,7 +154,7 @@ def gerar_kml(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
    
    return {}
    
-def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None, feedback=None):
+def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None):
     # Definir novos campos xcoord e ycoord com coordenadas geográficas
    pontos_fotos.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
    pontos_fotos.updateFields()
@@ -291,7 +291,7 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
          else:
             mode_gimbal = 0
             angulo_gimbal = 0
-            above_ground = 0 # Above Ground não habilitado
+            above_ground = 0 # Above Ground não habilitado para voos verticais
             
          if tempo == 0:
             t1 = 1          # TAKE_PHOTO
@@ -307,7 +307,7 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
          if deltaFront_op == 1:   # valor = 1 is seconds; caso tenha sido escolhido por tempo no Voo Horizontal Manual
             time_interval = delta
             dist_interval = -1 
-         elif deltaFront_op == 0: # valor = 0 is meters
+         elif deltaFront_op == 0: # valor = 0 is meters; caso tenha sido escolhido por distância no Voo Horizontal Manual
             time_interval = -1
             dist_interval = delta
          else:                  # None para todos os voos que não Horizontal Manual
@@ -377,8 +377,6 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
 
             # Escrever a linha no CSV
             writer.writerow(data)
-   
-   feedback.pushInfo("✅ CSV file successfully generated.")
                        
    return {}
 
