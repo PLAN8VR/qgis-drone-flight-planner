@@ -149,7 +149,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
-        crs_wgs = QgsCoordinateReferenceSystem(4326)
+        crs_wgs = QgsCoordinateReferenceSystem('EPSG:4326')
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
 
         # ================================================================================
