@@ -577,9 +577,8 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             if (ponto.x(), ponto.y()) not in vertices_adicionados:
                 geom_UTM = QgsGeometry.fromPointXY(ponto)
                 Ponto_Geo = transformador.transform(ponto)
-                ponto_feature = QgsFeature()
-                ponto_feature.setFields(campos)
-                ponto_feature.setAttribute("id", pontoID)
+                ponto_feature = QgsFeature(campos)
+                ponto_feature.setAttribute("id", pontoID) 
                 ponto_feature.setAttribute("latitude", Ponto_Geo.y())
                 ponto_feature.setAttribute("longitude", Ponto_Geo.x())
                 ponto_feature.setGeometry(geom_UTM)
