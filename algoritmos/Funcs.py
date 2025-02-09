@@ -44,67 +44,6 @@ import processing
 import csv
 import simplekml
 
-# def obter_DEM(flight_type, layer, transformador, apikey, feedback=None, bbox_area_min=2.5):
-#    # Obter a Altitude dos pontos das Fotos com OpenTopography
-#    feedback.pushInfo("Getting Altitudes with OpenTopography")
-   
-#    # Determinar o bounding box da linha em WGS 84
-#    bounds = layer.boundingBox()
-#    ponto_min = transformador.transform(QgsPointXY(bounds.xMinimum(), bounds.yMinimum()))
-#    ponto_max = transformador.transform(QgsPointXY(bounds.xMaximum(), bounds.yMaximum()))
-
-#    pontoN = ponto_max.y()
-#    pontoS = ponto_min.y()
-#    pontoW = ponto_min.x()
-#    pontoE = ponto_max.x()
-
-#    # Certificar que a área do bounding box seja grande o suficiente
-#    bbox_area = (pontoE - pontoW) * (pontoN - pontoS) * 111 * 111  # Aproximação em km²
-#    if bbox_area < bbox_area_min:
-#       aumento = ((bbox_area_min / bbox_area) ** 0.5 - 1) / 2
-      
-#       ajuste_lat_extra = aumento * (pontoN - pontoS)
-#       ajuste_long_extra = aumento * (pontoE - pontoW)
-      
-#       pontoN += ajuste_lat_extra
-#       pontoS -= ajuste_lat_extra
-#       pontoW -= ajuste_long_extra
-#       pontoE += ajuste_long_extra
-
-#    # Obter o DEM da área
-#    coordenadas = f'{pontoW},{pontoE},{pontoS},{pontoN}'
-#    area = f"{coordenadas}[EPSG:4326]"
-
-#    # Atualmente, o OpenTopography não oferece modelos de elevação diretamente referenciados ao elipsoide (como o WGS84)
-#    # Ele utiliza uma superfície ortométrica como referência, que é baseada no Geoid EGM96 (Earth Gravitational Model 1996)
-#    # Isso significa que as elevações fornecidas pelo Copernicus DSM estão em relação ao nível médio do mar, e não ao elipsoide
-   
-#    result = processing.run(
-#       "OTDEMDownloader:OpenTopography DEM Downloader", {
-#          'DEMs': 7,  # Copernicus Global DSM 30m
-#          'Extent': area,
-#          'API_key': apikey,
-#          'OUTPUT': 'TEMPORARY_OUTPUT'
-#       })
-
-#    output_path = result['OUTPUT']
-#    camadaMDE = QgsRasterLayer(output_path, "DEM")
-
-#    # Filtrar o MDE com (Relevo / Filtro do MDE) do LFTools
-#    result = processing.run(
-#       "lftools:demfilter", {
-#          'INPUT': camadaMDE,
-#          'KERNEL': 0,
-#          'OUTPUT': 'TEMPORARY_OUTPUT',
-#          'OPEN': False
-#       })
-#    output_path = result['OUTPUT']
-#    camadaMDE = QgsRasterLayer(output_path, "DEM")
-
-#    feedback.pushInfo("DEM successfully processed!")
-   
-#    return camadaMDE
-
 def gerar_kml(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
    kml = simplekml.Kml()
 
@@ -155,111 +94,8 @@ def gerar_kml(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
    return {}
    
 def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None):
-    # Definir novos campos xcoord e ycoord com coordenadas geográficas
-   pontos_fotos.dataProvider().addAttributes([QgsField("xcoord", QVariant.Double), QgsField("ycoord", QVariant.Double)])
-   pontos_fotos.updateFields()
-
-   # Obtenha o índice dos novos campos
-   idx_x = pontos_fotos.fields().indexFromName('xcoord')
-   idx_y = pontos_fotos.fields().indexFromName('ycoord')
-
-   # Inicie a edição da camada
-   pontos_fotos.startEditing()
-
-   for f in pontos_fotos.getFeatures():
-         geom = f.geometry()
-         if geom.isEmpty():
-            continue
-
-         ponto = geom.asPoint()
-         x = ponto.x()
-         y = ponto.y()
-
-         f.setAttribute(idx_x, x)
-         f.setAttribute(idx_y, y)
-
-         pontos_fotos.updateFeature(f)
-
-   pontos_fotos.commitChanges()
-
-   # deletar campos desnecessários
-   campos = ['latitude', 'longitude']
-   
-   pontos_fotos.startEditing()
-   indices = [pontos_fotos.fields().indexFromName(campo) for campo in campos if campo in pontos_fotos.fields().names()]
-   pontos_fotos.deleteAttributes(indices)
-   
-   pontos_fotos.commitChanges()
-         
-   # Mudar Sistema numérico - ponto no lugar de vírgula para separa a parte decimal - Campos Double para String        
-   pontos_fotos.startEditing()
-
-   # Adicionar campos de texto em Pontos Reordenados
-   addCampo(pontos_fotos, 'xcoord ', QVariant.String) # o espaço é para diferenciar; depois vamos deletar os campos antigos
-   addCampo(pontos_fotos, 'ycoord ', QVariant.String)
-   
-   if flight_type == "VF":
-      addCampo(pontos_fotos, 'alturavoo ', QVariant.String)
       
-   if flight_type == "VC":
-      addCampo(pontos_fotos, 'alturavoo ', QVariant.String)
-      addCampo(pontos_fotos, 'angulo ', QVariant.String)   
-   
-   for f in pontos_fotos.getFeatures():
-         x1= str(f['xcoord']).replace(',', '.')
-         x2 = str(f['ycoord']).replace(',', '.')
-         
-         if flight_type == "VF":
-            x3 = str(f['alturavoo']).replace(',', '.')
-         
-         if flight_type == "VC":
-            x3 = str(f['alturavoo']).replace(',', '.')
-            x4 = str(f['angulo']).replace(',', '.')
-         
-         # Formatar os valores como strings com ponto como separador decimal
-         x1 = "{:.6f}".format(float(x1))
-         x2 = "{:.6f}".format(float(x2))
-         
-         if flight_type == "VF":
-            x3 = "{:.6f}".format(float(x3))
-
-         if flight_type == "VC":
-            x3 = "{:.6f}".format(float(x3))
-            x4 = "{:.6f}".format(float(x4))
-
-         # Atualizar os valores dos campos de texto
-         f['xcoord '] = x1
-         f['ycoord '] = x2
-         
-         if flight_type == "VF":
-            f['alturavoo '] = x3
-         
-         if flight_type == "VC":
-            f['alturavoo '] = x3
-            f['angulo '] = x4
-
-         pontos_fotos.updateFeature(f)
-
-   pontos_fotos.commitChanges()
-
-   # Lista de campos Double a serem removidos de Pontos
-   if flight_type == "H":
-      camposDel = ['xcoord', 'ycoord'] # sem o espaço
-   elif flight_type == "VF":
-      camposDel = ['xcoord', 'ycoord', 'alturavoo']
-   elif flight_type == "VC":
-      camposDel = ['xcoord', 'ycoord', 'alturavoo', 'angulo']
-      
-   pontos_fotos.startEditing()
-   pontos_fotos.dataProvider().deleteAttributes([pontos_fotos.fields().indexOf(campo) for campo in camposDel if pontos_fotos.fields().indexOf(campo) != -1])
-   pontos_fotos.commitChanges()
-   
-   # Formatar os valores como strings com ponto como separador decimal
-   v = str(velocidade).replace(',', '.')
-   velocidade = "{:.6f}".format(float(v))
-   
-   # Exportar para o Litch (CSV já preparado)
-   # Criar o arquivo CSV
+   # Criar o arquivo CSV do Litchi
    with open(arquivo_csv, mode='w', newline='') as csvfile:
          # Definir os cabeçalhos do arquivo CSV
          fieldnames = [
@@ -317,21 +153,21 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
          # Ler os dados da camada Pontos
          for f in pontos_fotos.getFeatures():
             # Extrair os valores dos campos da camada
-            x_coord = f['xcoord '] 
-            y_coord = f['ycoord ']
+            longitude = f['longitude']
+            latitude = f['latitude']
             
             if flight_type == "VF":
-               alturavoo = f['alturavoo ']
+               alturavoo = f['alturavoo']
             elif flight_type == "VC":
-               alturavoo = f['alturavoo ']
-               angulo = f['angulo ']
+               alturavoo = f['alturavoo']
+               angulo = f['angulo']
                
             # Criar um dicionário de dados para cada item do CSV
             data = {
-               "latitude": y_coord,
-               "longitude": x_coord,
-               "altitude(m)": alturavoo,
-               "heading(deg)": angulo,
+               "latitude": f"{latitude:.8f}",
+               "longitude": f"{longitude:.8f}",
+               "altitude(m)": f"{alturavoo:.1f}",
+               "heading(deg)": f"{angulo:.0f}",
                "curvesize(m)": 0,
                "rotationdir": 0,
                "gimbalmode": mode_gimbal,
@@ -377,8 +213,7 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
 
             # Escrever a linha no CSV
             writer.writerow(data)
-                       
-   return {}
+
 
 def addCampo(layer, field_name, field_type):
       layer.dataProvider().addAttributes([QgsField(field_name, field_type)])
