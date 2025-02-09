@@ -162,7 +162,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
-        crs_wgs = QgsCoordinateReferenceSystem(4326)
+        crs_wgs = QgsCoordinateReferenceSystem('EPSG:4326')
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
 
         # ================================================================================
@@ -562,11 +562,11 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
                 # Verificar se o ponto está dentro do polígono
                 if poligono_com_tolerancia.contains(ponto_geom):
-                    ponto_feature = QgsFeature()
-                    ponto_feature.setFields(campos)
+                    Ponto_Geo = transformador.transform(ponto)
+                    ponto_feature = QgsFeature(campos)
                     ponto_feature.setAttribute("id", pontoID)
-                    ponto_feature.setAttribute("latitude", ponto.y())
-                    ponto_feature.setAttribute("longitude", ponto.x())
+                    ponto_feature.setAttribute("latitude", Ponto_Geo.y())
+                    ponto_feature.setAttribute("longitude", Ponto_Geo.x())
                     ponto_feature.setGeometry(ponto_geom)
                     pontos_provider.addFeature(ponto_feature)
                         
@@ -600,7 +600,6 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                     pontos_fotos.updateFeature(f)
         else:
             for f in pontos_fotos.getFeatures():
-                f["altitude"] = 0
                 f["alturavoo"] = H
                 pontos_fotos.updateFeature(f)
                 
