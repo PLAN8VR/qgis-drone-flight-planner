@@ -333,7 +333,7 @@ def simbologiaPontos(layer):
    
    return
 
-def verificar_plugins(plugins_list, feedback=None):
+def verificar_plugins(plugins_list, feedback=None): # Não está sendo usada
     # Obter a lista de todos os plugins instalados
     installed_plugins = qgis.utils.plugins.keys()
     

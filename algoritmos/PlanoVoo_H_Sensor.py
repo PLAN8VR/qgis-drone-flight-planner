@@ -98,6 +98,14 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         
         # ===== Verificações =====================================================
 
+         # Verificar caminho das pastas
+        if caminho_kml and not os.path.exists(caminho_kml):
+            raise QgsProcessingException("❌ Path to KML files does not exist!")
+
+        if arquivo_csv:
+            if not os.path.exists(os.path.dirname(arquivo_csv)):
+                raise QgsProcessingException("❌ Path to CSV file does not exist!") 
+        
         # Verificar o SRC das Camadas
         crs = area_layer.crs()
         crsL = primeira_linha.crs() # não usamos o crsL, apenas para verificar a camada
@@ -122,9 +130,9 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         else:
             raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
-        # Verificar se os plugins estão instalados
-        plugins_verificar = ["lftools"]
-        verificar_plugins(plugins_verificar, feedback)
+        # Verificar se os plugins estão instalados (Não está tendo necessidade de nenhum plugin no momento)
+        # plugins_verificar = ["lftools"]
+        # verificar_plugins(plugins_verificar, feedback)
 
         # Verificar as Geometrias
         poligono_features = next(area_layer.getFeatures()) # dados do Terreno

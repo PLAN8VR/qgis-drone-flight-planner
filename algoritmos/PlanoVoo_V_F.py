@@ -88,6 +88,14 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         
         # ===== Verificações ===================================================================================
 
+         # Verificar caminho das pastas
+        if caminho_kml and not os.path.exists(caminho_kml):
+            raise QgsProcessingException("❌ Path to KML files does not exist!")
+
+        if arquivo_csv:
+            if not os.path.exists(os.path.dirname(arquivo_csv)):
+                raise QgsProcessingException("❌ Path to CSV file does not exist!")
+        
         # Verificar o SRC das Camadas
         crs = linha_base.crs()
         crsP = ponto_base.crs() # não usamos o crsP, apenas para verificar a camada
@@ -111,10 +119,6 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             ponto_base = QgsProject.instance().mapLayersByName(nome)[0]
         else:
             raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
-
-        # Verificar se os plugins estão instalados
-        plugins_verificar = ["lftools"]
-        verificar_plugins(plugins_verificar, feedback)
 
         # Verificar as Geometrias
         if linha_base.featureCount() != 1:

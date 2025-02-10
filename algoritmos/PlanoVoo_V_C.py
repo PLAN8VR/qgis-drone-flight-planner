@@ -58,8 +58,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayVC))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV, optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -77,14 +77,27 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         deltaV = parameters['deltaVertical']
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
-        arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
-
-        # ===== Grava Parâmetros =====================================================
-        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], None, None, None, None, None, None, parameters['deltaVertical'], None, None, parameters['alturaMin'], parameters['num_partes'])
         
+        x = parameters.get('saida_kml', None)  # Get parameter safely
+        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context) if x else ""
+
+        x = parameters.get('saida_csv', None)  # Get parameter safely
+        arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context) if x else ""
+
+        #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
+        #arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
+ 
         # ===== Verificações =================================================================
 
+         # Verificar caminho das pastas
+        if caminho_kml != "" and caminho_kml != None:
+            if not os.path.exists(caminho_kml):
+                raise QgsProcessingException("❌ Path to KML files does not exist!")
+
+        if arquivo_csv != "" and arquivo_csv != None:
+            if not os.path.exists(os.path.dirname(arquivo_csv)):
+                raise QgsProcessingException("❌ Path to CSV file does not exist!")
+        
         # Verificar o SRC das Camadas
         crs = circulo_base.crs()
         crsP = ponto_inicial.crs() # não usamos o crsP, apenas para verificar a camada
@@ -114,16 +127,15 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         else:
             raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
 
-        # Verificar se os plugins estão instalados
-        plugins_verificar = ["lftools"]
-        verificar_plugins(plugins_verificar, feedback)
-
         # Verificar as Geometrias
         if circulo_base.featureCount() != 1:
             raise ValueError("❌ Flight base Circle must contain only one circle.")
 
         if ponto_inicial.featureCount() != 1:
             raise ValueError("❌ Start Point must contain only on point.")
+
+        # ===== Grava Parâmetros =====================================================
+        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], None, None, None, None, None, None, parameters['deltaVertical'], None, None, parameters['alturaMin'], parameters['num_partes'])
 
         # ===== Cálculos Iniciais ================================================
 

@@ -89,11 +89,12 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
 
         # ===== Verificações =====================================================
         # Verificar caminho das pastas
-        if not os.path.exists(caminho_kml):
+        if caminho_kml and not os.path.exists(caminho_kml):
             raise QgsProcessingException("❌ Path to KML files does not exist!")
 
-        if not os.path.exists(os.path.dirname(arquivo_csv)):
-            raise QgsProcessingException("❌ Path to CSV file does not exist!")
+        if arquivo_csv:
+            if not os.path.exists(os.path.dirname(arquivo_csv)):
+                raise QgsProcessingException("❌ Path to CSV file does not exist!")
 
         # Verificar o SRC das Camadas
         crs = area_layer.crs()
@@ -118,10 +119,6 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             primeira_linha = QgsProject.instance().mapLayersByName(nome)[0]
         else:
             raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({crs.description().upper()}) not supported")
-
-        # Verificar se os plugins estão instalados
-        plugins_verificar = ["lftools"]
-        verificar_plugins(plugins_verificar, feedback)
 
         # Verificar as Geometrias
         poligono_features = next(area_layer.getFeatures()) # dados do Terreno
@@ -654,10 +651,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         # =============L I T C H I==========================================================
 
         feedback.pushInfo("")
-        print(pontos_reproj.crs())
-        for feat in pontos_reproj.getFeatures():
-            print(feat.geometry())
-            break
+        
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain, deltaFront_op)
 
