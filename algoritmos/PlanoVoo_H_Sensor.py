@@ -692,7 +692,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
-    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations and calculating lateral and frontal overlaps.<br>
+    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and calculating lateral and frontal overlaps based on the <b>drone's sensor parameters</b><br>
 It generates <b>kml</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
 <p>It can also be used with other flight applications by utilizing the kml files for flight lines and waypoints.</p>
 <b>Requirements: </b>Plugin <b>LFTools</b> installed in QGIS.</p>
