@@ -48,12 +48,12 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooM))
         self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundM))
-        self.addParameter(QgsProcessingParameterNumber('dl','Lateral Side between Flight Lines (m)',
+        self.addParameter(QgsProcessingParameterNumber('dl','Lateral Spacing Between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manualH))
 
-        frontal = [self.tr('Distance between Photos (meters)'), self.tr('Time between Photos (seconds)')]
-        self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Frontal Side between Photos -- Options'), options = frontal, defaultValue= df_op))
-        self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos -- Value',
+        frontal = [self.tr('Distance (meters)'), self.tr('Time (seconds)')]
+        self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Front Spacing Between Photos -- Options'), options = frontal, defaultValue= df_op))
+        self.addParameter(QgsProcessingParameterNumber('df','Front Spacing Between Photos -- Value',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=df_manualH))
 
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
@@ -694,7 +694,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
-    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (<b>Manually placed Side and Front distance dat</b>).<br>
+    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (<b>Manually placed Side and Front spacing values</b>).<br>
 It generates <b>kml</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
 <p>It can also be used with other flight applications by utilizing the kml files for flight lines and waypoints.</p>
 <b>Requirements: </b>Plugin <b>LFTools</b> installed in QGIS.</p>
