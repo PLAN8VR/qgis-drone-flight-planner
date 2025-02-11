@@ -50,15 +50,15 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hFac))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMinVF))
-        self.addParameter(QgsProcessingParameterNumber('dl','Lateral Side between Flight Lines (m)',
+        self.addParameter(QgsProcessingParameterNumber('dl','Spacing between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.5,defaultValue=dl_manualVF))  
-        self.addParameter(QgsProcessingParameterNumber('df','Frontal Side between Photos (m)',
+        self.addParameter(QgsProcessingParameterNumber('df','Spacing between Photos (m)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.5,defaultValue=df_manualVF)) 
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=velocVF))
-        self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
+        self.addParameter(QgsProcessingParameterNumber('tempo','Wait time for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayVF))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml))
