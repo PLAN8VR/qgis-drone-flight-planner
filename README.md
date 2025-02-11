@@ -86,8 +86,6 @@ It enables the planning of a precise vertical trajectory with appropriate overla
 The following plugins must bem installed and activated in QGIS:
 <ul style="margin-top: 0cm;" type="disc">
   <li><b>LFTools</b></li>
-  <li><b>Open Topography</b></li>
-  <li><b>KML Tools</b></li>
 </ul>
 
 ## Tips
