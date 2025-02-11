@@ -13,7 +13,7 @@
 <details open="open">
   <summary>GeoFlightPlanner</summary>
   <ol>
-      <li><a href='#horizontal-flight Sensor'>Horizontal Flight</a></li>
+      <li><a href='#horizontal-flight'>Horizontal Flight</a></li>
          <ul>
            <li><a href="#following-terrain-sensor">Following terrain - Drone Sensor</a></li>
            <li><a href="#following-terrain-manual">Following terrain - Manual Lateral and Frontal Distance</a></li>
@@ -35,19 +35,16 @@
 <p>A QGIS plugin for precise drone flight planning, designed for photogrammetry, 3D inspections, and building facade mapping. It includes tools for terrain-following flights, circular paths around structures, and vertical facade mapping, generating KML files for 3D visualization and CSV files compatible with Litchi or other flight apps.<br></p>
 
 ### Horizontal Flight
-Tool for Horizontal Flight Plan.
+It generates KML files for 3D visualization in Google Earth and a CSV file compatible with the Litchi app.
+It can also be used with other flight applications by utilizing KML files for flight lines and waypoints.
 <div align="center">
 </div>
 
 ### Following terrain Sensor
-This tool enables drone flight planning for photogrammetry, following terrain elevations and calculating lateral and frontal overlaps.<br>
-It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
-<p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
+This tool enables drone flight planning for photogrammetry, following terrain elevations and calculating lateral and frontal overlaps based on the <b>drone’s sensor parameters</b>.
 
 ### Following terrain Manual
-This tool enables drone flight planning for photogrammetry, following terrain elevations and lateral and frontal overlaps included manually.<br>
-It generates <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
-<p>It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</p>
+This tool enables a simple drone flight planning for photogrammetry, following terrain elevations with manually defined side and front spacing values.
 
 ![following-terrain](https://github.com/user-attachments/assets/86042dcb-0d89-4c7b-9789-f989d6d86e91)
 
