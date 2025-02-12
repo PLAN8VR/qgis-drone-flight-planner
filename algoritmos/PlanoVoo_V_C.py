@@ -327,12 +327,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 angulo_graus = math.degrees(angulo_rad)  # Converter para graus
                 angulo = (angulo_graus + 180) % 360      # Inverter o ângulo para que seja para o centro
 
+                Ponto_Geo = transformador.transform(QgsPointXY(v.x(), v.y()))
                 ponto_feature = QgsFeature()
                 ponto_feature.setFields(campos)
                 ponto_feature.setAttribute("id", pontoID)
                 ponto_feature.setAttribute("linha", idx)
-                ponto_feature.setAttribute("latitude", v.y())
-                ponto_feature.setAttribute("longitude", v.x())
+                ponto_feature.setAttribute("latitude", Ponto_Geo.y())
+                ponto_feature.setAttribute("longitude", Ponto_Geo.x())
                 ponto_feature.setAttribute("altitude", a)
                 ponto_feature.setAttribute("alturavoo", float(altura))
                 ponto_feature.setAttribute("angulo", angulo)
