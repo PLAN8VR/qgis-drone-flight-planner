@@ -242,12 +242,13 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                     a = 0
 
                 # Criar o recurso de ponto
+                Ponto_Geo = transformador.transform(ponto)
                 ponto_feature = QgsFeature()
                 ponto_feature.setFields(campos)
                 ponto_feature.setAttribute("id", pontoID)
                 ponto_feature.setAttribute("linha", idx)  # Linha correspondente à altura
-                ponto_feature.setAttribute("latitude", ponto.y())
-                ponto_feature.setAttribute("longitude", ponto.x())
+                ponto_feature.setAttribute("latitude", Ponto_Geo.y())
+                ponto_feature.setAttribute("longitude",Ponto_Geo.x())
                 ponto_feature.setAttribute("altitude", a)
                 ponto_feature.setAttribute("alturavoo", float(altura))
                 ponto_feature.setGeometry(ponto_geom)
