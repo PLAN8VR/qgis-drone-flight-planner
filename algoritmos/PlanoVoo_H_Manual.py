@@ -61,8 +61,8 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayHm))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV, optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -83,9 +83,6 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         tempo = parameters['tempo']
         caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
-
-        # Grava Parâmetros
-        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], parameters['df_op'], parameters['df'], None, None)
 
         # ===== Verificações =====================================================
         # Verificar caminho das pastas
@@ -136,6 +133,9 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
 
         if primeira_linha.featureCount() != 1:
             raise ValueError("❌ The First Line must contain only one line.")
+
+        # Grava Parâmetros
+        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], parameters['df_op'], parameters['df'], None, None)
 
         # ===== Sobreposições digitadas manualmente ====================================================
 

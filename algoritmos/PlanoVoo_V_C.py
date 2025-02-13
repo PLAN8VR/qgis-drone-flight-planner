@@ -83,18 +83,14 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         x = parameters.get('saida_csv', None)  # Get parameter safely
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context) if x else ""
-
-        #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
-        #arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
  
         # ===== Verificações =================================================================
 
-         # Verificar caminho das pastas
-        if caminho_kml != "" and caminho_kml != None:
-            if not os.path.exists(caminho_kml):
-                raise QgsProcessingException("❌ Path to KML files does not exist!")
+        # Verificar caminho das pastas
+        if caminho_kml and not os.path.exists(caminho_kml):
+            raise QgsProcessingException("❌ Path to KML files does not exist!")
 
-        if arquivo_csv != "" and arquivo_csv != None:
+        if arquivo_csv:
             if not os.path.exists(os.path.dirname(arquivo_csv)):
                 raise QgsProcessingException("❌ Path to CSV file does not exist!")
         

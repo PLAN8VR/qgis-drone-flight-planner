@@ -61,8 +61,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Wait time for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayVF))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
+        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV, optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -82,13 +82,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         tempo = parameters['tempo']     
         caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
-
-        # ===== Grava Parâmetros =====================================================
-        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], None, None, None, None, None, None, parameters['dl'], None, parameters['df'], parameters['alturaMin'], None)
         
         # ===== Verificações ===================================================================================
 
-         # Verificar caminho das pastas
+        # Verificar caminho das pastas
         if caminho_kml and not os.path.exists(caminho_kml):
             raise QgsProcessingException("❌ Path to KML files does not exist!")
 
@@ -143,6 +140,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         if dist_ponto_base <= 10:
             raise ValueError(f"❌ Horizontal distance ({round(dist_ponto_base, 2)}) is 10 meters or less.")
 
+        # ===== Grava Parâmetros =====================================================
+        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], None, None, None, None, None, None, parameters['dl'], None, parameters['df'], parameters['alturaMin'], None)
+
+        # Mostra valores parciais
         feedback.pushInfo(f"✅ Flight Line to Facade Distance: {round(dist_ponto_base, 2)}     Facade Height: {round(H, 2)}")
 
         # ===== Sobreposições digitadas manualmente ====================================================
