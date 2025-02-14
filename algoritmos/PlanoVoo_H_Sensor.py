@@ -53,10 +53,10 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                                                        minValue=0,defaultValue=sensorH)) # default p/o Air 2S
         self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Vertical Size (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=sensorV)) # default p/o Air 2S 
+                                                       minValue=0,defaultValue=sensorV)) # default p/o Air 2S
         self.addParameter(QgsProcessingParameterNumber('f','Sensor: Focal Length (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=dFocal)) # default p/o Air 2S 
+                                                       minValue=0,defaultValue=dFocal)) # default p/o Air 2S
         self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (75% = 0.75)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.30,defaultValue=sLateral))
@@ -70,7 +70,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV, optional=True))
-        
+
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
 
@@ -78,7 +78,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         area_layer = self.parameterAsVectorLayer(parameters, 'terreno', context)
 
         primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
-        
+
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
         H = parameters['altura']
@@ -92,7 +92,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         tempo = parameters['tempo']
         #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
-       
+
         # ===== Verificações =====================================================
 
         # Verificar caminho das pastas
@@ -101,8 +101,8 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         if arquivo_csv:
             if not os.path.exists(os.path.dirname(arquivo_csv)):
-                raise QgsProcessingException("❌ Path to CSV file does not exist!") 
-        
+                raise QgsProcessingException("❌ Path to CSV file does not exist!")
+
         # Verificar o SRC das Camadas
         crs = area_layer.crs()
         crsL = primeira_linha.crs() # não usamos o crsL, apenas para verificar a camada
@@ -137,20 +137,23 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         if poligono_geom.isMultipart():
             poligono_geom = poligono_geom.asGeometryCollection()[0]
 
-        linha_features = next(primeira_linha.getFeatures())
+        try:
+            linha_features = next(primeira_linha.getFeatures())
+        except:
+            raise QgsProcessingException("❌ The Line layer must contain one line feature.")
         linha_geom = linha_features.geometry()
         if linha_geom.isMultipart():
             linha_geom = linha_geom.asGeometryCollection()[0]
 
         if area_layer.featureCount() != 1:
-            raise ValueError("❌ The Area must contain only one polygon.")
+            raise QgsProcessingException("❌ The Area must contain only one polygon.")
 
         if primeira_linha.featureCount() != 1:
-            raise ValueError("❌ The First Line must contain only one line.")
+            raise QgsProcessingException("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
         saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_csv'], parameters['above_ground'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'], None, None, None, None, None)
- 
+
          # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
         tg_alfa_2 = dc / (2 * f)
@@ -484,10 +487,10 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         # Atualizar a extensão da camada
         linhas_unidas_layer.updateExtents()
-        
+
         if teste == True:
             QgsProject.instance().addMapLayer(linhas_unidas_layer)
-        
+
         # ===============================================================================
         # ===== Criar a camada "Linha de Voo" ===========================================
 
@@ -497,7 +500,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         linha_provider.addAttributes([QgsField('id', QVariant.Int)])
         linha_provider.addAttributes([QgsField("alturavoo", QVariant.Double)])
         linha_voo_layer.updateFields()
-        
+
         # Obter todas as linhas da camada "linhas_unidas_layer"
         linhas = list(linhas_unidas_layer.getFeatures())
 
@@ -520,7 +523,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         linha_provider.addFeature(linha_voo_feature)
 
         linha_voo_layer.commitChanges()
-        
+
         # Reprojetar linha Voo para WGS84 (4326)
         linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
 
@@ -532,10 +535,10 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         # ===== LINHA VOO =================================
         QgsProject.instance().addMapLayer(linha_voo_reproj)
-        
+
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line generated.")
-        
+
         # ===============================================================================
         # =====Criar a camada Pontos de Fotos============================================
 
@@ -577,18 +580,18 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                     ponto_feature.setAttribute("longitude", Ponto_Geo.x())
                     ponto_feature.setGeometry(ponto_geom)
                     pontos_provider.addFeature(ponto_feature)
-                        
+
                     pontoID += 1
 
                 distAtual += deltaFront
-                
+
         feedback.pushInfo(f"✅ {pontoID - 1} Photo Points generated.")
-        
+
         pontos_fotos.commitChanges()
-        
+
         # Obter a altitude dos pontos a partir do MDE se tiver sido fornecido
         pontos_fotos.startEditing()
-        
+
         param_kml = 'relativeToGround'
         if camadaMDE:
             param_kml = 'absolute'
@@ -599,7 +602,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
                 # Transformar coordenada para o CRS do MDE
                 point_transf = transformador.transform(QgsPointXY(point.x(), point.y()))
-                
+
                 # Obter o valor de Z do MDE
                 value, result = camadaMDE.dataProvider().sample(point_transf, 1)  # Resolução = 1
                 if result:
@@ -610,11 +613,11 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             for f in pontos_fotos.getFeatures():
                 f["alturavoo"] = H
                 pontos_fotos.updateFeature(f)
-                
+
         pontos_fotos.commitChanges()
         pontos_fotos.updateExtents()
         pontos_fotos.triggerRepaint()
-        
+
         # Reprojetar camada Pontos Fotos de UTM para WGS84 (4326)
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
 
@@ -623,20 +626,20 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
         else:
             pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
-            
+
         # Simbologia
         simbologiaPontos(pontos_reproj)
 
         # ===== PONTOS FOTOS ==========================
         QgsProject.instance().addMapLayer(pontos_reproj)
-        
+
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
 
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
 
         # feedback.pushInfo("")
-        
+
         # if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
         #     arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
         #     gerar_kml(pontos_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
@@ -652,20 +655,20 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain)
-            
+
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:
             feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 
         # ============= Remover Camadas Reproject ===================================================
-        
-        removeLayersReproj('_reproject') 
-        
+
+        removeLayersReproj('_reproject')
+
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("✅ Horizontal Flight Plan successfully executed.")
         feedback.pushInfo("")
-        
+
         return {}
 
     def name(self):
@@ -693,7 +696,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
     texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and calculating lateral and frontal overlaps based on the <b>drone's sensor parameters</b><br>
-It generates <b>Csv</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
+It generates <b>CSV</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
 <p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
 <p><b>Tips:</b><o:p></o:p></p>
 <ul style="margin-top: 0cm;" type="disc">
