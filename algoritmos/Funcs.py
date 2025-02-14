@@ -79,7 +79,7 @@ import csv
 #          ls.altitudemode = altitude_mode
 #          ls.gxaltitudemode = altitude_mode
 #          ls.extrude = 1
-         
+
 #          # Apply Red Color and Increase Line Width
 #          linestyle = simplekml.Style()
 #          linestyle.linestyle.color = simplekml.Color.red  # Red color
@@ -90,11 +90,11 @@ import csv
 #    kml.save(arquivo_kml)
 
 #    feedback.pushInfo(f"✅ KML files successfully generated: {arquivo_kml}")
-   
+
 #    return {}
-   
+
 def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None):
-      
+
    # Criar o arquivo CSV do Litchi
    with open(arquivo_csv, mode='w', newline='') as csvfile:
          # Definir os cabeçalhos do arquivo CSV
@@ -112,10 +112,10 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
                "actiontype15", "actionparam15", "altitudemode", "speed(m/s)",
                "poi_latitude", "poi_longitude", "poi_altitude(m)", "poi_altitudemode",
                "photo_timeinterval", "photo_distinterval"]
-         
+
          writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
          writer.writeheader()
-         
+
          if flight_type == "H":
             alturavoo = H
             mode_gimbal = 2
@@ -128,7 +128,7 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
             mode_gimbal = 0
             angulo_gimbal = 0
             above_ground = 0 # Above Ground não habilitado para voos verticais
-            
+
          if tempo == 0:
             t1 = 1          # TAKE_PHOTO
             t2 = 0
@@ -136,32 +136,32 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
             t4 = 0
          else:
             t1 = 0          # STAY n segundos
-            t2 = tempo*1000 
+            t2 = tempo*1000
             t3 = 1          # TAKE_PHOTO
             t4 = 0
-         
+
          if deltaFront_op == 1:   # valor = 1 is seconds; caso tenha sido escolhido por tempo no Voo Horizontal Manual
             time_interval = delta
-            dist_interval = -1 
+            dist_interval = -1
          elif deltaFront_op == 0: # valor = 0 is meters; caso tenha sido escolhido por distância no Voo Horizontal Manual
             time_interval = -1
             dist_interval = delta
          else:                  # None para todos os voos que não Horizontal Manual
             time_interval = -1
             dist_interval = delta
-            
+
          # Ler os dados da camada Pontos
          for f in pontos_fotos.getFeatures():
             # Extrair os valores dos campos da camada
             longitude = f['longitude']
             latitude = f['latitude']
-            
+
             if flight_type == "VF":
                alturavoo = f['alturavoo']
             elif flight_type == "VC":
                alturavoo = f['alturavoo']
                angulo = f['angulo']
-               
+
             # Criar um dicionário de dados para cada item do CSV
             data = {
                "latitude": f"{latitude:.8f}",
@@ -172,11 +172,11 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
                "rotationdir": 0,
                "gimbalmode": mode_gimbal,
                "gimbalpitchangle": angulo_gimbal,
-               "actiontype1": t1,     
+               "actiontype1": t1,
                "actionparam1": t2,
                "actiontype2": t3,
                "actionparam2": t4,
-               "actiontype3": -1, 
+               "actiontype3": -1,
                "actionparam3": 0,
                "actiontype4": -1,
                "actionparam4": 0,
@@ -218,22 +218,22 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
 def addCampo(layer, field_name, field_type):
       layer.dataProvider().addAttributes([QgsField(field_name, field_type)])
       layer.updateFields()
-      
+
 def set_Z_value(layer, z_field):
     result = processing.run("native:setzvalue", {
         'INPUT': layer,
         'Z_VALUE': QgsProperty.fromExpression(f'"{z_field}"'),
         'OUTPUT': 'TEMPORARY_OUTPUT'
     })
-    
+
     output_layer = result['OUTPUT']
     output_layer.setName(layer.name())
-    
+
     return output_layer
- 
+
 def reprojeta_camada_WGS84(layer, crs_wgs, transformador):
    geometry_type = layer.geometryType()
-   
+
    # Criar camada reprojetada com base no tipo de geometria
    if geometry_type == QgsWkbTypes.PointGeometry:
       tipo_layer = "Point"
@@ -241,10 +241,10 @@ def reprojeta_camada_WGS84(layer, crs_wgs, transformador):
       tipo_layer = "LineString"
    elif geometry_type == QgsWkbTypes.PolygonGeometry:
       tipo_layer = "Polygon"
-   
+
    # Criar a nova camada reprojetada em memória
    reproj_layer = QgsVectorLayer(f"{tipo_layer}?crs={crs_wgs.authid()}", f"{layer.name()}", "memory")
-    
+
    reproj_layer.startEditing()
    reproj_layer.dataProvider().addAttributes(layer.fields())
    reproj_layer.updateFields()
@@ -259,7 +259,7 @@ def reprojeta_camada_WGS84(layer, crs_wgs, transformador):
       reproj_layer.addFeature(reproj)
 
    reproj_layer.commitChanges()
-   
+
    return reproj_layer
 
 def simbologiaLinhaVoo(flight_type, layer):
@@ -271,7 +271,7 @@ def simbologiaLinhaVoo(flight_type, layer):
       marcador = QgsMarkerLineSymbolLayer()
       marcador.setInterval(30)  # Define o intervalo entre as setas (marcadores)
       marcador.setSubSymbol(seta)
-      
+
       layer.renderer().symbol().appendSymbolLayer(marcador)
    elif flight_type == "VF" or flight_type == "VC":
       simbologia = QgsLineSymbol.createSimple({
@@ -279,8 +279,8 @@ def simbologiaLinhaVoo(flight_type, layer):
             'width': '0.8'           # Largura da linha
          })
       layer.setRenderer(QgsSingleSymbolRenderer(simbologia))
-      
-      if flight_type == "VF": 
+
+      if flight_type == "VF":
          # Rótulo
          label_settings = QgsPalLayerSettings()
          label_settings.fieldName = 'id'  # Campo que será usado como rótulo
@@ -300,7 +300,7 @@ def simbologiaLinhaVoo(flight_type, layer):
          layer.setLabelsEnabled(True)
          layer.setLabeling(labeling)
          layer.triggerRepaint()
-       
+
    return
 
 def simbologiaPontos(layer):
@@ -330,27 +330,27 @@ def simbologiaPontos(layer):
    layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
 
    layer.triggerRepaint()
-   
+
    return
 
 def verificar_plugins(plugins_list, feedback=None): # Não está sendo usada
     # Obter a lista de todos os plugins instalados
     installed_plugins = qgis.utils.plugins.keys()
-    
+
     plugins_not_installed = [plugin for plugin in plugins_list if plugin not in installed_plugins]
-    
+
     # Se houver plugins não instalados, levantar erro
     if plugins_not_installed:
        raise Exception(f"❌ The following plugins are not installed: {', '.join(plugins_not_installed)}")
     else:
        feedback.pushInfo(f"✅ All plugins are installed: {plugins_list}")
-    
+
     return
- 
+
 def calculaDistancia_Linha_Ponto(line_geom, point_geom):
    distancia = line_geom.distance(point_geom)
 
-   return distancia   
+   return distancia
 
 def verificarCRS(layer, feedback=None):
    # UTM Norte / UTM 32601 a 32660 / 31918 a 31924 / SIRGAS2000 UTM 31957 a 31965 S
@@ -359,18 +359,18 @@ def verificarCRS(layer, feedback=None):
    crs_layer = layer.crs()
    descricao_crs_layer = crs_layer.description()
    epsg_code_layer = crs_layer.authid()
-    
+
    extent = layer.extent()
    lat_media = (extent.yMinimum() + extent.yMaximum()) / 2.0  # Latitude média
    long_media = (extent.xMinimum() + extent.xMaximum()) / 2.0  # Longitude média
-   
+
    utm_zone = int((long_media + 180) / 6) + 1  # Calcula a zona UTM
-   
+
    if lat_media >= 0:
       hemisferio = "Norte"
    else:
       hemisferio = "Sul"
-   
+
    if "WGS 84" in descricao_crs_layer.upper():
         if hemisferio == "Norte":
             epsg_code = 32600 + utm_zone  # WGS 84 Hemisfério Norte
@@ -383,9 +383,9 @@ def verificarCRS(layer, feedback=None):
             epsg_code = 31978 + utm_zone - 18 # SIRGAS 2000 Hemisfério Sul
    else:
       raise Exception(f"❌ Layer must be WGS84 or SIRGAS2000 or UTM. Other ({descricao_crs_layer.upper()}, EPSG:{epsg_code_layer}) not supported")
-   
+
    crs_utm = QgsCoordinateReferenceSystem(f"EPSG:{epsg_code}")
-   feedback.pushInfo(f"✅ Reprojecting for CRS EPSG:{epsg_code} - {crs_utm.description()}")
+   feedback.pushInfo(f"✅ Reprojecting to CRS EPSG:{epsg_code} - {crs_utm.description()}")
 
    # Reprojetar a camada para o CRS UTM apropriado
    transform_context = QgsProject.instance().transformContext()
@@ -405,7 +405,7 @@ def verificarCRS(layer, feedback=None):
             f"{geometry_string}?crs=EPSG:{epsg_code}",
             f"{layer.name()}_reproject",
             "memory")
-   
+
    nova_data_provider = camada_reprojetada.dataProvider()
 
    # Adiciona os campos da camada original à nova amada
@@ -421,36 +421,36 @@ def verificarCRS(layer, feedback=None):
          feature.setGeometry(geom)
          nova_data_provider.addFeatures([feature])
    camada_reprojetada.commitChanges()
-   
+
    QgsProject.instance().addMapLayer(camada_reprojetada)
-   
-   return crs_utm  
-      
+
+   return crs_utm
+
 def duplicaPontoInicial(layer):
    crs = layer.crs()
-   
+
    geometry_type = layer.wkbType()
-   duplicated_layer = QgsVectorLayer(f"{QgsWkbTypes.displayString(geometry_type)}?crs={crs.authid()}", 
+   duplicated_layer = QgsVectorLayer(f"{QgsWkbTypes.displayString(geometry_type)}?crs={crs.authid()}",
                                        f"{layer.name()}_move", "memory")
-   
+
    # Copia os campos da camada original para a nova camada
    duplicated_layer.dataProvider().addAttributes(layer.fields())
    duplicated_layer.updateFields()
-   
+
    # Copia as feições (geometria e atributos) da camada original
    duplicated_layer.startEditing()
    for feature in layer.getFeatures():
       duplicated_layer.addFeature(feature)
    duplicated_layer.commitChanges()
-   
+
    # Adiciona a nova camada ao projeto
    QgsProject.instance().addMapLayer(duplicated_layer)
-   
+
    return
 
 def loadParametros(tipoVoo):
    my_settings = QgsSettings()
-   
+
    if tipoVoo == "H_Sensor":
       hVooS = my_settings.value("qgis-drone-flight-planner/hVooS", 100)
       ab_groundS = my_settings.value("qgis-drone-flight-planner/ab_groundS", True)
@@ -476,17 +476,17 @@ def loadParametros(tipoVoo):
       df_manualVF = my_settings.value("qgis-drone-flight-planner/df_manualVF", 3)
       velocVF = my_settings.value("qgis-drone-flight-planner/velocVF", 1)
       tStayVF = my_settings.value("qgis-drone-flight-planner/tStayVF", 2)
-   elif tipoVoo == "VC": 
+   elif tipoVoo == "VC":
       hObj = my_settings.value("qgis-drone-flight-planner/hObj", 15)
-      altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 0.5)  
+      altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 0.5)
       nPartesVC = my_settings.value("qgis-drone-flight-planner/nPartesVC", 8)
       dVertVC = my_settings.value("qgis-drone-flight-planner/dVertVC", 3)
       velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 1)
       tStayVC = my_settings.value("qgis-drone-flight-planner/tStayVC", 2)
-      
+
    #skml = my_settings.value("qgis-drone-flight-planner/skml", "")
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
-      
+
    if tipoVoo == "H_Sensor":
       return hVooS, ab_groundS, sensorH, sensorV, dFocal, sLateral, sFrontal, velocHs, tStayHs, sCSV
    elif tipoVoo == "H_Manual":
@@ -495,10 +495,10 @@ def loadParametros(tipoVoo):
       return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, sCSV
    elif tipoVoo == "VC":
       return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, sCSV
-   
+
 def saveParametros(tipoVoo, h, v, t, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, dfop=None, df=None, alt_min=None, nPartesVC=None):
    my_settings = QgsSettings()
-   
+
    if tipoVoo == "H_Sensor":
       my_settings.setValue("qgis-drone-flight-planner/hVooS", h)
       my_settings.setValue("qgis-drone-flight-planner/ab_groundS", ab_ground)
@@ -531,7 +531,7 @@ def saveParametros(tipoVoo, h, v, t, sCSV, ab_ground=None, sensorH=None, sensorV
       my_settings.setValue("qgis-drone-flight-planner/dVertVC", dl)
       my_settings.setValue("qgis-drone-flight-planner/velocVC", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayVC", t)
-   
+
    #my_settings.setValue("qgis-drone-flight-planner/skml", skml)
    my_settings.setValue("qgis-drone-flight-planner/sCSV", sCSV)
 
@@ -547,5 +547,5 @@ def removeLayersReproj(txtFinal):
    # Remover as camadas que atendem ao critério
    for layer in layers_to_remove:
       QgsProject.instance().removeMapLayer(layer)
-            
+
    return
