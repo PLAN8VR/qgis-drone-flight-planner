@@ -77,13 +77,13 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         deltaV = parameters['deltaVertical']
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-        
+
         # x = parameters.get('saida_kml', None)  # Get parameter safely
         # caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context) if x else ""
 
         # x = parameters.get('saida_csv', None)  # Get parameter safely
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
- 
+
         # ===== Verificações =================================================================
 
         # Verificar caminho das pastas
@@ -93,7 +93,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         if arquivo_csv:
             if not os.path.exists(os.path.dirname(arquivo_csv)):
                 raise QgsProcessingException("❌ Path to CSV file does not exist!")
-        
+
         # Verificar o SRC das Camadas
         crs = circulo_base.crs()
         crsP = ponto_inicial.crs() # não usamos o crsP, apenas para verificar a camada
@@ -202,7 +202,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             linha_id += 1
 
         linhas_circulares_layer.commitChanges()
-        
+
          # Reprojetar linha Voo para WGS84 (4326)
         linha_voo_reproj = reprojeta_camada_WGS84(linhas_circulares_layer, crs_wgs, transformador)
 
@@ -214,7 +214,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         # ===== LINHA VOO =================================
         QgsProject.instance().addMapLayer(linha_voo_reproj)
-        
+
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line generated.")
 
@@ -249,7 +249,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         ponto_inicial_move.commitChanges()
         ponto_inicial_move.triggerRepaint()
-        
+
         # Criar uma camada Pontos com os deltaH sobre o Círculo Base e depois empilhar com os deltaH
         pontos_fotos = QgsVectorLayer('Point?crs=' + crs.authid(), 'Photo Points', 'memory')
         pontos_provider = pontos_fotos.dataProvider()
@@ -267,7 +267,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         pontos_fotos.updateFields()
 
         pontos_fotos.startEditing()
-        
+
         pontoID = 1
 
         # Criar os vértices da primeira carreira de pontos
@@ -350,17 +350,17 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         # Simbologia
         simbologiaPontos(pontos_reproj)
-        
+
         # ===== PONTOS FOTOS ==========================
         QgsProject.instance().addMapLayer(pontos_reproj)
 
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
-        
+
         # ========= Exportar para o Google  E a r t h   P r o  (kml) =======================
 
         # feedback.pushInfo("")
-        
+
         # if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
         #     arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
         #     gerar_kml(pontos_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
@@ -376,21 +376,21 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("VC", pontos_reproj, arquivo_csv, velocidade, tempo, deltaH, 0, H)
-            
+
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:
             feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 
         # ============= Remover Camadas Reproject e Move =============================================
-        
-        removeLayersReproj('_reproject') 
-        removeLayersReproj('_move')    
-        
+
+        removeLayersReproj('_reproject')
+        removeLayersReproj('_move')
+
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("✅ Circular Vertical Flight Plan successfully executed.")
         feedback.pushInfo("")
-        
+
         return {}
 
     def name(self):
@@ -425,7 +425,7 @@ It enables the creation of an optimized flight path to capture detailed images o
   <li class="MsoNormal" style=""><b><span>Vertical spacing:</span></b><span> Determines the distance between capture levels along the object's height.<o:p></o:p></span></li>
   <li class="MsoNormal" style=""><b><span>Number of photos per base circle (segments):</span></b><span> Specifies the number of photos to be captured at each circular level.<o:p></o:p></span></li>
 </ul>
-<p><span>The outputs are <b>Csv</b> file compatible with the <b>Litchi app</b>. and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
+<p><span>The outputs are <b>CSV</b> file compatible with the <b>Litchi app</b>. and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
 <p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
 <p><b>
 <p><b>Tips:</b></p>
