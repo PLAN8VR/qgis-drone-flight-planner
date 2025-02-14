@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_kml, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj
+from .Funcs import verificar_plugins, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -41,7 +41,7 @@ import csv
 
 class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, skml, sCSV = loadParametros("H_Manual")
+        hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, sCSV = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
@@ -135,7 +135,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], parameters['df_op'], parameters['df'], None, None)
+        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], parameters['df_op'], parameters['df'], None, None)
 
         # ===== Sobreposições digitadas manualmente ====================================================
 
@@ -694,10 +694,9 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
-    texto = """This tool enables <b>simple</b> drone flight planning for photogrammetry, following terrain elevations (optionally), and allowing the manual definition of <b>side and front spacing values</b>.<br>
-It generates <b>kml</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>.
-<p>It can also be used with other flight applications by utilizing the kml files for flight lines and waypoints.</p>
-<b>Requirements: </b>Plugin <b>LFTools</b> installed in QGIS.</p>
+    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and lateral and frontal overlaps are entered. And you can also choose the photo interval by <b>distance</b> or by <b>time</b>.</b><br>
+It generates <b>Csv</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
+<p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
 <p><b>Tips:</b><o:p></o:p></p>
 <ul style="margin-top: 0cm;" type="disc">
   <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a><o:p></o:p></span></li>

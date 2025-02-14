@@ -484,19 +484,19 @@ def loadParametros(tipoVoo):
       velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 1)
       tStayVC = my_settings.value("qgis-drone-flight-planner/tStayVC", 2)
       
-   skml = my_settings.value("qgis-drone-flight-planner/skml", "")
+   #skml = my_settings.value("qgis-drone-flight-planner/skml", "")
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
       
    if tipoVoo == "H_Sensor":
-      return hVooS, ab_groundS, sensorH, sensorV, dFocal, sLateral, sFrontal, velocHs, tStayHs, skml, sCSV
+      return hVooS, ab_groundS, sensorH, sensorV, dFocal, sLateral, sFrontal, velocHs, tStayHs, sCSV
    elif tipoVoo == "H_Manual":
-      return hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, skml, sCSV
+      return hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, sCSV
    elif tipoVoo == "VF":
-      return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, skml, sCSV
+      return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, sCSV
    elif tipoVoo == "VC":
-      return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skml, sCSV
+      return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, sCSV
    
-def saveParametros(tipoVoo, h, v, t, skml, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, dfop=None, df=None, alt_min=None, nPartesVC=None):
+def saveParametros(tipoVoo, h, v, t, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, dfop=None, df=None, alt_min=None, nPartesVC=None):
    my_settings = QgsSettings()
    
    if tipoVoo == "H_Sensor":
@@ -532,7 +532,7 @@ def saveParametros(tipoVoo, h, v, t, skml, sCSV, ab_ground=None, sensorH=None, s
       my_settings.setValue("qgis-drone-flight-planner/velocVC", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayVC", t)
    
-   my_settings.setValue("qgis-drone-flight-planner/skml", skml)
+   #my_settings.setValue("qgis-drone-flight-planner/skml", skml)
    my_settings.setValue("qgis-drone-flight-planner/sCSV", sCSV)
 
    return

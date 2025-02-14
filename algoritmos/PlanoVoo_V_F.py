@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_kml, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto, verificarCRS, loadParametros, saveParametros, removeLayersReproj
+from .Funcs import verificar_plugins, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, calculaDistancia_Linha_Ponto, verificarCRS, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -42,7 +42,7 @@ import csv
 
 class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, skml, sCSV = loadParametros("VF")
+        hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, sCSV = loadParametros("VF")
 
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Flight Base Line', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position Point of the Facade', types=[QgsProcessing.TypeVectorPoint]))
@@ -141,7 +141,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             raise ValueError(f"❌ Horizontal distance ({round(dist_ponto_base, 2)}) is 10 meters or less.")
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], None, None, None, None, None, None, parameters['dl'], None, parameters['df'], parameters['alturaMin'], None)
+        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_csv'], None, None, None, None, None, None, parameters['dl'], None, parameters['df'], parameters['alturaMin'], None)
 
         # Mostra valores parciais
         feedback.pushInfo(f"✅ Flight Line to Facade Distance: {round(dist_ponto_base, 2)}     Facade Height: {round(H, 2)}")
@@ -279,7 +279,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # ===============================================================================
         # ===== Criar a camada "Linha de Voo" ===========================================
 
-        linhas_facade_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Flight Line', 'memory')
+        linhas_facade_layer = QgsVectorLayer('LineStringZ?crs=' + crs.authid(), 'Flight Line', 'memory')
         linhas_facade_provider = linhas_facade_layer.dataProvider()
 
         # Definir campos
@@ -291,28 +291,29 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         linhas_facade_layer.startEditing()
 
+        novas_features = []
         linha_id = 1  # Inicializa ID das linhas
 
-        altura_atual = h  # Começa na altura mínima
-
-        while altura_atual <= H + h:
+        for altura in alturas:
             nova_linha_geom = QgsGeometry.fromWkt(linha_base_geom.asWkt())
 
             # Extrair coordenadas da linha base e adicionar o valor de Z (altura)
             coordenadas = nova_linha_geom.asPolyline()
-            coordenadas_z = [QgsPoint(pt.x(), pt.y(), altura_atual) for pt in coordenadas]
+            coordenadas_z = [QgsPoint(pt.x(), pt.y(), altura) for pt in coordenadas]
             
             nova_linha_geom = QgsGeometry.fromPolyline(coordenadas_z)
 
             feature = QgsFeature()
             feature.setGeometry(nova_linha_geom)
-            feature.setAttributes([linha_id, altura_atual])
+            feature.setAttributes([linha_id, float(altura)])
             
-            linhas_facade_provider.addFeature(feature)
+            novas_features.append(feature)
 
             linha_id += 1
-            altura_atual += deltaLat  # Atualiza para a próxima altura
 
+        linhas_facade_provider.addFeatures(novas_features)
+
+        linhas_facade_layer.updateExtents()
         linhas_facade_layer.commitChanges()
         
          # Reprojetar linha Voo para WGS84 (4326)
@@ -397,8 +398,9 @@ It enables the planning of a precise vertical trajectory with appropriate overla
   <li><b><span>Flight Base Line:</span></b><span> The path along which the drone will fly in front of the facade.</span></li>
   <li><b><span>Position of the Facade:</span></b><span> A reference point on the facade used to calculate overlap distances.</span></li>
 </ul>
-<p class="MsoNormal"><span>The outputs are <b>kml</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the kml files for flight lines and waypoints.</span></p>
-<p><b><span>Requirements:</span></b><span> Plugin <b>LFTools</b> installed in QGIS.</span></p>
+<p><span>The outputs are <b>Csv</b> file compatible with the <b>Litchi app</b>. and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
+<p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
+<p><b>
 <p><b>Tips:</b></p>
 <ul style="margin-top: 0cm;" type="disc">
   <li><span><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a></span></li>

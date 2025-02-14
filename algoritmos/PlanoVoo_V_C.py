@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from .Funcs import verificar_plugins, gerar_kml, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj
+from .Funcs import verificar_plugins, gerar_CSV, set_Z_value, reprojeta_camada_WGS84, simbologiaLinhaVoo, simbologiaPontos, verificarCRS, duplicaPontoInicial, loadParametros, saveParametros, removeLayersReproj
 from ..images.Imgs import *
 import processing
 import os
@@ -41,7 +41,7 @@ import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, skml, sCSV = loadParametros("VC")
+        hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, sCSV = loadParametros("VC")
 
         self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight Base Circle', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Start Point', types=[QgsProcessing.TypeVectorPoint]))
@@ -82,7 +82,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context) if x else ""
 
         # x = parameters.get('saida_csv', None)  # Get parameter safely
-        arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context) if x else ""
+        arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
  
         # ===== Verificações =================================================================
 
@@ -131,7 +131,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             raise ValueError("❌ Start Point must contain only on point.")
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_kml'], parameters['saida_csv'], None, None, None, None, None, None, parameters['deltaVertical'], None, None, parameters['alturaMin'], parameters['num_partes'])
+        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_csv'], None, None, None, None, None, None, parameters['deltaVertical'], None, None, parameters['alturaMin'], parameters['num_partes'])
 
         # ===== Cálculos Iniciais ================================================
 
@@ -425,8 +425,9 @@ It enables the creation of an optimized flight path to capture detailed images o
   <li class="MsoNormal" style=""><b><span>Vertical spacing:</span></b><span> Determines the distance between capture levels along the object's height.<o:p></o:p></span></li>
   <li class="MsoNormal" style=""><b><span>Number of photos per base circle (segments):</span></b><span> Specifies the number of photos to be captured at each circular level.<o:p></o:p></span></li>
 </ul>
-<p><span>The outputs are <b>kml</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the kml files for flight lines and waypoints.</span></p>
-<p><b><span>Requirements:</span></b><span> Plugin <b>LFTools</b> installed in QGIS.</span></p>
+<p><span>The outputs are <b>Csv</b> file compatible with the <b>Litchi app</b>. and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
+<p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
+<p><b>
 <p><b>Tips:</b></p>
 <ul>
   <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a></li>
