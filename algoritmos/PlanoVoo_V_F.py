@@ -52,10 +52,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMinVF))
         self.addParameter(QgsProcessingParameterNumber('dl','Spacing between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.5,defaultValue=dl_manualVF))  
+                                                       minValue=0.5,defaultValue=dl_manualVF))
         self.addParameter(QgsProcessingParameterNumber('df','Spacing between Photos (m)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.5,defaultValue=df_manualVF)) 
+                                                       minValue=0.5,defaultValue=df_manualVF))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=velocVF))
         self.addParameter(QgsProcessingParameterNumber('tempo','Wait time for Photo (seconds)',
@@ -79,10 +79,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         deltaLat = parameters['dl']   # Distância das linhas de voo paralelas - sem cálculo
         deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo   l
         velocidade = parameters['velocidade']
-        tempo = parameters['tempo']     
+        tempo = parameters['tempo']
         #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
-        
+
         # ===== Verificações ===================================================================================
 
         # Verificar caminho das pastas
@@ -92,7 +92,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         if arquivo_csv:
             if not os.path.exists(os.path.dirname(arquivo_csv)):
                 raise QgsProcessingException("❌ Path to CSV file does not exist!")
-        
+
         # Verificar o SRC das Camadas
         crs = linha_base.crs()
         crsP = ponto_base.crs() # não usamos o crsP, apenas para verificar a camada
@@ -136,7 +136,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # Obtem a distância da Linha de Voo ao ponto_base
         dist_ponto_base = calculaDistancia_Linha_Ponto(linha_base_geom, ponto_base_geom)
-        
+
         if dist_ponto_base <= 10:
             raise ValueError(f"❌ Horizontal distance ({round(dist_ponto_base, 2)}) is 10 meters or less.")
 
@@ -163,7 +163,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         transformador = QgsCoordinateTransform(crs, crs_wgs, QgsProject.instance())
         # ===============================================================================
 
-  
+
         # =============================================================================================
         # ===== Criar a camada Pontos de Fotos ========================================================
 
@@ -231,7 +231,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
                 ponto = linha_base_geom.interpolate(d).asPoint()
                 ponto_geom = QgsGeometry.fromPointXY(QgsPointXY(ponto))
-                
+
                 # Obter altitude do MDE
                 param_kml = 'relativeToGround'
                 if camadaMDE:
@@ -272,10 +272,10 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # ===== PONTOS FOTOS ==========================
         QgsProject.instance().addMapLayer(pontos_reproj)
-        
+
         feedback.pushInfo("")
         feedback.pushInfo("✅ Photo Spots generated.")
-        
+
         # ===============================================================================
         # ===== Criar a camada "Linha de Voo" ===========================================
 
@@ -300,13 +300,13 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             # Extrair coordenadas da linha base e adicionar o valor de Z (altura)
             coordenadas = nova_linha_geom.asPolyline()
             coordenadas_z = [QgsPoint(pt.x(), pt.y(), altura) for pt in coordenadas]
-            
+
             nova_linha_geom = QgsGeometry.fromPolyline(coordenadas_z)
 
             feature = QgsFeature()
             feature.setGeometry(nova_linha_geom)
             feature.setAttributes([linha_id, float(altura)])
-            
+
             novas_features.append(feature)
 
             linha_id += 1
@@ -315,7 +315,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         linhas_facade_layer.updateExtents()
         linhas_facade_layer.commitChanges()
-        
+
          # Reprojetar linha Voo para WGS84 (4326)
         linha_voo_reproj = reprojeta_camada_WGS84(linhas_facade_layer, crs_wgs, transformador)
 
@@ -327,14 +327,14 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
 
         # ===== LINHA VOO =================================
         QgsProject.instance().addMapLayer(linha_voo_reproj)
-        
+
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
-        
+
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
 
         # feedback.pushInfo("")
-        
+
         # if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
         #     arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
         #     gerar_kml(pontos_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
@@ -347,23 +347,23 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # =============L I T C H I==========================================================
 
         feedback.pushInfo("")
-        
+
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("VF", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, angulo_perpendicular, H)
-            
+
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:
             feedback.pushInfo("❌ CSV path not specified. Export step skipped.")
 
         # ============= Remover Camadas Reproject ===================================================
-        
-        removeLayersReproj('_reproject') 
-        
+
+        removeLayersReproj('_reproject')
+
         # ============= Mensagem de Encerramento =====================================================
         feedback.pushInfo("")
         feedback.pushInfo("✅ Facade Vertical Flight Plan successfully executed.")
         feedback.pushInfo("")
-        
+
         return {}
 
     def name(self):
@@ -398,7 +398,7 @@ It enables the planning of a precise vertical trajectory with appropriate overla
   <li><b><span>Flight Base Line:</span></b><span> The path along which the drone will fly in front of the facade.</span></li>
   <li><b><span>Position of the Facade:</span></b><span> A reference point on the facade used to calculate overlap distances.</span></li>
 </ul>
-<p><span>The outputs are <b>Csv</b> file compatible with the <b>Litchi app</b>. and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
+<p><span>The outputs are <b>CSV</b> file compatible with the <b>Litchi app</b>. and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
 <p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
 <p><b>
 <p><b>Tips:</b></p>
