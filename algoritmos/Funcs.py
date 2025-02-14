@@ -42,56 +42,56 @@ from PyQt5.QtCore import QVariant
 import qgis.utils
 import processing
 import csv
-import simplekml
+#import simplekml
 
-def gerar_kml(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
-   kml = simplekml.Kml()
+# def gerar_kml(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
+#    kml = simplekml.Kml()
 
-   fields = [field.name() for field in layer.fields()]
+#    fields = [field.name() for field in layer.fields()]
 
-   # Identify altitude fields
-   altitude_field = "altitude" if "altitude" in fields else None
-   flight_altitude_field = "alturavoo" if "alturavoo" in fields else None
+#    # Identify altitude fields
+#    altitude_field = "altitude" if "altitude" in fields else None
+#    flight_altitude_field = "alturavoo" if "alturavoo" in fields else None
 
-   for feature in layer.getFeatures():
-      geom = feature.geometry()
+#    for feature in layer.getFeatures():
+#       geom = feature.geometry()
 
-      # Get altitude values
-      altitude_value = feature[altitude_field] if altitude_field and feature[altitude_field] is not None else None
-      flight_altitude_value = feature[flight_altitude_field] if flight_altitude_field else 50  # Default value
+#       # Get altitude values
+#       altitude_value = feature[altitude_field] if altitude_field and feature[altitude_field] is not None else None
+#       flight_altitude_value = feature[flight_altitude_field] if flight_altitude_field else 50  # Default value
 
-      # Set the correct height based on altitude mode
-      if altitude_mode == "absolute":
-         altitude = altitude_value if altitude_value is not None else flight_altitude_value
-      else:  # relativeToGround → Always use flight_altitude_value
-         altitude = flight_altitude_value
+#       # Set the correct height based on altitude mode
+#       if altitude_mode == "absolute":
+#          altitude = altitude_value if altitude_value is not None else flight_altitude_value
+#       else:  # relativeToGround → Always use flight_altitude_value
+#          altitude = flight_altitude_value
 
-      if geom.type() == 0:  # Point
-         pt = geom.asPoint()
-         p = kml.newpoint(name=f"Feature {feature.id()}", coords=[(pt.x(), pt.y(), altitude)])
-         p.altitudemode = altitude_mode
-         p.gxaltitudemode = altitude_mode  # 🔥 Ensure Google Earth respects the mode
-         p.extrude = 1  # 🔥 Force elevation
+#       if geom.type() == 0:  # Point
+#          pt = geom.asPoint()
+#          p = kml.newpoint(name=f"Feature {feature.id()}", coords=[(pt.x(), pt.y(), altitude)])
+#          p.altitudemode = altitude_mode
+#          p.gxaltitudemode = altitude_mode  # 🔥 Ensure Google Earth respects the mode
+#          p.extrude = 1  # 🔥 Force elevation
 
-      elif geom.type() == 1:  # Line
-         coords = [(pt.x(), pt.y(), altitude) for pt in geom.asPolyline()]
-         ls = kml.newlinestring(name=f"Feature {feature.id()}", coords=coords)
-         ls.altitudemode = altitude_mode
-         ls.gxaltitudemode = altitude_mode
-         ls.extrude = 1
+#       elif geom.type() == 1:  # Line
+#          coords = [(pt.x(), pt.y(), altitude) for pt in geom.asPolyline()]
+#          ls = kml.newlinestring(name=f"Feature {feature.id()}", coords=coords)
+#          ls.altitudemode = altitude_mode
+#          ls.gxaltitudemode = altitude_mode
+#          ls.extrude = 1
          
-         # Apply Red Color and Increase Line Width
-         linestyle = simplekml.Style()
-         linestyle.linestyle.color = simplekml.Color.red  # Red color
-         linestyle.linestyle.width = 5  # Line thickness
-         ls.style = linestyle  # Apply the style to the line
+#          # Apply Red Color and Increase Line Width
+#          linestyle = simplekml.Style()
+#          linestyle.linestyle.color = simplekml.Color.red  # Red color
+#          linestyle.linestyle.width = 5  # Line thickness
+#          ls.style = linestyle  # Apply the style to the line
 
-   # Save the KML file
-   kml.save(arquivo_kml)
+#    # Save the KML file
+#    kml.save(arquivo_kml)
 
-   feedback.pushInfo(f"✅ KML files successfully generated: {arquivo_kml}")
+#    feedback.pushInfo(f"✅ KML files successfully generated: {arquivo_kml}")
    
-   return {}
+#    return {}
    
 def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None):
       

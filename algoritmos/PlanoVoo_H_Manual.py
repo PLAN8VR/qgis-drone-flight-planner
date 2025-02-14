@@ -61,7 +61,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayHm))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
-        self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
+        #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV, optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -81,13 +81,13 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         deltaFront = parameters['df']        # Espaçamento Frontal entre as fotografias- sem cálculo
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-        caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
+        #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
         # Verificar caminho das pastas
-        if caminho_kml and not os.path.exists(caminho_kml):
-            raise QgsProcessingException("❌ Path to KML files does not exist!")
+        # if caminho_kml and not os.path.exists(caminho_kml):
+        #     raise QgsProcessingException("❌ Path to KML files does not exist!")
 
         if arquivo_csv:
             if not os.path.exists(os.path.dirname(arquivo_csv)):
@@ -637,16 +637,16 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
 
         # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
 
-        feedback.pushInfo("")
+        # feedback.pushInfo("")
 
-        if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-            arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
-            gerar_kml(pontos_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
+        # if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
+        #     arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
+        #     gerar_kml(pontos_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
 
-            arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
-            gerar_kml(linha_voo_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
-        else:
-            feedback.pushInfo("❌ kml path not specified. Export step skipped.")
+        #     arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
+        #     gerar_kml(linha_voo_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
+        # else:
+        #     feedback.pushInfo("❌ kml path not specified. Export step skipped.")
 
         # =============L I T C H I==========================================================
 
