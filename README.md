@@ -17,6 +17,7 @@
          <ul>
            <li><a href="#following-terrain-sensor">Following terrain - Drone Sensor</a></li>
            <li><a href="#following-terrain-manual">Following terrain - Manual Lateral and Frontal Distance</a></li>
+           <li><a href="#following-terrain-manual">Following terrain - Manual Lateral Distance and Frontal Time</a></li>
         </ul>
       <li><a href='#vertical-flight'>Vertical Flight</a></li>
         <ul>
@@ -32,11 +33,11 @@
 
 
 ## GeoFlight Planner Plugin
-<p>A QGIS plugin for precise drone flight planning, designed for photogrammetry, 3D inspections, and building facade mapping. It includes tools for terrain-following flights, circular paths around structures, and vertical facade mapping, generating KML files for 3D visualization and CSV files compatible with Litchi or other flight apps.<br></p>
+<p>A QGIS plugin for precise drone flight planning, designed for photogrammetry, 3D inspections, and building facade mapping. It includes tools for terrain-following flights, circular paths around structures, and vertical facade mapping, generating CSV files compatible with Litchi or other flight apps and 2 QGIS Layers - Flight Line and Photos Points.<br></p>
 
 ### Horizontal Flight
-It generates KML files for 3D visualization in Google Earth and a CSV file compatible with the Litchi app.
-It can also be used with other flight applications by utilizing KML files for flight lines and waypoints.
+It generates CSV file compatible with the Litchi app.
+It can also be used with other flight applications by utilizing 2 Layers - Flight Line and Photos Points - for flight lines and waypoints.
 <div align="center">
 </div>
 
@@ -62,7 +63,7 @@ It enables the creation of an optimized flight path to capture detailed images o
   <li class="MsoNormal" style=""><b><span>Vertical spacing:</span></b><span> Determines the distance between capture levels along the object's height.<o:p></o:p></span></li>
   <li class="MsoNormal" style=""><b><span>Number of photos per base circle (segments):</span></b><span> Specifies the number of photos to be captured at each circular level.<o:p></o:p></span></li>
 </ul>
-<p><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
+<p><span>The outputs are <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing 2 QGIS Layers - Flight Line and Photos Points - for flight lines and waypoints.</span></p>
 
 ![circular](https://github.com/user-attachments/assets/166372ad-0bed-4ca4-be2b-14b03dd5350d)
 
@@ -77,16 +78,9 @@ It enables the planning of a precise vertical trajectory with appropriate overla
   <li><b><span>Position of the Facade:</span></b><span> A reference point on the facade used to calculate overlap distances.</span></li>
   <li><b><span>Manually entered side and front distance</span></b><span></li>
 </ul>
-<p class="MsoNormal"><span>The outputs are <b>KML</b> files for 3D visualization in <b>Google Earth</b> and a <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing the KML files for flight lines and waypoints.</span></p>
+<p class="MsoNormal"><span>The outputs are <b>CSV</b> file compatible with the <b>Litchi app</b>. It can also be used with other flight applications by utilizing 2 QGIS Layers - Flight Line and Photos Points - for flight lines and waypoints.</span></p>
 
 ![facade](https://github.com/user-attachments/assets/6566854d-cc7a-48f4-9016-2230e5657ddb)
-
-
-## Requirements
-The following plugins must bem installed and activated in QGIS:
-<ul style="margin-top: 0cm;" type="disc">
-  <li><b>LFTools</b></li>
-</ul>
 
 ## Tips
 <ul style="margin-top: 0cm;" type="disc">
