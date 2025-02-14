@@ -575,7 +575,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                 geom_UTM = QgsGeometry.fromPointXY(ponto)
                 Ponto_Geo = transformador.transform(ponto)
                 ponto_feature = QgsFeature(campos)
-                ponto_feature.setAttribute("id", pontoID) 
+                ponto_feature.setAttribute("id", pontoID)
                 ponto_feature.setAttribute("latitude", Ponto_Geo.y())
                 ponto_feature.setAttribute("longitude", Ponto_Geo.x())
                 ponto_feature.setGeometry(geom_UTM)
@@ -651,7 +651,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         # =============L I T C H I==========================================================
 
         feedback.pushInfo("")
-        
+
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
             gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, terrain, deltaFront_op)
 
@@ -695,7 +695,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
     texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and lateral and frontal overlaps are entered. And you can also choose the photo interval by <b>distance</b> or by <b>time</b>.</b><br>
-It generates <b>Csv</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
+It generates <b>CSV</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
 <p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
 <p><b>Tips:</b><o:p></o:p></p>
 <ul style="margin-top: 0cm;" type="disc">
