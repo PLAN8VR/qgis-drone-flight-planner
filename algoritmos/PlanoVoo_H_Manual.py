@@ -62,7 +62,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayHm))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV, optional=True))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -83,6 +83,8 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         tempo = parameters['tempo']
         #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
+        if 'saida_csv' not in parameters:
+            raise QgsProcessingException("❌ Path to CSV file is empty!")
 
         # ===== Verificações =====================================================
         # Verificar caminho das pastas
@@ -471,7 +473,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         linha_voo_layer = QgsVectorLayer('LineString?crs=' + crs.authid(), 'Flight Line', 'memory')
         linha_provider = linha_voo_layer.dataProvider()
         linha_provider.addAttributes([QgsField('id', QVariant.Int)])
-        linha_provider.addAttributes([QgsField("alturavoo", QVariant.Double)])
+        linha_provider.addAttributes([QgsField("height", QVariant.Double)])
         linha_voo_layer.updateFields()
 
         # Obter todas as linhas da camada "linhas_unidas_layer"
@@ -491,7 +493,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         linha_voo_feature = QgsFeature()
         linha_voo_feature.setFields(linha_voo_layer.fields())
         linha_voo_feature.setAttribute("id", 1)
-        linha_voo_feature.setAttribute("alturavoo", H)
+        linha_voo_feature.setAttribute("height", H)
         linha_voo_feature.setGeometry(linha_unica)
         linha_provider.addFeature(linha_voo_feature)
 
@@ -501,7 +503,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         linha_voo_reproj = reprojeta_camada_WGS84(linha_voo_layer, crs_wgs, transformador)
 
         # LineString paraLineStringZ
-        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="height")
 
         # Configurar simbologia de seta
         simbologiaLinhaVoo('H', linha_voo_reproj)
@@ -525,7 +527,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
-        campos.append(QgsField("alturavoo", QVariant.Double))
+        campos.append(QgsField("height", QVariant.Double))
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
 
@@ -594,23 +596,23 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         param_kml = 'relativeToGround'
         if camadaMDE:
             param_kml = 'absolute'
-            transformador = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
+            transformadorMDE = QgsCoordinateTransform(pontos_fotos.crs(), camadaMDE.crs(), QgsProject.instance())
 
             for f in pontos_fotos.getFeatures():
                 point = f.geometry().asPoint()
 
                 # Transformar coordenada para o CRS do MDE
-                point_transf = transformador.transform(QgsPointXY(point.x(), point.y()))
+                point_transf = transformadorMDE.transform(QgsPointXY(point.x(), point.y()))
 
                 # Obter o valor de Z do MDE
                 value, result = camadaMDE.dataProvider().sample(point_transf, 1)  # Resolução = 1
                 if result:
-                    f["altitude"] = value
-                    f["alturavoo"] = H
+                    f["altitude"] = value + H
+                    f["height"] = H
                     pontos_fotos.updateFeature(f)
         else:
             for f in pontos_fotos.getFeatures():
-                f["alturavoo"] = H
+                f["height"] = H
                 pontos_fotos.updateFeature(f)
 
         pontos_fotos.commitChanges()
@@ -624,7 +626,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         if param_kml == 'absolute':
             pontos_reproj = set_Z_value(pontos_reproj, z_field="altitude")
         else:
-            pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
+            pontos_reproj = set_Z_value(pontos_reproj, z_field="height")
 
         # Simbologia
         simbologiaPontos(pontos_reproj)
@@ -715,7 +717,7 @@ It generates <b>CSV</b> file compatible with the <b>Litchi app</b> and 2 Layers 
                       <b>Autores: Prof Cazaroli & Leandro França</b>
                       </p>
                       <a target="_blank" rel="noopener noreferrer" href="https://geoone.com.br/"><img title="GeoOne" src="data:image/png;base64,'''+ GeoOne +'''"></a>
-					  <p><i>"Mapeamento automatizado, fácil e direto ao ponto é na GeoOne!"</i></p>
+					  <p><i>"Automated, easy and straight to the point mapping is at GeoOne!"</i></p>
                       </div>
                     </div>'''
         return self.tr(self.texto) + corpo
