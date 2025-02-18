@@ -157,10 +157,10 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
             latitude = f['latitude']
 
             if flight_type == "VF":
-               alturavoo = f['alturavoo']
+               alturavoo = f['height']
             elif flight_type == "VC":
-               alturavoo = f['alturavoo']
-               angulo = f['angulo']
+               alturavoo = f['height']
+               angulo = f['angle']
 
             # Criar um dicionário de dados para cada item do CSV
             data = {
