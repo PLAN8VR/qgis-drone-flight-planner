@@ -62,7 +62,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayVF))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV, optional=True))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -82,6 +82,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         tempo = parameters['tempo']
         #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
+        if 'saida_csv' not in parameters:
+            raise QgsProcessingException("❌ Path to CSV file is empty!")
 
         # ===== Verificações ===================================================================================
 
@@ -178,7 +180,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         campos.append(QgsField("latitude", QVariant.Double))
         campos.append(QgsField("longitude", QVariant.Double))
         campos.append(QgsField("altitude", QVariant.Double))
-        campos.append(QgsField("alturavoo", QVariant.Double))
+        campos.append(QgsField("height", QVariant.Double))
         pontos_provider.addAttributes(campos)
         pontos_fotos.updateFields()
 
@@ -215,7 +217,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             angulo_perpendicular += 180
             angulo_perpendicular %= 360
 
-        feedback.pushInfo(f"✅ Ângulo da perpendicular em relação ao Norte: {angulo_perpendicular:.2f}°")
+        feedback.pushInfo(f"✅ Angle of the perpendicular in relation to the North: {angulo_perpendicular:.2f}°")
 
         # Criar as carreiras de pontos
         for idx, altura in enumerate(alturas, start=1):  # Cada altura representa uma "linha"
@@ -236,8 +238,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                 param_kml = 'relativeToGround'
                 if camadaMDE:
                     param_kml = 'absolute'
-                    ponto_wgs = transformador.transform(QgsPointXY(ponto.x(), ponto.y()))
-                    value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_wgs), 1)  # Resolução de amostragem
+                    transformadorMDE = QgsCoordinateTransform(linha_base.crs(), camadaMDE.crs(), QgsProject.instance())
+                    ponto_mde = transformadorMDE.transform(QgsPointXY(ponto.x(), ponto.y()))
+                    value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_mde), 1)  # Resolução de amostragem
                     a = value if result else 0
                 else:
                     a = 0
@@ -250,8 +253,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                 ponto_feature.setAttribute("linha", idx)  # Linha correspondente à altura
                 ponto_feature.setAttribute("latitude", Ponto_Geo.y())
                 ponto_feature.setAttribute("longitude",Ponto_Geo.x())
-                ponto_feature.setAttribute("altitude", a)
-                ponto_feature.setAttribute("alturavoo", float(altura))
+                ponto_feature.setAttribute("altitude", a+float(altura))
+                ponto_feature.setAttribute("height", float(altura))
                 ponto_feature.setGeometry(ponto_geom)
                 pontos_provider.addFeature(ponto_feature)
 
@@ -265,7 +268,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         pontos_reproj = reprojeta_camada_WGS84(pontos_fotos, crs_wgs, transformador)
 
         # Point para PointZ
-        pontos_reproj = set_Z_value(pontos_reproj, z_field="alturavoo")
+        pontos_reproj = set_Z_value(pontos_reproj, z_field="height")
 
         # Simbologia
         simbologiaPontos(pontos_reproj)
@@ -285,7 +288,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         # Definir campos
         campos = QgsFields()
         campos.append(QgsField("id", QVariant.Int))
-        campos.append(QgsField("alturavoo", QVariant.Double))
+        campos.append(QgsField("height", QVariant.Double))
         linhas_facade_provider.addAttributes(campos)
         linhas_facade_layer.updateFields()
 
@@ -320,7 +323,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         linha_voo_reproj = reprojeta_camada_WGS84(linhas_facade_layer, crs_wgs, transformador)
 
         # LineString paraLineStringZ
-        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="alturavoo")
+        linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="height")
 
         # Configurar simbologia
         simbologiaLinhaVoo('VC', linha_voo_reproj)
@@ -418,7 +421,7 @@ It enables the planning of a precise vertical trajectory with appropriate overla
                       <b>Autores: Prof Cazaroli & Leandro França</b>
                       </p>
                       <a target="_blank" rel="noopener noreferrer" href="https://geoone.com.br/"><img title="GeoOne" src="data:image/png;base64,'''+ GeoOne +'''"></a>
-					  <p><i>"Mapeamento automatizado, fácil e direto ao ponto é na GeoOne!"</i></p>
+					  <p><i>"Automated, easy and straight to the point mapping is at GeoOne!"</i></p>
                       </div>
                     </div>'''
         return self.tr(self.texto) + corpo
