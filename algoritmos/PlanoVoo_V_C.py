@@ -77,20 +77,14 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         deltaV = parameters['deltaVertical']
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-
-        # x = parameters.get('saida_kml', None)  # Get parameter safely
-        # caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context) if x else ""
-
-        # x = parameters.get('saida_csv', None)  # Get parameter safely
+        #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
-        if 'saida_csv' not in parameters:
-            raise QgsProcessingException("❌ Path to CSV file is empty!")
 
         # ===== Verificações =================================================================
 
         # Verificar caminho das pastas
-        # if caminho_kml and not os.path.exists(caminho_kml):
-        #     raise QgsProcessingException("❌ Path to KML files does not exist!")
+        if 'saida_csv' not in parameters:
+            raise QgsProcessingException("❌ Path to CSV file is empty!")
 
         if arquivo_csv:
             if not os.path.exists(os.path.dirname(arquivo_csv)):
