@@ -33,6 +33,7 @@ import os
 
 from .algoritmos.PlanoVoo_H_Sensor import PlanoVoo_H_Sensor
 from .algoritmos.PlanoVoo_H_Manual import PlanoVoo_H_Manual
+from .algoritmos.PlanoVoo_H_Manual_RC2_Controler import PlanoVoo_H_Manual_RC2_Controler
 from .algoritmos.PlanoVoo_V_F import PlanoVoo_V_F
 from .algoritmos.PlanoVoo_V_C import PlanoVoo_V_C
 
@@ -46,6 +47,7 @@ class PlanoVooProvider(QgsProcessingProvider):
     def loadAlgorithms(self):
         self.addAlgorithm(PlanoVoo_H_Sensor())
         self.addAlgorithm(PlanoVoo_H_Manual())
+        self.addAlgorithm(PlanoVoo_H_Manual_RC2_Controler())
         self.addAlgorithm(PlanoVoo_V_F())
         self.addAlgorithm(PlanoVoo_V_C())
 
