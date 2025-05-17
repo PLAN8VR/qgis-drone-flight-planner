@@ -469,6 +469,10 @@ def loadParametros(tipoVoo):
       df_manualH = my_settings.value("qgis-drone-flight-planner/df_manualH", 10)
       velocHm = my_settings.value("qgis-drone-flight-planner/velocHm", 8)
       tStayHm = my_settings.value("qgis-drone-flight-planner/tStayHm", 0)
+   elif tipoVoo == "H_Manual_RC2_Controller":
+      hVooM_RC2 = my_settings.value("qgis-drone-flight-planner/hVooM_RC2", 100)
+      ab_groundM_RC2 = my_settings.value("qgis-drone-flight-planner/ab_groundM_RC2", True)
+      dl_manualH_RC2 = my_settings.value("qgis-drone-flight-planner/dl_manualH_RC2", 10)
    elif tipoVoo == "VF":
       hFac = my_settings.value("qgis-drone-flight-planner/hFac", 15)
       altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 0.5)
@@ -491,6 +495,8 @@ def loadParametros(tipoVoo):
       return hVooS, ab_groundS, sensorH, sensorV, dFocal, sLateral, sFrontal, velocHs, tStayHs, sCSV
    elif tipoVoo == "H_Manual":
       return hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, sCSV
+   elif tipoVoo == "H_Manual_RC2_Controller":
+      return hVooM_RC2, ab_groundM_RC2, dl_manualH_RC2, sCSV
    elif tipoVoo == "VF":
       return hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, sCSV
    elif tipoVoo == "VC":
@@ -517,6 +523,10 @@ def saveParametros(tipoVoo, h, v, t, sCSV, ab_ground=None, sensorH=None, sensorV
       my_settings.setValue("qgis-drone-flight-planner/df_manualH", df)
       my_settings.setValue("qgis-drone-flight-planner/velocHm", v)
       my_settings.setValue("qgis-drone-flight-planner/tStayHm", t)
+   elif tipoVoo == "H_Manual_RC2_Controller":
+      my_settings.setValue("qgis-drone-flight-planner/hVooM_RC2", h)
+      my_settings.setValue("qgis-drone-flight-planner/ab_groundM_RC2", ab_ground)
+      my_settings.setValue("qgis-drone-flight-planner/dl_manualH_RC2", dl)
    elif tipoVoo == "VF":
       my_settings.setValue("qgis-drone-flight-planner/hFac", h)
       my_settings.setValue("qgis-drone-flight-planner/altMinVF", alt_min)

@@ -41,15 +41,15 @@ import csv
 
 class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooM, ab_groundM, dl_manualH, sCSV = loadParametros("H_Manual_RC2")
+        hVooM_RC2, ab_groundM_RC2, dl_manualH_RC2, sCSV = loadParametros("H_Manual_RC2_Controller")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooM))
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundM))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooM_RC2))
+        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundM_RC2))
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Spacing Between Flight Lines (m)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manualH))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manualH_RC2))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -67,7 +67,6 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         H = parameters['altura']
         terrain = parameters['above_ground']
         deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
-        deltaFront_op = 0
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -121,7 +120,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual_RC2", parameters['altura'], None, None, parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], None, None, None, None)
+        saveParametros("H_Manual_RC2_Controller", parameters['altura'], None, None, parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], None, None, None, None)
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -515,32 +514,35 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         pontos_lista = []
         vertices_adicionados = []
 
-        # First, add the vertices of the flight line
+         # First, add the vertices of the flight line
         for ponto in linha_voo_geom.asPolyline():
             dist = linha_voo_geom.lineLocatePoint(QgsGeometry.fromPointXY(ponto))  # Distance along the line
             pontos_lista.append((dist, QgsPointXY(ponto)))  # Add with distance
             vertices_adicionados.append(QgsPointXY(ponto))  # Store vertex positions
+            
+        # Add 2 Points on line
+        for i in range(len(vertices_adicionados) - 1):
+            p1 = vertices_adicionados[i]
+            p2 = vertices_adicionados[i + 1]
 
-        # Then, add 2 points in the flight line
-        if deltaFront_op == 0:
-            comprimento = linha_voo_geom.length()
-            distAtual = 0
+            # Segment geometry
+            segmento = QgsGeometry.fromPolylineXY([p1, p2])
+            comprimento = segmento.length()
+            delta = comprimento / 10
 
-            while distAtual <= comprimento:
-                ponto = linha_voo_geom.interpolate(distAtual).asPoint()
-                ponto_xy = QgsPointXY(ponto)
+            # Delta point after p1
+            ponto1 = segmento.interpolate(delta).asPoint()
+            dist1 = linha_voo_geom.lineLocatePoint(QgsGeometry.fromPointXY(QgsPointXY(ponto1)))
+            pontos_lista.append((dist1, QgsPointXY(ponto1)))
 
-                # Check if the point is at least 1 meter away from any vertex
-                too_close = any(ponto_xy.distance(v) < 1 for v in vertices_adicionados)
-
-                # Only add if it's not too close to an existing vertex
-                if not too_close and all(p[1] != ponto_xy for p in pontos_lista):
-                    pontos_lista.append((distAtual, ponto_xy))
-
-                distAtual += deltaFront
-
+            # Delta point before p2
+            ponto2 = segmento.interpolate(comprimento - delta).asPoint()
+            dist2 = linha_voo_geom.lineLocatePoint(QgsGeometry.fromPointXY(QgsPointXY(ponto2)))
+            pontos_lista.append((dist2, QgsPointXY(ponto2)))
+            
         # Sort points by distance along the line
-        pontos_lista.sort()
+        #pontos_lista.sort()
+        pontos_lista.sort(key=lambda x: x[0])
 
         # Add points to the layer Pontos Fotos
         pontoID = 1
@@ -614,25 +616,12 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
 
-        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
-
-        # feedback.pushInfo("")
-
-        # if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-        #     arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
-        #     gerar_kml(pontos_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
-
-        #     arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
-        #     gerar_kml(linha_voo_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
-        # else:
-        #     feedback.pushInfo("❌ kml path not specified. Export step skipped.")
-
         # =============L I T C H I==========================================================
 
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, 0, 0, deltaFront, 360, H, terrain, 0)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, 0, 0, 0, 360, H, terrain, 0)
 
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:
@@ -650,10 +639,10 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         return {}
 
     def name(self):
-        return 'FollowingTerrainManual'.lower()
+        return 'FollowingTerrainManual_RC2_Controller'.lower()
 
     def displayName(self):
-        return self.tr('Following terrain - Manual')
+        return self.tr('Following terrain - Manual RC2_Controller')
 
     def group(self):
         return 'Horizontal Flight'
@@ -665,7 +654,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return PlanoVoo_H_Manual()
+        return PlanoVoo_H_Manual_RC2_Controler()
 
     def tags(self):
         return self.tr('Flight Plan,Measure,Topography,Plano voo,Plano de voo,voo,drone').split(',')
@@ -673,9 +662,9 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
-    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and lateral and frontal overlaps are entered. And you can also choose the photo interval by <b>distance</b> or by <b>time</b>.</b><br>
+    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and lateral overlaps is entered.</b><br>
 It generates <b>CSV</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
-<p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
+<p>Then you will use the CSV file generated with Litchi Utilities to generate the KML file that will be used in Dji Fly.</p>
 <p><b>Tips:</b><o:p></o:p></p>
 <ul style="margin-top: 0cm;" type="disc">
   <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a><o:p></o:p></span></li>
