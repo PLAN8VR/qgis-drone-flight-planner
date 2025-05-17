@@ -621,7 +621,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, 0, 0, 0, 360, H, terrain, 0)
+            gerar_CSV("H_RC2", pontos_reproj, arquivo_csv, 1, 0, 0, 360, H, terrain, 0)
 
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:

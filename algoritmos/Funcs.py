@@ -42,59 +42,8 @@ from PyQt5.QtCore import QVariant
 import qgis.utils
 import processing
 import csv
-#import simplekml
-
-# def gerar_kml(layer, arquivo_kml, crs_wgs, altitude_mode, feedback=None):
-#    kml = simplekml.Kml()
-
-#    fields = [field.name() for field in layer.fields()]
-
-#    # Identify altitude fields
-#    altitude_field = "altitude" if "altitude" in fields else None
-#    flight_altitude_field = "alturavoo" if "alturavoo" in fields else None
-
-#    for feature in layer.getFeatures():
-#       geom = feature.geometry()
-
-#       # Get altitude values
-#       altitude_value = feature[altitude_field] if altitude_field and feature[altitude_field] is not None else None
-#       flight_altitude_value = feature[flight_altitude_field] if flight_altitude_field else 50  # Default value
-
-#       # Set the correct height based on altitude mode
-#       if altitude_mode == "absolute":
-#          altitude = altitude_value if altitude_value is not None else flight_altitude_value
-#       else:  # relativeToGround → Always use flight_altitude_value
-#          altitude = flight_altitude_value
-
-#       if geom.type() == 0:  # Point
-#          pt = geom.asPoint()
-#          p = kml.newpoint(name=f"Feature {feature.id()}", coords=[(pt.x(), pt.y(), altitude)])
-#          p.altitudemode = altitude_mode
-#          p.gxaltitudemode = altitude_mode  # 🔥 Ensure Google Earth respects the mode
-#          p.extrude = 1  # 🔥 Force elevation
-
-#       elif geom.type() == 1:  # Line
-#          coords = [(pt.x(), pt.y(), altitude) for pt in geom.asPolyline()]
-#          ls = kml.newlinestring(name=f"Feature {feature.id()}", coords=coords)
-#          ls.altitudemode = altitude_mode
-#          ls.gxaltitudemode = altitude_mode
-#          ls.extrude = 1
-
-#          # Apply Red Color and Increase Line Width
-#          linestyle = simplekml.Style()
-#          linestyle.linestyle.color = simplekml.Color.red  # Red color
-#          linestyle.linestyle.width = 5  # Line thickness
-#          ls.style = linestyle  # Apply the style to the line
-
-#    # Save the KML file
-#    kml.save(arquivo_kml)
-
-#    feedback.pushInfo(f"✅ KML files successfully generated: {arquivo_kml}")
-
-#    return {}
 
 def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, angulo, H, terrain=None, deltaFront_op=None):
-
    # Criar o arquivo CSV do Litchi
    with open(arquivo_csv, mode='w', newline='') as csvfile:
          # Definir os cabeçalhos do arquivo CSV
@@ -124,32 +73,48 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
                above_ground = 1 # Above Ground habilitado
             else:
                above_ground = 0 # Above Ground não habilitado
+         elif flight_type == "H_RC2":
+            alturavoo = H
+            mode_gimbal = 0
+            angulo_gimbal = -1
+            if terrain:
+               above_ground = 1 # Above Ground habilitado
+            else:
+               above_ground = 0 # Above Ground não habilitado
          else:
             mode_gimbal = 0
             angulo_gimbal = 0
             above_ground = 0 # Above Ground não habilitado para voos verticais
 
-         if tempo == 0:
-            t1 = 1          # TAKE_PHOTO
-            t2 = 0
-            t3 = -1
-            t4 = 0
+         if flight_type != "H_RC2":
+            if tempo == 0:
+               t1 = 1          # TAKE_PHOTO
+               t2 = 0
+               t3 = -1
+               t4 = 0
+            else:
+               t1 = 0          # STAY n segundos
+               t2 = tempo*1000
+               t3 = 1          # TAKE_PHOTO
+               t4 = 0
+
+            if deltaFront_op == 1:   # valor = 1 is seconds; caso tenha sido escolhido por tempo no Voo Horizontal Manual
+               time_interval = delta
+               dist_interval = -1
+            elif deltaFront_op == 0: # valor = 0 is meters; caso tenha sido escolhido por distância no Voo Horizontal Manual
+               time_interval = -1
+               dist_interval = delta
+            else:                  # None para todos os voos que não Horizontal Manual
+               time_interval = -1
+               dist_interval = delta
          else:
-            t1 = 0          # STAY n segundos
-            t2 = tempo*1000
-            t3 = 1          # TAKE_PHOTO
+            t1 = -1
+            t3 = -1
+            t2 = 0
             t4 = 0
-
-         if deltaFront_op == 1:   # valor = 1 is seconds; caso tenha sido escolhido por tempo no Voo Horizontal Manual
-            time_interval = delta
+            time_interval = -1
             dist_interval = -1
-         elif deltaFront_op == 0: # valor = 0 is meters; caso tenha sido escolhido por distância no Voo Horizontal Manual
-            time_interval = -1
-            dist_interval = delta
-         else:                  # None para todos os voos que não Horizontal Manual
-            time_interval = -1
-            dist_interval = delta
-
+            
          # Ler os dados da camada Pontos
          for f in pontos_fotos.getFeatures():
             # Extrair os valores dos campos da camada
@@ -161,7 +126,7 @@ def gerar_CSV(flight_type, pontos_fotos, arquivo_csv, velocidade, tempo, delta, 
             elif flight_type == "VC":
                alturavoo = f['height']
                angulo = f['angle']
-
+               
             # Criar um dicionário de dados para cada item do CSV
             data = {
                "latitude": f"{latitude:.8f}",
