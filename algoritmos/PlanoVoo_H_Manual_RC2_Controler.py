@@ -519,7 +519,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
             dist = linha_voo_geom.lineLocatePoint(QgsGeometry.fromPointXY(ponto))  # Distance along the line
             pontos_lista.append((dist, QgsPointXY(ponto)))  # Add with distance
             vertices_adicionados.append(QgsPointXY(ponto))  # Store vertex positions
-            
+
         # Add 2 Points on line
         for i in range(len(vertices_adicionados) - 1):
             p1 = vertices_adicionados[i]
@@ -539,7 +539,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
             ponto2 = segmento.interpolate(comprimento - delta).asPoint()
             dist2 = linha_voo_geom.lineLocatePoint(QgsGeometry.fromPointXY(QgsPointXY(ponto2)))
             pontos_lista.append((dist2, QgsPointXY(ponto2)))
-            
+
         # Sort points by distance along the line
         #pontos_lista.sort()
         pontos_lista.sort(key=lambda x: x[0])
@@ -657,18 +657,23 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         return PlanoVoo_H_Manual_RC2_Controler()
 
     def tags(self):
-        return self.tr('Flight Plan,Measure,Topography,Plano voo,Plano de voo,voo,drone').split(',')
+        return self.tr('Flight Plan,Measure,Topography,Plano voo,Plano de voo,voo,drone,GeoOne').split(',')
 
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
-    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and lateral overlaps is entered.</b><br>
-It generates <b>CSV</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
-<p>Then you will use the CSV file generated with Litchi Utilities to generate the KML file that will be used in Dji Fly.</p>
+    texto = """This tool allows for horizontal flight planning for drone photogrammetry, following terrain elevation based on the specified flight altitude and the lateral spacing between flight lines.</b>
+<p>It generates a <b>CSV</b> file compatible with the <b>Litchi app</b> and two layers: <b>Flight Line</b> and <b>Photos Points</b>.</p>
+<p>You can then use the CSV file with <b>Litchi Utilities</b> to generate the <b>KML</b> file used in the <b>DJI Fly</b> app.</p>
+<p><b>Learn more:</b><o:p></o:p></p>
+<ul style="margin-top: 0cm;" type="disc">
+   <li><a href="https://geoone.com.br/pvplanodevoo">Sign up for GeoFlight Planner course</a><o:p></o:p></li>
+   <li><a href="https://portal.geoone.com.br/m/lessons/planodevoo?classId=5679">Click here to access the class with all the details about this tool!</a><o:p></o:p></li>
+</ul>
 <p><b>Tips:</b><o:p></o:p></p>
 <ul style="margin-top: 0cm;" type="disc">
-  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a><o:p></o:p></span></li>
   <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a><o:p></o:p></li>
+  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a><o:p></o:p></span></li>
 </ul>
 """
 
