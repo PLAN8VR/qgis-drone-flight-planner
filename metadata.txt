@@ -6,7 +6,7 @@
 name=GeoFlight Planner
 qgisMinimumVersion=3.0
 description=A versatile QGIS plugin for drone flight planning, ensuring optimized flight paths and high-quality data capture.
-version=1.1.1
+version=1.2.0
 author=Prof Cazaroli, Leandro França
 email=suporteo@geoone.com.br
 
@@ -21,6 +21,7 @@ repository=https://github.com/OpenGeoOne/qgis-drone-flight-planner
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 # changelog=
+      1.2.0 - added tool for creating flight planning to RC2_Controller
       1.1.1 - simplekml package removed and DEM bug fix
       1.1.0 - Manually entered side and front distance / Taken from OpenTopgraphy / Continuous Flight Line / Frontal Distance Time and Meters / Above Ground Yes or No / CRS transform bug fix
       1.0.1 - Update Horizontal Flight Minimum Area
