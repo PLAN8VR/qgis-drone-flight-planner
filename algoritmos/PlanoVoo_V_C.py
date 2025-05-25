@@ -306,7 +306,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                 if camadaMDE:
                     param_kml = 'absolute'
                     transformadorMDE = QgsCoordinateTransform(linhas_circulares_layer.crs(), camadaMDE.crs(), QgsProject.instance())
-                    ponto_mde = transformadorMDE.transform(QgsPointXY(v.x(), v.y())) 
+                    ponto_mde = transformadorMDE.transform(QgsPointXY(v.x(), v.y()))
                     value, result = camadaMDE.dataProvider().sample(QgsPointXY(ponto_mde), 1)  # Amostragem no raster
                     a = value if result else 0
                 else:
@@ -409,7 +409,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         return PlanoVoo_V_C()
 
     def tags(self):
-        return self.tr('Flight Plan,Measure,Topography').split(',')
+        return self.tr('Flight Plan,Measure,Topography,orbital,focal,GeoOne').split(',')
 
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Vertical.png'))
@@ -424,11 +424,17 @@ It enables the creation of an optimized flight path to capture detailed images o
 </ul>
 <p><span>The outputs are <b>CSV</b> file compatible with the <b>Litchi app</b>. and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
 <p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
-<p><b>
-<p><b>Tips:</b></p>
-<ul>
-  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a></li>
-  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a></li>
+<p>
+<p><b>Learn more:</b><o:p></o:p></p>
+<ul style="margin-top: 0cm;" type="disc">
+   <li><a href="https://geoone.com.br/pvplanodevoo">Sign up for GeoFlight Planner course</a><o:p></o:p></li>
+   <li><a href="https://portal.geoone.com.br/m/lessons/planodevoo?classId=5682">Click here to access the class with all the details about this tool!</a><o:p></o:p></li>
+</ul>
+<p><b>Tips:</b><o:p></o:p></p>
+<ul style="margin-top: 0cm;" type="disc">
+  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a><o:p></o:p></li>
+  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a><o:p></o:p></span></li>
+</ul>
             """
 
     figura = 'images/Circular.jpg'
