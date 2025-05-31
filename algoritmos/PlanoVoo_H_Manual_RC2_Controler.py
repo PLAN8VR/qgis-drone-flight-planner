@@ -664,7 +664,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
 
     texto = """This tool allows for horizontal flight planning for drone photogrammetry, following terrain elevation based on the specified flight altitude and the lateral spacing between flight lines.</b>
 <p>It generates a <b>CSV</b> file compatible with the <b>Litchi app</b> and two layers: <b>Flight Line</b> and <b>Photos Points</b>.</p>
-<p>The CSV file can then be used with <b>Litchi Utilities</b> to generate a <b>KML</b> file for use in the <b>DJI Fly</b> app — extremely useful for drones equipped with the <b>RC2 Controller</b>, such as the <b>Mini 4 Pro, Air 3, Air 3S</b>, and <b>Mavic 3</b>.</p>
+<p>The CSV file can then be used with <b>Litchi Utilities</b> to generate a <b>KMZ</b> file for use in the <b>DJI Fly</b> app — extremely useful for drones equipped with the <b>RC2 Controller</b>, such as the <b>Mini 4 Pro, Air 3, Air 3S</b>, and <b>Mavic 3</b>.</p>
 <p><b>Learn more:</b><o:p></o:p></p>
 <ul style="margin-top: 0cm;" type="disc">
    <li><a href="https://geoone.com.br/pvplanodevoo">Sign up for GeoFlight Planner course</a><o:p></o:p></li>
