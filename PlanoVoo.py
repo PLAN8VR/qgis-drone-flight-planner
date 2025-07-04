@@ -10,16 +10,7 @@
         begin                : 2024-11-05
         copyright            : (C) 2024 by Prof Cazaroli e Leandro França
         email                : contato@geoone.com.br
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+***************************************************************************/
 """
 
 __author__ = 'Prof Cazaroli e Leandro França'
@@ -31,8 +22,11 @@ import os
 import sys
 import inspect
 
-from qgis.core import QgsProcessingAlgorithm, QgsApplication
+from qgis.core import QgsApplication
 from .PlanoVoo_provider import PlanoVooProvider
+
+from qgis.PyQt.QtWidgets import QAction, QMenu
+from .tools.calculators_dock import CalculatorsDock
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -42,16 +36,47 @@ if cmd_folder not in sys.path:
 
 class PlanoVooPlugin(object):
 
-    def __init__(self):
+    def __init__(self, iface):
+        self.iface = iface
         self.provider = None
+        self.calculators_dock = None
+        self.plugin_menu = None
+        self.calculators_action = None
 
     def initProcessing(self):
-
         self.provider = PlanoVooProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
         self.initProcessing()
 
+        # Criar o menu e a ação
+        self.plugin_menu = QMenu(u'&GeoFlightPlanner', self.iface.mainWindow().menuBar())
+        self.iface.mainWindow().menuBar().addMenu(self.plugin_menu)
+
+        self.calculators_action = QAction(
+            u'Calculators',
+            self.iface.mainWindow(),
+            triggered=self.show_calculators_dock
+        )
+        self.plugin_menu.addAction(self.calculators_action)
+
     def unload(self):
-        QgsApplication.processingRegistry().removeProvider(self.provider)
+        # Limpar o menu
+        if self.plugin_menu:
+            self.iface.mainWindow().menuBar().removeAction(self.plugin_menu.menuAction())
+        
+        # Limpar a ação
+        if self.calculators_action:
+            del self.calculators_action
+
+        # Remover o provedor de processamento
+        if self.provider:
+            QgsApplication.processingRegistry().removeProvider(self.provider)
+
+    def show_calculators_dock(self):
+        if not self.calculators_dock:
+            self.calculators_dock = CalculatorsDock(self.iface.mainWindow())
+        
+        self.iface.addDockWidget(1, self.calculators_dock) # Qt.RightDockWidgetArea = 2, 1 para esquerda
+        self.calculators_dock.show()

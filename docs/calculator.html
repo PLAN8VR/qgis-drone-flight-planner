@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GeoFlightPlanner Calculator Help</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        h1 { color: #2c3e50; }
+        h2 { color: #34495e; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px; }
+        h3 { color: #2980b9; margin-top: 20px; }
+        .section { background-color: #f9f9f9; border: 1px solid #eee; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+        .formula { font-family: 'Times New Roman', serif; font-size: 1.1em; background-color: #e8f4f8; padding: 10px; border-left: 5px solid #3498db; margin: 10px 0; overflow-x: auto; }
+        .field-description { margin-bottom: 10px; }
+        .field-description strong { color: #e74c3c; }
+        .note { background-color: #fff3cd; border-left: 5px solid #ffc107; padding: 10px; margin: 10px 0; }
+        .warning { background-color: #f8d7da; border-left: 5px solid #dc3545; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+    <h1>GeoFlightPlanner Calculator Help</h1>
+
+    <div class="note">
+        <p>This calculator is part of the GeoFlightPlanner QGIS plugin and assists in drone flight planning by providing essential calculations based on your sensor parameters.</p>
+        <p><b>Usage Rules and Behavior:</b></p>
+        <ul>
+            <li><b>Sensor Selection:</b> For the calculators to function correctly, it is <b>mandatory</b> to select a sensor under "1.1 Drone Model" in the "1. Global Flight Settings" section. If no sensor is selected or if the sensor data is incomplete, the calculators will not provide results and will display a warning message.</li>
+            <li><b>Sensor Fields (Read-Only):</b> Fields displaying sensor parameters (Width, Height, Focal Length, etc.) are automatically populated based on the selected sensor and are for informational purposes only. They cannot be edited directly.</li>
+            <li><b>Dynamic Calculations:</b> Results are updated automatically as you enter values into the input fields.</li>
+            <li><b>Flight Type and Camera Orientation:</b> Selections in "1.2 Flight Type" and "1.3 Camera Orientation" directly influence Overlap and Spacing calculations, adjusting formulas and result labels to reflect the context (horizontal/nadir flight or vertical/facade flight, and camera orientation).</li>
+            <li><b>Add Custom Sensor:</b> You can add your own custom drone/sensor models in the "Add Custom Sensor" section for use in the calculators.</li>
+        </ul>
+    </div>
+
+    <h2>1. Global Flight Settings</h2>
+    <div class="section">
+        <h3>1.1 Drone Model:</h3>
+        <div class="field-description">
+            <strong>Function:</strong> Selects the drone/sensor model whose parameters will be used in all calculator computations. It is the basis for all calculations.
+            <br><strong>Behavior:</strong> If "Select a Sensor..." is chosen, the calculators will not function, and the "Following terrain - Sensor" Processing tool will require a valid selection.
+        </div>
+
+        <h3>Add Custom Sensor:</h3>
+        <div class="field-description">
+            <strong>Function:</strong> Allows you to add a new drone/sensor model to the local database. Useful for unlisted drones or custom configurations.
+            <br><strong>Fields:</strong>
+            <ul>
+                <li><b>Drone/Sensor Name:</b> Unique name for the new sensor.</li>
+                <li><b>Pixel Size (µm):</b> Sensor pixel size in micrometers.</li>
+                <li><b>Focal Length (mm):</b> Lens focal length in millimeters.</li>
+                <li><b>Image Width (px):</b> Image resolution in pixels (width).</li>
+                <li><b>Image Height (px):</b> Image resolution in pixels (height).</li>
+                <li><b>Min. Camera Angle (º):</b> Minimum camera tilt angle (for vertical flights).</li>
+                <li><b>Max. Camera Angle (º):</b> Maximum camera tilt angle (for vertical flights).</li>
+            </ul>
+            <br><strong>Calculation:</strong> The "Calculate and Add" button calculates the sensor width and height in mm based on pixel size and image resolution, and adds the new sensor to the <code>drone_data.json</code> file.
+        </div>
+
+        <h3>1.2 Flight Type:</h3>
+        <div class="field-description">
+            <strong>Function:</strong> Defines the flight type to adjust overlap and spacing calculations.
+            <br><strong>Options:</strong> "Horizontal Flight (Nadir)" (for area mapping) or "Vertical/Facade Flight" (for vertical structure mapping).
+        </div>
+
+        <h3>1.3 Camera Orientation:</h3>
+        <div class="field-description">
+            <strong>Function:</strong> Defines the camera orientation (landscape or portrait) relative to the flight line, which affects the interpretation of sensor dimensions in calculations.
+            <br><strong>Options:</strong> "Landscape" or "Portrait".
+        </div>
+    </div>
+
+    <h2>2. Flight Attribute Calculators</h2>
+
+    <div class="section">
+        <h3>GSD Calculation (by pixel size)</h3>
+        <div class="formula">
+            GSD (cm/pixel) = (Pixel Size (µm) × Flight Altitude (m) × 100) / Focal Length (mm)
+            <br><code>GSD = (PixelSize_µm * Altitude_m * 100) / FocalLength_mm</code>
+        </div>
+        <div class="field-description">
+            <strong>Function:</strong> Calculates the GSD (Ground Sample Distance) in cm/pixel, which represents the distance on the ground covered by one image pixel.
+            <br><strong>Input Fields:</strong>
+            <ul>
+                <li><b>Focal length (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
+                <li><b>Pixel size (µm):</b> (Read-Only) Pixel size of the selected sensor.</li>
+                <li><b>Flight Dist./Alt (m):</b> Flight altitude above ground in meters.</li>
+            </ul>
+            <strong>Output Field:</strong>
+            <ul>
+                <li><b>Approx. GSD:</b> The calculated GSD in cm/pixel.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>GSD Calculation (by sensor dimension)</h3>
+        <div class="formula">
+            GSD (cm/pixel) = (Sensor Width (mm) × Flight Altitude (m) × 100) / (Image Width (px) × Focal Length (mm))
+            <br><code>GSD = (SensorWidth_mm * Altitude_m * 100) / (ImageWidth_px * FocalLength_mm)</code>
+        </div>
+        <div class="field-description">
+            <strong>Function:</strong> Calculates the GSD using the physical dimensions of the sensor and image resolution.
+            <br><strong>Input Fields:</strong>
+            <ul>
+                <li><b>Sensor width (mm):</b> (Read-Only) Physical width of the selected sensor.</li>
+                <li><b>Image width (px):</b> (Read-Only) Image resolution in pixels (width) of the selected sensor.</li>
+                <li><b>Focal length (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
+                <li><b>Flight Dist./Alt. (m):</b> Flight altitude above ground in meters.</li>
+            </ul>
+            <strong>Output Field:</strong>
+            <ul>
+                <li><b>Approx. GSD:</b> The calculated GSD in cm/pixel.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Ideal Spacing Calculation (by Overlap %)</h3>
+        <div class="formula">
+            Lateral Spacing (m) = (Sensor Width (mm) × Flight Height (m) / Focal Length (mm)) × (1 - Desired Lateral Overlap (%)/100)
+            <br><code>LateralSpacing = (SensorWidth_mm * FlightHeight_m / FocalLength_mm) * (1 - DesiredLateralOverlap_perc/100)</code>
+            <br><br>
+            Frontal Spacing (m) = (Sensor Height (mm) × Flight Height (m) / Focal Length (mm)) × (1 - Desired Frontal Overlap (%)/100)
+            <br><code>FrontalSpacing = (SensorHeight_mm * FlightHeight_m / FocalLength_mm) * (1 - DesiredFrontalOverlap_perc/100)</code>
+            <br><br>
+            <i>Note: Sensor dimensions (Width/Height) are automatically adjusted based on the "Camera Orientation" selected.</i>
+        </div>
+        <div class="field-description">
+            <strong>Function:</strong> Calculates the ideal spacing between flight lines (lateral) and between photos (frontal) to achieve the desired overlap percentages.
+            <br><strong>Input Fields:</strong>
+            <ul>
+                <li><b>Sensor width (mm):</b> (Read-Only) Physical width of the selected sensor.</li>
+                <li><b>Sensor height (mm):</b> (Read-Only) Physical height of the selected sensor.</li>
+                <li><b>Focal length (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
+                <li><b>Flight Height (m):</b> Flight altitude above ground in meters.</li>
+                <li><b>Desired Lateral Overlap (%):</b> Desired lateral overlap percentage (e.g., 75 for 75%). Label changes to "Horizontal Overlap between Photos (%)" in vertical flight.</li>
+                <li><b>Desired Frontal Overlap (%):</b> Desired frontal overlap percentage (e.g., 85 for 85%). Label changes to "Vertical Overlap between Lines (%)" in vertical flight.</li>
+            </ul>
+            <strong>Output Fields:</strong>
+            <ul>
+                <li><b>Lateral Spacing:</b> Calculated lateral spacing in meters. Label changes to "Horizontal Spacing (photos)" in vertical flight.</li>
+                <li><b>Frontal Spacing:</b> Calculated frontal spacing in meters. Label changes to "Vertical Spacing (lines)" in vertical flight.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Overlap Calculation (by Spacing)</h3>
+        <div class="formula">
+            Lateral Overlap (%) = (1 - (Photo Spacing (m) / (Sensor Width (mm) × Flight Height (m) / Focal Length (mm)))) × 100
+            <br><code>LateralOverlap = (1 - (PhotoSpacing_m / (SensorWidth_mm * FlightHeight_m / FocalLength_mm))) * 100</code>
+            <br><br>
+            Frontal Overlap (%) = (1 - (Line Spacing (m) / (Sensor Height (mm) × Flight Height (m) / Focal Length (mm)))) × 100
+            <br><code>FrontalOverlap = (1 - (LineSpacing_m / (SensorHeight_mm * FlightHeight_m / FocalLength_mm))) * 100</code>
+            <br><br>
+            <i>Note: Sensor dimensions (Width/Height) are automatically adjusted based on the "Camera Orientation" selected.</i>
+        </div>
+        <div class="field-description">
+            <strong>Function:</strong> Calculates the lateral and frontal overlap percentages based on the provided spacings.
+            <br><strong>Input Fields:</strong>
+            <ul>
+                <li><b>Sensor width (mm):</b> (Read-Only) Physical width of the selected sensor.</li>
+                <li><b>Sensor height (mm):</b> (Read-Only) Physical height of the selected sensor.</li>
+                <li><b>Focal length (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
+                <li><b>Flight Height (m):</b> Flight altitude above ground in meters.</li>
+                <li><b>Spacing between Lines (m):</b> Distance between flight lines in meters. Label changes to "Vertical Spacing between Lines (m)" in vertical flight.</li>
+                <li><b>Spacing between Photos (m):</b> Distance between photos on the same flight line in meters. Label changes to "Horizontal Spacing between Photos (m)" in vertical flight.</li>
+            </ul>
+            <strong>Output Fields:</strong>
+            <ul>
+                <li><b>Lateral Overlap:</b> Calculated lateral overlap percentage. Label changes to "Horizontal Overlap (photos)" in vertical flight.</li>
+                <li><b>Frontal Overlap:</b> Calculated frontal overlap percentage. Label changes to "Vertical Overlap (lines)" in vertical flight.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Flight Parameters and Time Calculation</h3>
+        <div class="formula">
+            GSD (cm/pixel) = (Sensor Width (mm) × Flight Altitude (m) × 100) / (Image Width (px) × Focal Length (mm))
+            <br><code>GSD = (SensorWidth_mm * FlightAltitude_m * 100) / (ImageWidth_px * FocalLength_mm)</code>
+            <br><br>
+            Max. Speed (blur) (m/s) = GSD (m/pixel) / Exposure Time (s)
+            <br><code>MaxSpeedBlur = GSD_m / (1 / ShutterSpeed_x)</code>
+            <br><br>
+            Ground Footprint (Width) (m) = GSD (m/pixel) × Image Width (px)
+            <br><code>FootprintWidth = GSD_m * ImageWidth_px</code>
+            <br><br>
+            Ground Footprint (Height) (m) = GSD (m/pixel) × Image Height (px)
+            <br><code>FootprintHeight = GSD_m * ImageHeight_px</code>
+            <br><br>
+            Speed for Overlap (m/s) = (Ground Footprint (Height) (m) × (1 - Desired Flight Overlap (%)/100)) / Interval between Photos (s)
+            <br><code>SpeedForOverlap = (FootprintHeight_m * (1 - DesiredFlightOverlap_perc/100)) / Interval_s</code>
+            <br><br>
+            Photos (120x120m) = CEIL(120 / (Ground Footprint (Width) (m) × (1 - Lateral Overlap/100))) × CEIL(120 / (Ground Footprint (Height) (m) × (1 - Frontal Overlap/100)))
+            <br><i>Note: Lateral and Frontal Overlap are the calculated or ideal values for the flight type.</i>
+            <br><br>
+            Duration (120x120m) = Photos (120x120m) × Interval between Photos (s) + 120 (additional seconds for maneuvers)
+        </div>
+        <div class="field-description">
+            <strong>Function:</strong> Calculates various important flight parameters, such as GSD, maximum speed without blur, ground footprint size, and speed required to achieve desired overlap.
+            <br><strong>Input Fields:</strong>
+            <ul>
+                <li><b>Sensor Width (mm):</b> (Read-Only) Physical width of the selected sensor.</li>
+                <li><b>Focal Dist. (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
+                <li><b>Image Width (px):</b> (Read-Only) Image resolution in pixels (width) of the selected sensor.</li>
+                <li><b>Image Height (px):</b> (Read-Only) Image resolution in pixels (height) of the selected sensor.</li>
+                <li><b>Flight Height (m):</b> Flight altitude above ground in meters.</li>
+                <li><b>Shutter Speed (1/x s, enter x):</b> Shutter speed (enter only 'x' if it's 1/x s, e.g., 500 for 1/500s).</li>
+                <li><b>Interval between photos (s):</b> Time interval between photo captures in seconds.</li>
+                <li><b>Desired Flight Overlap (%):</b> Desired overlap percentage for speed calculation.</li>
+            </ul>
+            <strong>Output Fields:</strong>
+            <ul>
+                <li><b>GSD:</b> Calculated GSD in cm/pixel.</li>
+                <li><b>Max speed (blur):</b> Maximum drone speed in m/s to avoid image blur.</li>
+                <li><b>Ground footprint:</b> Dimensions of the area covered by a single image on the ground (Width x Height).</li>
+                <li><b>Speed for Overlap:</b> Required speed in m/s to achieve the desired overlap with the specified photo interval.</li>
+                <li><b>Photos (120x120m):</b> Estimated number of photos to cover a 120x120 meter area.</li>
+                <li><b>Duration (120x120m):</b> Estimated flight duration to cover a 120x120 meter area.</li>
+            </ul>
+        </div>
+    </div>
+
+</body>
+</html>

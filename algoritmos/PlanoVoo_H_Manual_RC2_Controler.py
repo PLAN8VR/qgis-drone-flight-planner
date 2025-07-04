@@ -10,7 +10,7 @@
         begin                : 2025-05-16
         copyright            : (C) 2024 by Prof Cazaroli e Leandro França
         email                : contato@geoone.com.br
- ********************************************************************************/
+********************************************************************************/
 """
 
 __author__ = 'Prof Cazaroli and Leandro França'
