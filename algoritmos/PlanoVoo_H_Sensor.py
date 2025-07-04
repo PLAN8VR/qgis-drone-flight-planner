@@ -59,14 +59,14 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                                                        minValue=0,defaultValue=dFocal)) # default p/o Air 2S
         self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (75% = 0.75)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.30,defaultValue=sLateral))
+                                                       minValue=0.30,maxValue=0.95,defaultValue=sLateral))
         self.addParameter(QgsProcessingParameterNumber('percF','Forward Overlap (85% = 0.85)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.60,defaultValue=sFrontal))
+                                                       minValue=0.50,maxValue=0.95,defaultValue=sFrontal))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=velocHs))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocHs))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayHs))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayHs))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -94,6 +94,17 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
+
+        # Verificar se as camadas estão salvas e fora da edição
+        for lyr, nome in [(area_layer, 'Area'), (primeira_linha, 'First line')]:
+            if lyr.isEditable():
+                raise QgsProcessingException(f"❌ Layer '{nome}' is in edit mode. Please save and exit editing before continuing.")
+            
+            # Detecta camada temporária ou não salva
+            storage_type = lyr.dataProvider().storageType().lower()
+            uri = lyr.dataProvider().dataSourceUri().lower()
+            if storage_type == '' or 'memory:' in uri or '/temporary/' in uri:
+                raise QgsProcessingException(f"❌ Layer '{nome}' is not saved. Save the layer to disk before using it.")
 
         # Verificar caminho das pastas
         if 'saida_csv' not in parameters:

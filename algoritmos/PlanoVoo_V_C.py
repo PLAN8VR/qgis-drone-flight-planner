@@ -11,15 +11,6 @@
         copyright            : (C) 2024 by Prof Cazaroli e Leandro França
         email                : contato@geoone.com.br
  ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
 """
 
 __author__ = 'Prof Cazaroli e Leandro França'
@@ -54,9 +45,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('deltaVertical','Vertical Spacing (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0.5,defaultValue=dVertVC))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=velocVC))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocVC))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,defaultValue=tStayVC))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayVC))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -81,6 +72,16 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =================================================================
+        # Verificar se as camadas estão salvas e fora da edição
+        for lyr, nome in [(circulo_base, 'Flight Base Circle'), (ponto_inicial, 'Start Point')]:
+            if lyr.isEditable():
+                raise QgsProcessingException(f"❌ Layer '{nome}' is in edit mode. Please save and exit editing before continuing.")
+            
+            # Detecta camada temporária ou não salva
+            storage_type = lyr.dataProvider().storageType().lower()
+            uri = lyr.dataProvider().dataSourceUri().lower()
+            if storage_type == '' or 'memory:' in uri or '/temporary/' in uri:
+                raise QgsProcessingException(f"❌ Layer '{nome}' is not saved. Save the layer to disk before using it.")
 
         # Verificar caminho das pastas
         if 'saida_csv' not in parameters:
