@@ -69,28 +69,6 @@
     </div>
 
     <h2>2. Flight Attribute Calculators</h2>
-
-    <div class="section">
-        <h3>GSD Calculation (by pixel size)</h3>
-        <div class="formula">
-            GSD (cm/pixel) = (Pixel Size (µm) × Flight Altitude (m) × 100) / Focal Length (mm)
-            <br><code>GSD = (PixelSize_µm * Altitude_m * 100) / FocalLength_mm</code>
-        </div>
-        <div class="field-description">
-            <strong>Function:</strong> Calculates the GSD (Ground Sample Distance) in cm/pixel, which represents the distance on the ground covered by one image pixel.
-            <br><strong>Input Fields:</strong>
-            <ul>
-                <li><b>Focal length (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
-                <li><b>Pixel size (µm):</b> (Read-Only) Pixel size of the selected sensor.</li>
-                <li><b>Flight Dist./Alt (m):</b> Flight altitude above ground in meters.</li>
-            </ul>
-            <strong>Output Field:</strong>
-            <ul>
-                <li><b>Approx. GSD:</b> The calculated GSD in cm/pixel.</li>
-            </ul>
-        </div>
-    </div>
-
     <div class="section">
         <h3>GSD Calculation (by sensor dimension)</h3>
         <div class="formula">
@@ -105,6 +83,27 @@
                 <li><b>Image width (px):</b> (Read-Only) Image resolution in pixels (width) of the selected sensor.</li>
                 <li><b>Focal length (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
                 <li><b>Flight Dist./Alt. (m):</b> Flight altitude above ground in meters.</li>
+            </ul>
+            <strong>Output Field:</strong>
+            <ul>
+                <li><b>Approx. GSD:</b> The calculated GSD in cm/pixel.</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h3>GSD Calculation (by pixel size)</h3>
+        <div class="formula">
+            GSD (cm/pixel) = (Pixel Size (µm) × Flight Altitude (m) × 100) / Focal Length (mm)
+            <br><code>GSD = (PixelSize_µm * Altitude_m * 100) / FocalLength_mm</code>
+        </div>
+        <div class="field-description">
+            <strong>Function:</strong> Calculates the GSD (Ground Sample Distance) in cm/pixel, which represents the distance on the ground covered by one image pixel.
+            <br><strong>Input Fields:</strong>
+            <ul>
+                <li><b>Focal length (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
+                <li><b>Pixel size (µm):</b> (Read-Only) Pixel size of the selected sensor.</li>
+                <li><b>Flight Dist./Alt (m):</b> Flight altitude above ground in meters.</li>
             </ul>
             <strong>Output Field:</strong>
             <ul>

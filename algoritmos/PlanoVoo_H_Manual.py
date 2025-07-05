@@ -68,7 +68,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         H = parameters['altura']
         terrain = parameters['above_ground']
         deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
-        deltaFront_op = parameters['df_op']  # metros ou segundos
+        deltaFront_op = parameters['df_op']  # Em metros ou segundos
         deltaFront = parameters['df']        # Espaçamento Frontal entre as fotografias- sem cálculo
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']

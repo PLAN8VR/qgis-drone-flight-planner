@@ -58,7 +58,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
 
-        # ===== Parâmetros de entrada para variáveis =========================================================
+        # ===== Parâmetros de entrada para variáveis ====================================================
         linha_base = self.parameterAsVectorLayer(parameters, 'linha_base', context)
 
         ponto_base = self.parameterAsVectorLayer(parameters, 'ponto_base', context)
@@ -74,7 +74,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
-        # ===== Verificações ===================================================================================
+        # ===== Verificações =============================================================================
         # Verificar se as camadas estão salvas e fora da edição
         for lyr, nome in [(linha_base, 'Flight Base Line'), (ponto_base, 'Position Point of the Facade')]:
             if lyr.isEditable():

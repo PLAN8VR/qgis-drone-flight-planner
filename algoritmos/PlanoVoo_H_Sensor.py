@@ -112,7 +112,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
 
-        # =====Parâmetros de entrada para variáveis==============================
+        # =====Parâmetros de entrada para variáveis=============================
         area_layer = self.parameterAsVectorLayer(parameters, 'terreno', context)
 
         primeira_linha  = self.parameterAsVectorLayer(parameters, 'primeira_linha', context)
