@@ -25,10 +25,8 @@ from qgis.PyQt.QtCore import Qt, QUrl, QSettings
 from qgis.PyQt.QtGui import QDesktopServices
 
 from .calculators import (calculate_gsd_by_sensor_dimension,
-    calculate_gsd_by_pixel,
     calculate_spacing,
     calculate_overlap,
-    calculate_flight_parameters,
     _get_numeric_value)
 from .global_settings import GlobalSettings, DRONE_DATA_PATH, get_drone_feature, create_add_sensor_section
 
@@ -46,7 +44,7 @@ class CalculatorsDock(QDockWidget):
         self.global_settings = GlobalSettings()
         self.init_gui()
 
-        self.resize(600, 700)  # Tamanho inicial adequado
+        self.resize(500, 600)  # Tamanho inicial adequado
         screen = self.parent().screen().availableGeometry()
         center_x = screen.center().x() - self.width() // 2
         center_y = screen.center().y() - self.height() // 2
@@ -71,11 +69,9 @@ class CalculatorsDock(QDockWidget):
 
         calculators_group = QGroupBox("2. Flight Attribute Calculators")
         calculators_layout = QVBoxLayout()
-        calculators_layout.addWidget(self.create_section_b())
-        calculators_layout.addWidget(self.create_section_a())
-        calculators_layout.addWidget(self.create_section_spacing())
+        calculators_layout.addWidget(self.create_section_sensor())
         calculators_layout.addWidget(self.create_section_overlap())
-        calculators_layout.addWidget(self.create_time_interval_section())
+        calculators_layout.addWidget(self.create_section_spacing())
         
         # Add Help Button
         help_button = QPushButton("Help Calculator")
@@ -164,35 +160,21 @@ class CalculatorsDock(QDockWidget):
         layout.addWidget(frame)
         return container
 
-    def create_section_b(self):
+    def create_section_sensor(self):
         content = QWidget()
         layout = QFormLayout(content)
-        self.sensor_width_b = QLineEdit(); self.sensor_width_b.setReadOnly(True)
-        self.image_width_b = QLineEdit(); self.image_width_b.setReadOnly(True)
-        self.focal_length_b = QLineEdit(); self.focal_length_b.setReadOnly(True)
-        self.altitude_b = QLineEdit()
-        self.result_b = QLabel("Approx. GSD: -")
-        self.altitude_b.textChanged.connect(self.calculate_gsd_b)
-        layout.addRow("Sensor width (mm):", self.sensor_width_b)
-        layout.addRow("Image width (px):", self.image_width_b)
-        layout.addRow("Focal length (mm):", self.focal_length_b)
-        layout.addRow("Flight Dist./Alt. (m):", self.altitude_b)
-        layout.addRow(self.result_b)
+        self.sensor_width = QLineEdit(); self.sensor_width.setReadOnly(True)
+        self.image_width = QLineEdit(); self.image_width.setReadOnly(True)
+        self.focal_length = QLineEdit(); self.focal_length.setReadOnly(True)
+        self.altitude_x = QLineEdit()
+        self.result_x = QLabel("Approx. GSD: -")
+        self.altitude_x.textChanged.connect(self.calculate_gsd_sensor)
+        layout.addRow("Sensor width (mm):", self.sensor_width)
+        layout.addRow("Image width (px):", self.image_width)
+        layout.addRow("Focal length (mm):", self.focal_length)
+        layout.addRow("Flight Dist./Alt. (m):", self.altitude_x)
+        layout.addRow(self.result_x)
         return self.create_expandable_group("GSD Calculation (by sensor dimension)", content)
-    
-    def create_section_a(self):
-        content = QWidget()
-        layout = QFormLayout(content)
-        self.focal_length_a = QLineEdit(); self.focal_length_a.setReadOnly(True)
-        self.pixel_size_a = QLineEdit(); self.pixel_size_a.setReadOnly(True)
-        self.altitude_a = QLineEdit()
-        self.result_a = QLabel("Approx. GSD: -")
-        self.altitude_a.textChanged.connect(self.calculate_gsd_a)
-        layout.addRow("Focal length (mm):", self.focal_length_a)
-        layout.addRow("Pixel size (µm):", self.pixel_size_a)
-        layout.addRow("Flight Dist./Alt (m):", self.altitude_a)
-        layout.addRow(self.result_a)
-        return self.create_expandable_group("GSD Calculation (by pixel size)", content)
 
     def create_section_spacing(self):
         content = QWidget()
@@ -244,37 +226,6 @@ class CalculatorsDock(QDockWidget):
             field.textChanged.connect(self.calculate_overlap)
         return self.create_expandable_group("Overlap Calculation (by Spacing)", content)
 
-    def create_time_interval_section(self):
-        content = QWidget()
-        layout = QFormLayout(content)
-        self.sensor_width_it = QLineEdit(); self.sensor_width_it.setReadOnly(True)
-        self.focal_length_it = QLineEdit(); self.focal_length_it.setReadOnly(True)
-        self.image_width_it = QLineEdit(); self.image_width_it.setReadOnly(True)
-        self.image_height_it = QLineEdit(); self.image_height_it.setReadOnly(True)
-        self.flight_height_it = QLineEdit()
-        self.shutter_speed_it = QLineEdit()
-        self.interval_it = QLineEdit()
-        self.overlap_vertical_it = QLineEdit()
-        self.result_gsd_it = QLabel("GSD: -")
-        self.result_speed_max_it = QLabel("Max speed (blur): -")
-        self.result_footprint_it = QLabel("Ground footprint: -")
-        self.result_speed_overlap_it = QLabel("Speed for Overlap: -")
-        layout.addRow("Sensor Width (mm):", self.sensor_width_it)
-        layout.addRow("Focal Dist. (mm):", self.focal_length_it)
-        layout.addRow("Image Width (px):", self.image_width_it)
-        layout.addRow("Image Height (px):", self.image_height_it)
-        layout.addRow("Flight Height (m):", self.flight_height_it)
-        layout.addRow("Shutter Speed (1/x s, enter x):", self.shutter_speed_it)
-        layout.addRow("Interval between photos (s):", self.interval_it)
-        layout.addRow("Desired Flight Overlap (%):", self.overlap_vertical_it)
-        layout.addRow(self.result_gsd_it)
-        layout.addRow(self.result_speed_max_it)
-        layout.addRow(self.result_footprint_it)
-        layout.addRow(self.result_speed_overlap_it)
-        for field in [self.flight_height_it, self.shutter_speed_it, self.interval_it, self.overlap_vertical_it]:
-            field.textChanged.connect(self.calculate_flight_parameters)
-        return self.create_expandable_group("Flight Parameters and Time Calculation", content)
-
     def _check_sensor_selected(self, input_fields_to_clear=None):
         if self.combo_drone.currentText().startswith("Select"):
             QMessageBox.warning(self, "Sensor Required", "Please select a sensor in 'Drone Model' to perform calculations.")
@@ -301,11 +252,9 @@ class CalculatorsDock(QDockWidget):
         def set_field(field, key):
             field.setText(str(data.get(key, '')))
 
-        set_field(self.focal_length_a, "focal_length"); set_field(self.pixel_size_a, "pixel_size")
-        set_field(self.sensor_width_b, "sensor_width"); set_field(self.image_width_b, "image_width"); set_field(self.focal_length_b, "focal_length")
+        set_field(self.sensor_width, "sensor_width"); set_field(self.image_width, "image_width"); set_field(self.focal_length, "focal_length")
         set_field(self.sensor_width_spacing, "sensor_width"); set_field(self.sensor_height_spacing, "sensor_height"); set_field(self.focal_length_spacing, "focal_length")
         set_field(self.sensor_width_overlap, "sensor_width"); set_field(self.sensor_height_overlap, "sensor_height"); set_field(self.focal_length_overlap, "focal_length")
-        set_field(self.sensor_width_it, "sensor_width"); set_field(self.focal_length_it, "focal_length"); set_field(self.image_width_it, "image_width"); set_field(self.image_height_it, "image_height")
 
     def update_calculation_logic_and_labels(self):
         is_horizontal = "Horizontal" in self.flight_type_combo.currentText()
@@ -315,49 +264,14 @@ class CalculatorsDock(QDockWidget):
         self.label_spacing_photos_overlap.setText("Spacing between Photos (m):" if is_horizontal else "Horizontal Spacing between Photos (m):")
         self.calculate_spacing(); self.calculate_overlap()
 
-    def calculate_gsd_a(self):
-        if not self._check_sensor_selected([self.altitude_a]): return
+    def calculate_gsd_sensor(self):
+        if not self._check_sensor_selected([self.altitude_x]): return
         try:
-            altitude = _get_numeric_value(self.altitude_a, "Altitude", allow_empty=True)
-            if altitude is None: self.result_a.setText("Approx. GSD: -"); return
-            gsd = calculate_gsd_by_pixel(self.combo_drone.currentText(), altitude)
-            self.result_a.setText(f"Approx. GSD: {gsd:.2f} cm/pixel")
-        except Exception as e: self.result_a.setText(f"Error: {e}")
-
-    def calculate_gsd_b(self):
-        if not self._check_sensor_selected([self.altitude_b]): return
-        try:
-            altitude = _get_numeric_value(self.altitude_b, "Altitude", allow_empty=True)
-            if altitude is None: self.result_b.setText("Approx. GSD: -"); return
+            altitude = _get_numeric_value(self.altitude_x, "Altitude", allow_empty=True)
+            if altitude is None: self.result_x.setText("Approx. GSD: -"); return
             gsd = calculate_gsd_by_sensor_dimension(self.combo_drone.currentText(), altitude)
-            self.result_b.setText(f"Approx. GSD: {gsd:.2f} cm/pixel")
-        except Exception as e: self.result_b.setText(f"Error: {e}")
-
-    def calculate_spacing(self):
-        if not self._check_sensor_selected([self.flight_height_spacing, self.percentual_lat, self.percentual_front]): return
-        try:
-            h = _get_numeric_value(self.flight_height_spacing, "Height", allow_empty=True)
-            lat_ovl = _get_numeric_value(self.percentual_lat, "Overlap Lat.", allow_empty=True)
-            front_ovl = _get_numeric_value(self.percentual_front, "Overlap Front.", allow_empty=True)
-            if any(v is None for v in [h, lat_ovl, front_ovl]):
-                self.result_spacing_lat.setText("Lateral Spacing: -"); self.result_spacing_front.setText("Frontal Spacing: -"); return
-            
-            result = calculate_spacing(
-                drone_model=self.combo_drone.currentText(),
-                flight_type=self.flight_type_combo.currentText(),
-                camera_orientation=self.camera_orientation_combo.currentText(),
-                flight_height=self.flight_height_spacing,
-                lateral_percentage=self.percentual_lat,
-                frontal_percentage=self.percentual_front,
-                allow_empty=True
-            )
-            if result:
-                self.result_spacing_lat.setText(result["lateral_spacing"])
-                self.result_spacing_front.setText(result["frontal_spacing"])
-            else:
-                self.result_spacing_lat.setText("Lateral Spacing: -"); self.result_spacing_front.setText("Frontal Spacing: -")
-        except Exception as e: 
-            self.result_spacing_lat.setText(f"Error: {e}"); self.result_spacing_front.setText("")
+            self.result_x.setText(f"Approx. GSD: {gsd:.2f} cm/pixel")
+        except Exception as e: self.result_x.setText(f"Error: {e}")
 
     def calculate_overlap(self):
         if not self._check_sensor_selected([self.flight_height_overlap, self.spacing_lines, self.spacing_photos]): return
@@ -385,34 +299,31 @@ class CalculatorsDock(QDockWidget):
         except Exception as e: 
             self.result_overlap_lateral.setText(f"Error: {e}"); self.result_overlap_frontal.setText("")
 
-    def calculate_flight_parameters(self):
-        if not self._check_sensor_selected([self.flight_height_it, self.shutter_speed_it, self.interval_it, self.overlap_vertical_it]): return
+    def calculate_spacing(self):
+        if not self._check_sensor_selected([self.flight_height_spacing, self.percentual_lat, self.percentual_front]): return
         try:
-            h = _get_numeric_value(self.flight_height_it, "Height", allow_empty=True)
-            shutter = _get_numeric_value(self.shutter_speed_it, "Shutter", allow_empty=True)
-            interval = _get_numeric_value(self.interval_it, "Interval", allow_empty=True)
-            overlap = _get_numeric_value(self.overlap_vertical_it, "Overlap", allow_empty=True)
-            if any(v is None for v in [h, shutter, interval, overlap]):
-                self.result_gsd_it.setText("GSD: -"); self.result_speed_max_it.setText("Max speed (blur): -"); self.result_footprint_it.setText("Ground footprint: -"); self.result_speed_overlap_it.setText("Speed for Overlap: -")
-                return
-
-            params = calculate_flight_parameters(
+            h = _get_numeric_value(self.flight_height_spacing, "Height", allow_empty=True)
+            lat_ovl = _get_numeric_value(self.percentual_lat, "Overlap Lat.", allow_empty=True)
+            front_ovl = _get_numeric_value(self.percentual_front, "Overlap Front.", allow_empty=True)
+            if any(v is None for v in [h, lat_ovl, front_ovl]):
+                self.result_spacing_lat.setText("Lateral Spacing: -"); self.result_spacing_front.setText("Frontal Spacing: -"); return
+            
+            result = calculate_spacing(
                 drone_model=self.combo_drone.currentText(),
-                flight_height=self.flight_height_it,
-                shutter_speed=self.shutter_speed_it,
-                interval=self.interval_it,
-                overlap=self.overlap_vertical_it,
+                flight_type=self.flight_type_combo.currentText(),
+                camera_orientation=self.camera_orientation_combo.currentText(),
+                flight_height=self.flight_height_spacing,
+                lateral_percentage=self.percentual_lat,
+                frontal_percentage=self.percentual_front,
                 allow_empty=True
             )
-            if params:
-                self.result_gsd_it.setText(params['gsd'])
-                self.result_speed_max_it.setText(params['max_speed_blur'])
-                self.result_footprint_it.setText(params['footprint'])
-                self.result_speed_overlap_it.setText(params['overlap_speed'])
+            if result:
+                self.result_spacing_lat.setText(result["lateral_spacing"])
+                self.result_spacing_front.setText(result["frontal_spacing"])
             else:
-                self.result_gsd_it.setText("GSD: -"); self.result_speed_max_it.setText("Max speed (blur): -"); self.result_footprint_it.setText("Ground footprint: -"); self.result_speed_overlap_it.setText("Speed for Overlap: -")
+                self.result_spacing_lat.setText("Lateral Spacing: -"); self.result_spacing_front.setText("Frontal Spacing: -")
         except Exception as e: 
-            self.result_gsd_it.setText(f"Error: {e}")
+            self.result_spacing_lat.setText(f"Error: {e}"); self.result_spacing_front.setText("")
 
     def open_calculator_help(self):
         help_file_path = os.path.join(os.path.dirname(__file__), '..', 'docs', 'calculator.html')

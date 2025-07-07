@@ -25,6 +25,7 @@ from qgis.core import QgsApplication
 from .PlanoVoo_provider import PlanoVooProvider
 
 from qgis.PyQt.QtWidgets import QAction, QMenu
+from qgis.PyQt.QtGui import QIcon
 from .tools.calculators_dock import CalculatorsDock
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -49,16 +50,14 @@ class PlanoVooPlugin(object):
     def initGui(self):
         self.initProcessing()
 
-        # Criar o menu e a ação
-        self.plugin_menu = QMenu(u'&GeoFlightPlanner', self.iface.mainWindow().menuBar())
-        self.iface.mainWindow().menuBar().addMenu(self.plugin_menu)
+        icon_path = os.path.join(os.path.dirname(__file__), "images/Facade.jpg")
 
-        self.calculators_action = QAction(
-            u'Calculators',
-            self.iface.mainWindow(),
-            triggered=self.show_calculators_dock
-        )
-        self.plugin_menu.addAction(self.calculators_action)
+        # Cria a ação com ícone
+        self.calculators_action = QAction(QIcon(icon_path), "GeoFlight Planner", self.iface.mainWindow())
+        self.calculators_action.triggered.connect(self.show_calculators_dock)
+
+        # Adiciona o ícone diretamente à barra de ferramentas
+        self.iface.addToolBarIcon(self.calculators_action)
 
     def unload(self):
         # Limpar o menu
@@ -72,10 +71,11 @@ class PlanoVooPlugin(object):
         # Remover o provedor de processamento
         if self.provider:
             QgsApplication.processingRegistry().removeProvider(self.provider)
+            self.provider = None
 
     def show_calculators_dock(self):
         if not self.calculators_dock:
             self.calculators_dock = CalculatorsDock(self.iface.mainWindow())
         
-        self.iface.addDockWidget(1, self.calculators_dock) # Qt.RightDockWidgetArea = 2, 1 para esquerda
+        self.iface.addDockWidget(1, self.calculators_dock)
         self.calculators_dock.show()

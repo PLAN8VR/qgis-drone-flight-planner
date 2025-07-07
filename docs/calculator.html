@@ -90,27 +90,6 @@
             </ul>
         </div>
     </div>
-    
-    <div class="section">
-        <h3>GSD Calculation (by pixel size)</h3>
-        <div class="formula">
-            GSD (cm/pixel) = (Pixel Size (µm) × Flight Altitude (m) × 100) / Focal Length (mm)
-            <br><code>GSD = (PixelSize_µm * Altitude_m * 100) / FocalLength_mm</code>
-        </div>
-        <div class="field-description">
-            <strong>Function:</strong> Calculates the GSD (Ground Sample Distance) in cm/pixel, which represents the distance on the ground covered by one image pixel.
-            <br><strong>Input Fields:</strong>
-            <ul>
-                <li><b>Focal length (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
-                <li><b>Pixel size (µm):</b> (Read-Only) Pixel size of the selected sensor.</li>
-                <li><b>Flight Dist./Alt (m):</b> Flight altitude above ground in meters.</li>
-            </ul>
-            <strong>Output Field:</strong>
-            <ul>
-                <li><b>Approx. GSD:</b> The calculated GSD in cm/pixel.</li>
-            </ul>
-        </div>
-    </div>
 
     <div class="section">
         <h3>Ideal Spacing Calculation (by Overlap %)</h3>
@@ -168,54 +147,6 @@
             <ul>
                 <li><b>Lateral Overlap:</b> Calculated lateral overlap percentage. Label changes to "Horizontal Overlap (photos)" in vertical flight.</li>
                 <li><b>Frontal Overlap:</b> Calculated frontal overlap percentage. Label changes to "Vertical Overlap (lines)" in vertical flight.</li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="section">
-        <h3>Flight Parameters and Time Calculation</h3>
-        <div class="formula">
-            GSD (cm/pixel) = (Sensor Width (mm) × Flight Altitude (m) × 100) / (Image Width (px) × Focal Length (mm))
-            <br><code>GSD = (SensorWidth_mm * FlightAltitude_m * 100) / (ImageWidth_px * FocalLength_mm)</code>
-            <br><br>
-            Max. Speed (blur) (m/s) = GSD (m/pixel) / Exposure Time (s)
-            <br><code>MaxSpeedBlur = GSD_m / (1 / ShutterSpeed_x)</code>
-            <br><br>
-            Ground Footprint (Width) (m) = GSD (m/pixel) × Image Width (px)
-            <br><code>FootprintWidth = GSD_m * ImageWidth_px</code>
-            <br><br>
-            Ground Footprint (Height) (m) = GSD (m/pixel) × Image Height (px)
-            <br><code>FootprintHeight = GSD_m * ImageHeight_px</code>
-            <br><br>
-            Speed for Overlap (m/s) = (Ground Footprint (Height) (m) × (1 - Desired Flight Overlap (%)/100)) / Interval between Photos (s)
-            <br><code>SpeedForOverlap = (FootprintHeight_m * (1 - DesiredFlightOverlap_perc/100)) / Interval_s</code>
-            <br><br>
-            Photos (120x120m) = CEIL(120 / (Ground Footprint (Width) (m) × (1 - Lateral Overlap/100))) × CEIL(120 / (Ground Footprint (Height) (m) × (1 - Frontal Overlap/100)))
-            <br><i>Note: Lateral and Frontal Overlap are the calculated or ideal values for the flight type.</i>
-            <br><br>
-            Duration (120x120m) = Photos (120x120m) × Interval between Photos (s) + 120 (additional seconds for maneuvers)
-        </div>
-        <div class="field-description">
-            <strong>Function:</strong> Calculates various important flight parameters, such as GSD, maximum speed without blur, ground footprint size, and speed required to achieve desired overlap.
-            <br><strong>Input Fields:</strong>
-            <ul>
-                <li><b>Sensor Width (mm):</b> (Read-Only) Physical width of the selected sensor.</li>
-                <li><b>Focal Dist. (mm):</b> (Read-Only) Focal length of the selected sensor's lens.</li>
-                <li><b>Image Width (px):</b> (Read-Only) Image resolution in pixels (width) of the selected sensor.</li>
-                <li><b>Image Height (px):</b> (Read-Only) Image resolution in pixels (height) of the selected sensor.</li>
-                <li><b>Flight Height (m):</b> Flight altitude above ground in meters.</li>
-                <li><b>Shutter Speed (1/x s, enter x):</b> Shutter speed (enter only 'x' if it's 1/x s, e.g., 500 for 1/500s).</li>
-                <li><b>Interval between photos (s):</b> Time interval between photo captures in seconds.</li>
-                <li><b>Desired Flight Overlap (%):</b> Desired overlap percentage for speed calculation.</li>
-            </ul>
-            <strong>Output Fields:</strong>
-            <ul>
-                <li><b>GSD:</b> Calculated GSD in cm/pixel.</li>
-                <li><b>Max speed (blur):</b> Maximum drone speed in m/s to avoid image blur.</li>
-                <li><b>Ground footprint:</b> Dimensions of the area covered by a single image on the ground (Width x Height).</li>
-                <li><b>Speed for Overlap:</b> Required speed in m/s to achieve the desired overlap with the specified photo interval.</li>
-                <li><b>Photos (120x120m):</b> Estimated number of photos to cover a 120x120 meter area.</li>
-                <li><b>Duration (120x120m):</b> Estimated flight duration to cover a 120x120 meter area.</li>
             </ul>
         </div>
     </div>

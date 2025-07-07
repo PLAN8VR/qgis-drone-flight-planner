@@ -64,19 +64,6 @@ def calculate_gsd_by_sensor_dimension(drone_model: str, altitude_m: float) -> fl
     gsd_m = (pixel_size_mm / focal_length_mm) * altitude_m
     return gsd_m * 100  # cm/pixel
 
-# GSD CALCULATOR BY PIXEL
-def calculate_gsd_by_pixel(drone_model: str, altitude_m: float) -> float:
-    data = get_drone_feature(drone_model)
-    _validate_drone_data_fields(data, ["focal_length", "pixel_size"])
-    focal_length_mm = float(data["focal_length"])
-    pixel_size_um = float(data["pixel_size"])
-
-    if focal_length_mm == 0:
-        raise ValueError("Focal length cannot be zero.")
-
-    gsd_m = (pixel_size_um / 1000 / focal_length_mm) * altitude_m
-    return gsd_m * 100  # cm/pixel
-
 # SPACING CALCULATOR BY OVERLAP
 def calculate_spacing(drone_model: str, flight_type: str, camera_orientation: str,
                          flight_height: QLineEdit, lateral_percentage: QLineEdit, frontal_percentage: QLineEdit, allow_empty: bool = False) -> dict:
@@ -171,68 +158,3 @@ def calculate_overlap(drone_model: str, flight_type: str, camera_orientation: st
             "lateral_overlap": f"Horizontal Overlap (photos): {overlap_lat:.2f}%",
             "frontal_overlap": f"Vertical Overlap (lines): {overlap_front:.2f}%"
         }
-
-# CALCULATOR WITH VARIOUS PARAMETERS AND TIME CALCULATION 
-def calculate_flight_parameters(drone_model: str, flight_height: QLineEdit, shutter_speed: QLineEdit,
-                            interval: QLineEdit, overlap: QLineEdit, allow_empty: bool = False) -> dict:
-    data = get_drone_feature(drone_model)
-    _validate_drone_data_fields(data, ["sensor_width", "image_width", "image_height", "focal_length"])
-
-    sw = float(data["sensor_width"])
-    iw = float(data["image_width"])
-    ih = float(data["image_height"])
-    f = float(data["focal_length"])
-
-    H = _get_numeric_value(flight_height, "Flight height", allow_empty=allow_empty)
-    shutter_inv = _get_numeric_value(shutter_speed, "Shutter speed (1/x s, enter x)", allow_empty=allow_empty)
-    interval_val = _get_numeric_value(interval, "Interval between photos", allow_empty=allow_empty)
-    overlap_val = _get_numeric_value(overlap, "Desired flight overlap", allow_empty=allow_empty)
-
-    if any(val is None for val in [H, shutter_inv, interval_val, overlap_val]):
-        return None
-
-    overlap_val /= 100
-
-    if f == 0:
-        raise ValueError("Focal length cannot be zero.")
-    if H <= 0:
-        raise ValueError("Flight height must be greater than zero.")
-    if iw == 0:
-        raise ValueError("Image width in pixels cannot be zero.")
-    if ih == 0:
-        raise ValueError("Image height in pixels cannot be zero.")
-
-    px_size_mm = sw / iw
-    gsd_m = (px_size_mm / f) * H
-    gsd_cm = gsd_m * 100
-
-    shutter_time = 1 / shutter_inv if shutter_inv != 0 else float("inf")
-    max_blur_speed = gsd_m / shutter_time
-
-    footprint_w = gsd_m * iw
-    footprint_h = gsd_m * ih
-
-    util_dist = footprint_h * (1 - overlap_val)
-    overlap_speed = util_dist / interval_val if interval_val > 0 else float("inf")
-
-    area_m = 120
-    
-    # Ensure no division by zero for footprint dimensions
-    if (footprint_w * (1 - overlap_val)) == 0 or (footprint_h * (1 - overlap_val)) == 0:
-        raise ValueError("Footprint calculation resulted in zero. Check input data.")
-
-    photos_w = math.ceil(area_m / (footprint_w * (1 - overlap_val)))
-    photos_h = math.ceil(area_m / (footprint_h * (1 - overlap_val)))
-    total_photos = photos_w * photos_h
-
-    total_time = total_photos * interval_val + 120
-    min_, sec = divmod(int(total_time), 60)
-
-    return {
-        "gsd": f"GSD: {gsd_cm:.2f} cm/pixel",
-        "max_speed_blur": f"Max speed (blur): {max_blur_speed:.2f} m/s",
-        "footprint": f"Ground footprint: {footprint_w:.1f}m x {footprint_h:.1f}m",
-        "overlap_speed": f"Speed for Overlap: {overlap_speed:.2f} m/s",
-        "photo_count": f"Photos (120x120m): {total_photos}",
-        "flight_time": f"Duration (120x120m): {min_} min {sec} s"
-    }
