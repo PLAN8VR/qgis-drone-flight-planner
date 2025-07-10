@@ -19,199 +19,239 @@ __revision__ = '$Format:%H$'
 
 import os
 import json
-import math
-from functools import lru_cache
-from qgis.PyQt.QtWidgets import QAction, QDialog, QFormLayout, QLabel, QComboBox, QLineEdit, QPushButton, QVBoxLayout, QMessageBox
-from qgis.utils import iface
 
+from qgis.PyQt.QtWidgets import (QDialog, QScrollArea, QWidget, QVBoxLayout, QFormLayout,
+    QGroupBox, QLabel, QComboBox, QPushButton, QDoubleSpinBox, QSpinBox, QMessageBox, QTableWidget, QTableWidgetItem)
+from qgis.gui import QgsCollapsibleGroupBox
+from qgis.PyQt.QtGui import QDesktopServices
+from qgis.PyQt.QtCore import QUrl
 
-@lru_cache(maxsize=None)
-def get_drone_feature(modelo):
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'calculator', 'drone_data.json')
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            drone_data = json.load(f)
-    except FileNotFoundError:
-        raise ValueError(f"Drone data file not found: {path}")
-    except json.JSONDecodeError:
-        raise ValueError(f"Error decoding JSON in {path}.")
+# Calculation functions
+def calculate_gsd_by_sensor(altitude_m, sensor_width_mm, sensor_height_mm, image_width_px, image_height_px, focal_mm):
+    if altitude_m <= 0 or focal_mm <= 0:
+        raise ValueError("Altitude needs to be defined.")
+    
+    footprint_w = altitude_m * sensor_width_mm / focal_mm
+    footprint_h = altitude_m * sensor_height_mm / focal_mm
+    gsd_h = footprint_w / image_width_px
+    gsd_v = footprint_h / image_height_px
+    gsd_m = max(gsd_h, gsd_v)
 
-    dados = drone_data.get(modelo)
-    if not dados:
-        raise ValueError(f"Drone model '{modelo}' not found in data.")
+    return gsd_m * 100.0
 
-    for key, value in dados.items():
-        if isinstance(value, str):
-            value = value.strip()
-            if value == '':
-                dados[key] = None
-            else:
-                try:
-                    dados[key] = float(value.replace(',', '.'))
-                except ValueError:
-                    pass
-    return dados
+def calculate_spacing(altitude_m, sensor_width_mm, sensor_height_mm, focal_mm, front_overlap_pct, side_overlap_pct):
+    if altitude_m <= 0 or focal_mm <= 0:
+        raise ValueError("Altitude needs to be defined.")
+    
+    footprint_w = altitude_m * sensor_width_mm / focal_mm
+    footprint_h = altitude_m * sensor_height_mm / focal_mm
+    forward_spacing = footprint_h * (1 - front_overlap_pct / 100.0)
+    side_spacing = footprint_w * (1 - side_overlap_pct / 100.0)
 
-def get_numeric_value(text_input, name, target_type=float, allow_empty=False):
-    text = text_input.text().strip().replace(',', '.')
-    if not text:
-        if allow_empty:
-            return None
-        else:
-            raise ValueError(f"The field '{name}' cannot be empty.")
-    try:
-        return target_type(text)
-    except ValueError:
-        raise ValueError(f"Invalid value for '{name}': '{text}'. Please enter a valid number.")
+    return forward_spacing, side_spacing
 
-def calculate_gsd_by_sensor(drone_model, altitude_m):
-    data = get_drone_feature(drone_model)
-    sensor_width_mm = data.get("sensor_width")
-    image_width_px = data.get("image_width")
-    focal_length_mm = data.get("focal_length")
+def calculate_overlap(altitude_m, sensor_width_mm, sensor_height_mm, focal_mm, spacing_forward, spacing_side):
+    if altitude_m <= 0 or focal_mm <= 0:
+        raise ValueError("Altitude needs to be defined.")
+    
+    footprint_w = altitude_m * sensor_width_mm / focal_mm
+    footprint_h = altitude_m * sensor_height_mm / focal_mm
+    front_overlap = max(0.0, 1 - spacing_forward / footprint_h) * 100.0 if footprint_h > 0 else 0.0
+    side_overlap = max(0.0, 1 - spacing_side / footprint_w) * 100.0 if footprint_w > 0 else 0.0
 
-    if None in (sensor_width_mm, image_width_px, focal_length_mm):
-        raise ValueError("Missing required drone data (sensor_width, image_width, focal_length).")
-    if image_width_px == 0 or focal_length_mm == 0:
-        raise ValueError("Invalid drone parameters: division by zero.")
+    return front_overlap, side_overlap
 
-    pixel_size_mm = sensor_width_mm / image_width_px
-    gsd_m = (pixel_size_mm / focal_length_mm) * altitude_m
-    return gsd_m * 100  # cm/pixel
-
-def calculate_spacing(drone_model, altitude_m, perc_lat, perc_front, camera_orientation):
-    data = get_drone_feature(drone_model)
-    sw = data.get("sensor_width")
-    sh = data.get("sensor_height")
-    f = data.get("focal_length")
-
-    if None in (sw, sh, f):
-        raise ValueError("Missing required drone data (sensor dimensions or focal length).")
-    if f == 0:
-        raise ValueError("Focal length cannot be zero.")
-
-    if camera_orientation.lower() == "retrato":
-        sw, sh = sh, sw
-
-    gsw = (sw * altitude_m) / f
-    gsh = (sh * altitude_m) / f
-
-    lateral_spacing = gsw * (1 - perc_lat / 100)
-    frontal_spacing = gsh * (1 - perc_front / 100)
-
-    return {
-        "lateral_spacing": round(lateral_spacing, 2),
-        "frontal_spacing": round(frontal_spacing, 2)
-    }
-
-def calculate_overlap(drone_model, altitude_m, spacing_lines, spacing_photos, camera_orientation):
-    data = get_drone_feature(drone_model)
-    sw = data.get("sensor_width")
-    sh = data.get("sensor_height")
-    f = data.get("focal_length")
-
-    if None in (sw, sh, f):
-        raise ValueError("Missing required drone data (sensor dimensions or focal length).")
-    if f == 0:
-        raise ValueError("Focal length cannot be zero.")
-
-    if camera_orientation.lower() == "retrato":
-        sw, sh = sh, sw
-
-    gsw = (sw * altitude_m) / f
-    gsh = (sh * altitude_m) / f
-
-    overlap_lat = (1 - spacing_photos / gsw) * 100
-    overlap_front = (1 - spacing_lines / gsh) * 100
-
-    overlap_lat = max(0, min(overlap_lat, 100))
-    overlap_front = max(0, min(overlap_front, 100))
-
-    return {
-        "lateral_overlap": round(overlap_lat, 2),
-        "frontal_overlap": round(overlap_front, 2)
-    }
-
-class CalculadoraDialog(QDialog):
+class Calculator_Dialog(QDialog):
     def __init__(self, iface):
         super().__init__()
-        self.iface = iface
         self.setWindowTitle("GSD Calculator")
-        layout = QVBoxLayout()
+        self.resize(520, 480)
 
-       
-        self.combo = QComboBox()
-        self.altitude = QLineEdit("100")
-        self.perc_lat = QLineEdit("70")
-        self.perc_front = QLineEdit("80")
-        self.spacing_lines = QLineEdit("20")
-        self.spacing_photos = QLineEdit("10")
-        self.orientation = QComboBox()
-        self.orientation.addItems(["paisagem", "retrato"])
+        layout = QVBoxLayout(self)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        layout.addWidget(scroll)
 
+        container = QWidget()
+        scroll.setWidget(container)
+        container_layout = QVBoxLayout(container)
+
+        # Drone selection
+        self.drone_data = {}
+        self.droneCombo = QComboBox()
+        self.droneCombo.addItem("--- Select a Drone ---")
         try:
-            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'calculator', 'drone_data.json')
-            with open(path, 'r', encoding='utf-8') as f:
-                drone_data = json.load(f)
-                for key in drone_data:
-                    self.combo.addItem(key)
+            with open(os.path.join(os.path.dirname(__file__), 'drone_data.json'), 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                for name, specs in data.items():
+                    self.drone_data[name] = specs
+                    self.droneCombo.addItem(name)
         except Exception as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, "Warning", f"Failed to load drone data:\n{e}")
 
-        self.output = QLabel("Results will appear here")
-        btn = QPushButton("Calculate")
-        btn.clicked.connect(self.run_calculations)
+        drone_group = QGroupBox("Drone to select")
+        form = QFormLayout(drone_group)
+        form.addRow("Drone Model:", self.droneCombo)
 
-        layout.addRow("Drone model:", self.combo)
-        layout.addRow("Altitude (m):", self.altitude)
-        layout.addRow("% Lateral Overlap:", self.perc_lat)
-        layout.addRow("% Frontal Overlap:", self.perc_front)
-        layout.addRow("Line Spacing (m):", self.spacing_lines)
-        layout.addRow("Photo Spacing (m):", self.spacing_photos)
-        layout.addRow("Orientation:", self.orientation)
-        layout.addRow(btn)
-        layout.addRow(self.output)
-        
-        self.setLayout(layout)
-        
-    def run_calculations(self):
+        self.table = QTableWidget(0, 2)
+        self.table.setHorizontalHeaderLabels(["Parameter", "Value"])
+        self.table.verticalHeader().setVisible(False)
+        self.table.setColumnWidth(0, 150)
+        self.table.setColumnWidth(1, 100)
+        self.table.setMinimumHeight(150)
+        form.addRow(self.table)
+
+        container_layout.addWidget(drone_group)
+        self.droneCombo.currentIndexChanged.connect(self._update_sensor_info)
+
+        # GSD Section
+        self.altitudeInput = QDoubleSpinBox()
+        self.altitudeInput.setRange(0, 10000)
+        self.gsdResult = QLabel("GSD: --")
+        gsd_btn = QPushButton("Calculate GSD")
+        gsd_btn.clicked.connect(self.calculate_gsd)
+        gsd_box = QgsCollapsibleGroupBox("GSD Calculation (by sensor dimension)")
+        gsd_box.setCollapsed(True)
+        gsd_form = QFormLayout(gsd_box)
+        self.altitudeInput.setValue(100)
+        gsd_form.addRow("Flight Altitude (m):", self.altitudeInput)
+        gsd_form.addRow("Result:", self.gsdResult)
+        gsd_form.addRow(gsd_btn)
+        container_layout.addWidget(gsd_box)
+
+        # Spacing Section
+        self.altitudeSpacing = QDoubleSpinBox()
+        self.altitudeSpacing.setRange(0, 10000)
+        self.frontOverlap = QSpinBox()
+        self.frontOverlap.setRange(0, 100)
+        self.frontOverlap.setValue(85)
+        self.sideOverlap = QSpinBox()
+        self.sideOverlap.setRange(0, 100)
+        self.sideOverlap.setValue(75)
+        self.spacingResult = QLabel("Spacing: --")
+        spacing_btn = QPushButton("Calculate Spacing")
+        spacing_btn.clicked.connect(self.calculate_spacing)
+        spacing_box = QgsCollapsibleGroupBox("Ideal Spacing Calculation")
+        spacing_box.setCollapsed(True)
+        spacing_form = QFormLayout(spacing_box)
+        self.altitudeSpacing.setValue(100)
+        spacing_form.addRow("Flight Altitude (m):", self.altitudeSpacing)
+        spacing_form.addRow("Frontal Overlap (%):", self.frontOverlap)
+        spacing_form.addRow("Side Overlap (%):", self.sideOverlap)
+        spacing_form.addRow("Result:", self.spacingResult)
+        spacing_form.addRow(spacing_btn)
+        container_layout.addWidget(spacing_box)
+
+        # Overlap Section
+        self.altitudeOverlap = QDoubleSpinBox()
+        self.altitudeOverlap.setRange(0, 10000)
+        self.spacingForward = QDoubleSpinBox()
+        self.spacingForward.setRange(0, 10000)
+        self.spacingSide = QDoubleSpinBox()
+        self.spacingSide.setRange(0, 10000)
+        self.overlapResult = QLabel("Overlap: --")
+        overlap_btn = QPushButton("Calculate Overlap")
+        overlap_btn.clicked.connect(self.calculate_overlap)
+        overlap_box = QgsCollapsibleGroupBox("Overlap Calculation")
+        overlap_box.setCollapsed(True)
+        overlap_form = QFormLayout(overlap_box)
+        self.altitudeOverlap.setValue(100)
+        overlap_form.addRow("Flight Altitude (m):", self.altitudeOverlap)
+        overlap_form.addRow("Forward Spacing Photos (m):", self.spacingForward)
+        overlap_form.addRow("Side Spacing Lines (m):", self.spacingSide)
+        overlap_form.addRow("Result:", self.overlapResult)
+        overlap_form.addRow(overlap_btn)
+        container_layout.addWidget(overlap_box)
+
+        # Help Button
+        help_btn = QPushButton("Open Help")
+        help_btn.clicked.connect(self.open_help)
+        container_layout.addWidget(help_btn)
+
+    def _get_specs(self):
+        model = self.droneCombo.currentText()
+        return self.drone_data.get(model) if model in self.drone_data else None
+
+    def _update_sensor_info(self):
+        specs = self._get_specs()
+        self.table.setRowCount(0)
+        if specs:
+            units = {
+                "sensor_width": "mm",
+                "sensor_height": "mm",
+                "focal_length": "mm",
+                "image_width": "px",
+                "image_height": "px",
+                "min_angle_cam": "degrees",
+                "max_angle_cam": "degrees"
+            }
+            for row, (key, value) in enumerate(specs.items()):
+                self.table.insertRow(row)
+                unit = units.get(key, "")
+                display_value = f"{value} {unit}" if unit else str(value)
+                self.table.setItem(row, 0, QTableWidgetItem(str(key)))
+                self.table.setItem(row, 1, QTableWidgetItem(display_value))
+
+    def calculate_gsd(self):
+        specs = self._get_specs()
+        if not specs:
+            QMessageBox.warning(self, "Error", "Please select a valid drone model.")
+            return
         try:
-            drone = self.combo.currentText()
-            alt = float(self.altitude.text().replace(',', '.'))
-            perc_lat = float(self.perc_lat.text().replace(',', '.'))
-            perc_front = float(self.perc_front.text().replace(',', '.'))
-            spacing_lines = float(self.spacing_lines.text().replace(',', '.'))
-            spacing_photos = float(self.spacing_photos.text().replace(',', '.'))
-            orient = self.orientation.currentText()
-
-            gsd = calculate_gsd_by_sensor(drone, alt)
-            spacing = calculate_spacing(drone, alt, perc_lat, perc_front, orient)
-            overlap = calculate_overlap(drone, alt, spacing_lines, spacing_photos, orient)
-
-            result = f"GSD: {gsd:.2f} cm/pixel\n"
-            result += f"Spacing - Lat: {spacing['lateral_spacing']} m, Front: {spacing['frontal_spacing']} m\n"
-            result += f"Overlap - Lat: {overlap['lateral_overlap']}%, Front: {overlap['frontal_overlap']}%"
-            self.output.setText(result)
+            alt = self.altitudeInput.value()
+            gsd = calculate_gsd_by_sensor(
+                alt,
+                float(specs["sensor_width"]),
+                float(specs["sensor_height"]),
+                int(specs["image_width"]),
+                int(specs["image_height"]),
+                float(specs["focal_length"])
+            )
+            self.gsdResult.setText(f"GSD: {gsd:.2f} cm/pixel")
         except Exception as e:
-            self.output.setText(f"Error: {e}")
+            QMessageBox.critical(self, "Calculation Error", str(e))
 
-class GsdCalculatorPlugin:
-    def __init__(self, iface):
-        self.iface = iface
-        self.action = None
-        self.dialog = None
+    def calculate_spacing(self):
+        specs = self._get_specs()
+        if not specs:
+            QMessageBox.warning(self, "Error", "Please select a valid drone model.")
+            return
+        try:
+            alt = self.altitudeSpacing.value()
+            fw, sd = calculate_spacing(
+                alt,
+                float(specs["sensor_width"]),
+                float(specs["sensor_height"]),
+                float(specs["focal_length"]),
+                self.frontOverlap.value(),
+                self.sideOverlap.value()
+            )
+            self.spacingResult.setText(f"Forward Photos: {fw:.1f} m; Side Lines: {sd:.1f} m")
+        except Exception as e:
+            QMessageBox.critical(self, "Calculation Error", str(e))
 
-    def initGui(self):
-        self.action = QAction("GSD Calculator", self.iface.mainWindow())
-        self.action.triggered.connect(self.show_dialog)
-        self.iface.addPluginToMenu("&GSD Tools", self.action)
+    def calculate_overlap(self):
+        specs = self._get_specs()
+        if not specs:
+            QMessageBox.warning(self, "Error", "Please select a valid drone model.")
+            return
+        try:
+            alt = self.altitudeOverlap.value()
+            front, side = calculate_overlap(
+                alt,
+                float(specs["sensor_width"]),
+                float(specs["sensor_height"]),
+                float(specs["focal_length"]),
+                self.spacingForward.value(),
+                self.spacingSide.value()
+            )
+            self.overlapResult.setText(f"Front Photos: {front:.1f} %; Side Lines: {side:.1f} %")
+        except Exception as e:
+            QMessageBox.critical(self, "Calculation Error", str(e))
 
-    def unload(self):
-        self.iface.removePluginMenu("&GSD Tools", self.action)
-
-    def show_dialog(self):
-        if not self.dialog:
-            self.dialog = GsdCalculatorDialog()
-        self.dialog.show()
-        self.dialog.raise_()
-        self.dialog.activateWindow()
+    def open_help(self):
+            help_file_path = os.path.join(os.path.dirname(__file__), '..', 'calculator', 'calculator.html')
+            if os.path.exists(help_file_path):
+                QDesktopServices.openUrl(QUrl.fromLocalFile(help_file_path))
+            else:
+                QMessageBox.warning(self, "Help", f"Help file not found: {help_file_path}")

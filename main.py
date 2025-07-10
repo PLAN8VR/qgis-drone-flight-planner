@@ -17,7 +17,6 @@ __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 
 import os
-import importlib
 
 from qgis.PyQt.QtWidgets import QAction, QMenu, QMessageBox
 from qgis.PyQt.QtGui import QIcon
@@ -112,8 +111,8 @@ class GeoFlightPlanner:
 
     def _open_calculator(self):
         try:
-            from .calculator.calculators import CalculadoraDialog
-            dlg = CalculadoraDialog(self.iface)
+            from .calculator.calculators import Calculator_Dialog
+            dlg = Calculator_Dialog(self.iface)
             dlg.exec_()
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Error opening calculator:\n{str(e)}")
