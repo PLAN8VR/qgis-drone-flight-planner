@@ -682,7 +682,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
 
     def groupId(self):
         return 'horizontal'
-
+    
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 

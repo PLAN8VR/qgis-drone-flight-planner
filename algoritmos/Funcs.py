@@ -431,14 +431,14 @@ def loadParametros(tipoVoo):
       dl_manualH_RC2 = my_settings.value("qgis-drone-flight-planner/dl_manualH_RC2", 10)
    elif tipoVoo == "VF":
       hFac = my_settings.value("qgis-drone-flight-planner/hFac", 15)
-      altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 0.5)
+      altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 2.5)
       dl_manualVF = my_settings.value("qgis-drone-flight-planner/dl_manualVF", 5)
       df_manualVF = my_settings.value("qgis-drone-flight-planner/df_manualVF", 3)
       velocVF = my_settings.value("qgis-drone-flight-planner/velocVF", 1)
       tStayVF = my_settings.value("qgis-drone-flight-planner/tStayVF", 2)
    elif tipoVoo == "VC":
       hObj = my_settings.value("qgis-drone-flight-planner/hObj", 15)
-      altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 0.5)
+      altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 2.5)
       nPartesVC = my_settings.value("qgis-drone-flight-planner/nPartesVC", 8)
       dVertVC = my_settings.value("qgis-drone-flight-planner/dVertVC", 3)
       velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 1)

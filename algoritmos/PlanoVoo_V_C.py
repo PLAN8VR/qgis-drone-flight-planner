@@ -392,7 +392,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         return {}
 
     def name(self):
-        return 'PlanoVooVC'.lower()
+        return 'Flight_Plan_V_C'.lower()
 
     def displayName(self):
         return self.tr('Circular')

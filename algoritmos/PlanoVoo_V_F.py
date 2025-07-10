@@ -369,7 +369,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         return {}
 
     def name(self):
-        return 'PlanoVooVF'.lower()
+        return 'Flight_Plan_V_F'.lower()
 
     def displayName(self):
         return self.tr('Facade')

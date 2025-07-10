@@ -16,66 +16,7 @@ __author__ = 'Prof Cazaroli e Leandro França'
 __date__ = '2024-11-05'
 __copyright__ = '(C) 2024 by Prof Cazaroli e Leandro França'
 
-
-import os
-import sys
-import inspect
-
-from qgis.core import QgsApplication
-from .PlanoVoo_provider import PlanoVooProvider
-
-from qgis.PyQt.QtWidgets import QAction, QMenu
-from qgis.PyQt.QtGui import QIcon
-from .tools.calculators_dock import CalculatorsDock
-
-cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
-
-if cmd_folder not in sys.path:
-    sys.path.insert(0, cmd_folder)
-
-
-class PlanoVooPlugin(object):
-
-    def __init__(self, iface):
-        self.iface = iface
-        self.provider = None
-        self.calculators_dock = None
-        self.plugin_menu = None
-        self.calculators_action = None
-
-    def initProcessing(self):
-        self.provider = PlanoVooProvider()
-        QgsApplication.processingRegistry().addProvider(self.provider)
-
-    def initGui(self):
-        self.initProcessing()
-
-        icon_path = os.path.join(os.path.dirname(__file__), "images/Facade.jpg")
-
-        # Cria a ação com ícone
-        self.calculators_action = QAction(QIcon(icon_path), "GeoFlight Planner", self.iface.mainWindow())
-        self.calculators_action.triggered.connect(self.show_calculators_dock)
-
-        # Adiciona o ícone diretamente à barra de ferramentas
-        self.iface.addToolBarIcon(self.calculators_action)
-
-    def unload(self):
-        # Limpar o menu
-        if self.plugin_menu:
-            self.iface.mainWindow().menuBar().removeAction(self.plugin_menu.menuAction())
-        
-        # Limpar a ação
-        if self.calculators_action:
-            del self.calculators_action
-
-        # Remover o provedor de processamento
-        if self.provider:
-            QgsApplication.processingRegistry().removeProvider(self.provider)
-            self.provider = None
-
-    def show_calculators_dock(self):
-        if not self.calculators_dock:
-            self.calculators_dock = CalculatorsDock(self.iface.mainWindow())
-        
-        self.iface.addDockWidget(1, self.calculators_dock)
-        self.calculators_dock.show()
+def classFactory(iface):
+    from .main import GeoFlightPlanner
+    
+    return GeoFlightPlanner(iface)
