@@ -39,6 +39,8 @@ class GeoFlightPlanner:
         self.provider = PlanoVooProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
 
+        icon_dir = os.path.join(self.plugin_dir, "images")
+
         # Create the main plugin menu only once
         self.menu = self.iface.mainWindow().findChild(QMenu, "GeoFlight Planner")
         if not self.menu:
@@ -50,20 +52,20 @@ class GeoFlightPlanner:
         self.menu.clear()
 
         # Create submenus
-        horizontal_menu = QMenu("Horizontal", self.menu)
-        vertical_menu = QMenu("Vertical", self.menu)
+        horizontal_menu = QMenu("Horizontal Flight Plan", self.menu)
+        vertical_menu = QMenu("Vertical Flight Plan", self.menu)
 
         # Add Calculator action directly to main menu
-        self._add_action("GSD Calculator", self._open_calculator)
+        self._add_action("GSD Calculator", self._open_calculator, icon_path=os.path.join(icon_dir, "GeoFlightPlanner.png"))
 
         # Add Horizontal submenu actions
-        self._add_action("Flight Plan - Manual", lambda: self._run_algorithm("followingterrainmanual"), horizontal_menu)
-        self._add_action("Flight Plan - Manual RC2", lambda: self._run_algorithm("followingterrainmanual_rc2_controller"), horizontal_menu)
-        self._add_action("Flight Plan - Sensor", lambda: self._run_algorithm("followingterrainsensor"), horizontal_menu)
+        self._add_action("Manual", lambda: self._run_algorithm("Flight_Plan_H_Manual"), horizontal_menu, os.path.join(icon_dir, "Horizontal.png"))
+        self._add_action("Manual RC2", lambda: self._run_algorithm("Flight_Plan_H_Manual_RC2_Controler"), horizontal_menu, os.path.join(icon_dir, "Horizontal.png"))
+        self._add_action("Sensor", lambda: self._run_algorithm("Flight_Plan_H_Sensor"), horizontal_menu, os.path.join(icon_dir, "Horizontal.png"))
 
         # Add Vertical submenu actions
-        self._add_action("Flight Plan - Circular", lambda: self._run_algorithm("flight_plan_v_c"), vertical_menu)
-        self._add_action("Flight Plan - Facade", lambda: self._run_algorithm("flight_plan_v_f"), vertical_menu)
+        self._add_action("Circular", lambda: self._run_algorithm("Flight_Plan_V_C"), vertical_menu, os.path.join(icon_dir, "Circular.jpg"))
+        self._add_action("Facade", lambda: self._run_algorithm("Flight_Plan_V_F"), vertical_menu, os.path.join(icon_dir, "Facade.jpg"))
 
         # Add submenus to main menu
         self.menu.addMenu(horizontal_menu)
@@ -75,18 +77,30 @@ class GeoFlightPlanner:
             self.iface.removePluginMenu("GeoFlight Planner", action)
             self.iface.removeToolBarIcon(action)
 
-        # Unregister the processing provider
-        if self.provider:
-            QgsApplication.processingRegistry().removeProvider(self.provider)
-            self.provider = None
-
         # Remove the plugin menu if it exists
-        if self.menu:
-            self.iface.mainWindow().menuBar().removeAction(self.menu.menuAction())
+        try:
+            if self.menu and self.menu.menuAction():
+                self.iface.mainWindow().menuBar().removeAction(self.menu.menuAction())
+        except RuntimeError:
+            pass  # menu was already deleted
+        finally:
             self.menu = None
 
-    def _add_action(self, label, callback, parent_menu=None):
-        action = QAction(label, self.iface.mainWindow())
+        # Unregister the processing provider safely
+        try:
+            QgsApplication.processingRegistry().removeProvider(self.provider)
+        except RuntimeError:
+            pass  # Provider already deleted by QGIS internally
+        finally:
+            self.provider = None
+
+    def _add_action(self, label, callback, parent_menu=None, icon_path=None):
+        if icon_path and os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            action = QAction(icon, label, self.iface.mainWindow())
+        else:
+            action = QAction(label, self.iface.mainWindow())
+
         action.triggered.connect(callback)
         self.actions.append(action)
         if parent_menu:

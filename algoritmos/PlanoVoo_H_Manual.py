@@ -672,7 +672,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         return {}
 
     def name(self):
-        return 'FollowingTerrainManual'.lower()
+        return 'Flight_Plan_H_Manual'
 
     def displayName(self):
         return self.tr('Following terrain - Manual')

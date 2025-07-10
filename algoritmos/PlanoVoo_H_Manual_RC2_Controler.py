@@ -641,7 +641,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         return {}
 
     def name(self):
-        return 'FollowingTerrainManual_RC2_Controller'.lower()
+        return 'Flight_Plan_H_Manual_RC2_Controler'
 
     def displayName(self):
         return self.tr('Following terrain - Manual RC2_Controller')
