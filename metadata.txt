@@ -19,13 +19,13 @@ experimental=False
 deprecated=False
 server=False
 
-tags=drones, dji, litchi, fly, path, csv, kmz, kml, brazil, plano de voo, GeoOne
+tags=drones, dji, litchi, fly, path, csv, kmz, kml, brazil, plano de voo, GeoOne, gsd
 homepage=https://github.com/OpenGeoOne/qgis-drone-flight-planner/blob/main/README.md
 category=Drone
 icon=images/GeoFlightPlanner.png
 
 # changelog=
-#     1.3.0 - added GSD Calculator and Check if 2 Layers are saved and out of editing
+#     2.0.0 - added GSD Calculator / Check if 2 Layers are saved and out of editing / Gimbal Angle
 #     1.2.0 - added tool for creating flight planning to RC2_Controller
 #     1.1.1 - simplekml package removed and DEM bug fix
 #     1.1.0 - Manually entered side and front distance / Taken from OpenTopography / Continuous Flight Line / Frontal Distance Time and Meters / Above Ground Yes or No / CRS transform bug fix
