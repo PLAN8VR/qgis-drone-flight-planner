@@ -39,6 +39,18 @@ def calculate_gsd_by_sensor(altitude_m, sensor_width_mm, sensor_height_mm, image
 
     return gsd_m * 100.0
 
+def calculate_altitude_from_gsd(gsd_cm, sensor_width_mm, sensor_height_mm, image_width_px, image_height_px, focal_mm):
+    if gsd_cm <= 0 or focal_mm <= 0:
+        raise ValueError("GSD and focal length must be positive.")
+    
+    gsd_m = gsd_cm / 100.0
+    pixel_size_w = sensor_width_mm / image_width_px
+    pixel_size_h = sensor_height_mm / image_height_px
+    pixel_size = max(pixel_size_w, pixel_size_h)
+    altitude = (gsd_m * focal_mm) / pixel_size
+
+    return altitude
+
 def calculate_spacing(altitude_m, sensor_width_mm, sensor_height_mm, focal_mm, front_overlap_pct, side_overlap_pct):
     if altitude_m <= 0 or focal_mm <= 0:
         raise ValueError("Altitude needs to be defined.")
@@ -66,7 +78,7 @@ class Calculator_Dialog(QDialog):
         super().__init__()
 
         self.setWindowTitle("GSD Calculator")
-        self.resize(550, 480)
+        self.resize(550, 540)
 
         layout = QVBoxLayout(self)
         scroll = QScrollArea()
@@ -119,6 +131,21 @@ class Calculator_Dialog(QDialog):
         gsd_form.addRow("Result:", self.gsdResult)
         gsd_form.addRow(gsd_btn)
         container_layout.addWidget(gsd_box)
+
+        # Altitude from GSD Section
+        self.gsdInput = QDoubleSpinBox()
+        self.gsdInput.setRange(0.5, 20)
+        self.altitudeFromGSDResult = QLabel("Altitude: --")
+        altitude_btn = QPushButton("Calculate Altitude")
+        altitude_btn.clicked.connect(self.calculate_altitude_from_gsd)
+        altitude_box = QgsCollapsibleGroupBox("Flight Altitude from GSD")
+        altitude_box.setCollapsed(True)
+        altitude_form = QFormLayout(altitude_box)
+        self.gsdInput.setValue(5.0)
+        altitude_form.addRow("GSD: (0.5 a 20cm)", self.gsdInput)
+        altitude_form.addRow("Result:", self.altitudeFromGSDResult)
+        altitude_form.addRow(altitude_btn)
+        container_layout.addWidget(altitude_box)
 
         # Spacing Section
         self.altitudeSpacing = QDoubleSpinBox()
@@ -209,6 +236,25 @@ class Calculator_Dialog(QDialog):
                 float(specs["focal_length"])
             )
             self.gsdResult.setText(f"GSD: {gsd:.2f} cm/pixel")
+        except Exception as e:
+            QMessageBox.critical(self, "Calculation Error", str(e))
+
+    def calculate_altitude_from_gsd(self):
+        specs = self._get_specs()
+        if not specs:
+            QMessageBox.warning(self, "Error", "Please select a valid drone model.")
+            return
+        try:
+            gsd_cm = self.gsdInput.value()
+            alt = calculate_altitude_from_gsd(
+                gsd_cm,
+                float(specs["sensor_width"]),
+                float(specs["sensor_height"]),
+                int(specs["image_width"]),
+                int(specs["image_height"]),
+                float(specs["focal_length"])
+            )
+            self.altitudeFromGSDResult.setText(f"Altitude: {alt:.2f} m")
         except Exception as e:
             QMessageBox.critical(self, "Calculation Error", str(e))
 

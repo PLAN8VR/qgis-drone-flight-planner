@@ -1,48 +1,57 @@
 {
-    "Mini": {
+    "Mini / Mini SE / Mini 2": {
         "sensor_width": 6.3,
-        "sensor_height": "",
+        "sensor_height": 4.7,
         "focal_length": 4.49,
-        "image_width": "",
-        "image_height": "",
+        "image_width": 4000,
+        "image_height": 2250,
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
-    "Mini 2": {
+    "Mini 2 SE / 4 k": {
         "sensor_width": 6.3,
-        "sensor_height": "",
+        "sensor_height": 4.7,
         "focal_length": 4.49,
-        "image_width": "",
-        "image_height": "",
+        "image_width": 4000,
+        "image_height": 3000,
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
     "Mini 3": {
         "sensor_width": 9.7,
-        "sensor_height": "",
+        "sensor_height": 7.3,
         "focal_length": 7.0,
-        "image_width": "",
-        "image_height": "",
+        "image_width": 8064,
+        "image_height": 6048,
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
-    "Mini SE": {
-        "sensor_width": 6.3,
-        "sensor_height": "",
-        "focal_length": 4.49,
-        "image_width": "",
-        "image_height": "",
+    "Mini 3 Pro": {
+        "sensor_width": 9.7,
+        "sensor_height": 7.3,
+        "focal_length": 7.0,
+        "image_width": 8064,
+        "image_height": 6048,
         "min_angle_cam": -90,
-        "max_angle_cam": 0
+        "max_angle_cam": 60
     },
     "Mini 4 Pro": {
-        "sensor_width": 10.56,
-        "sensor_height": "",
+        "sensor_width": 14.1,
+        "sensor_height": 10.6,
         "focal_length": 6.72,
-        "image_width": "",
-        "image_height": "",
+        "image_width": 8064,
+        "image_height": 6048,
         "min_angle_cam": -90,
-        "max_angle_cam": 0
+        "max_angle_cam": 60
+    },
+    "Dji Flip": {
+        "sensor_width": 14.1,
+        "sensor_height": 10.6,
+        "focal_length": 6.72,
+        "image_width": 8064,
+        "image_height": 6048,
+        "min_angle_cam": -90,
+        "max_angle_cam": 35
     },
     "Air 2S": {
         "sensor_width": 13.2,
@@ -53,27 +62,18 @@
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
-    "Air 3S (wide, 12mp mode)": {
-        "sensor_width": 12.5,
-        "sensor_height": "",
-        "focal_length": 8.67,
-        "image_width": 4096,
-        "image_height": 3072,
-        "min_angle_cam": -90,
-        "max_angle_cam": 0
-    },
-    "Air 3S (wide, 50mp mode)": {
+    "Air 3S": {
         "sensor_width": 12.5,
         "sensor_height": "",
         "focal_length": 8.67,
         "image_width": 8192,
         "image_height": 6144,
         "min_angle_cam": -90,
-        "max_angle_cam": 0
+        "max_angle_cam": 60
     },
     "Mavic Air": {
         "sensor_width": 6.3,
-        "sensor_height": "",
+        "sensor_height": 4.7,
         "focal_length": 4.9,
         "image_width": "",
         "image_height": "",
@@ -82,16 +82,16 @@
     },
     "Mavic Air 2": {
         "sensor_width": 6.4,
-        "sensor_height": "",
+        "sensor_height": 4.8,
         "focal_length": 4.5,
-        "image_width": "",
-        "image_height": "",
+        "image_width": 8000,
+        "image_height": 6000,
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
     "Mavic Pro": {
         "sensor_width": 6.33,
-        "sensor_height": "",
+        "sensor_height": 4.75,
         "focal_length": 4.7,
         "image_width": "",
         "image_height": "",
@@ -100,73 +100,118 @@
     },
     "Mavic 2 Pro": {
         "sensor_width": 13.2,
-        "sensor_height": "",
+        "sensor_height": 8.8,
         "focal_length": 10.26,
-        "image_width": 5568,
+        "image_width": 5472,
         "image_height": 3648,
         "min_angle_cam": -90,
-        "max_angle_cam": 0
+        "max_angle_cam": 30
     },
     "Mavic 2 Zoom": {
         "sensor_width": 6.3,
-        "sensor_height": "",
+        "sensor_height": 4.7,
+        "focal_length": 8.6,
+        "image_width": 4000,
+        "image_height": 3000,
+        "min_angle_cam": -90,
+        "max_angle_cam": 30
+    },
+    "Mavic 3": {
+        "sensor_width": 17.3,
+        "sensor_height": 13,
+        "focal_length": 12.29,
+        "image_width": 5280,
+        "image_height": 3956,
+        "min_angle_cam": -90,
+        "max_angle_cam": 35
+    },
+    "Mavic 3 Pro / Classic": {
+        "sensor_width": 17.3,
+        "sensor_height": 13,
+        "focal_length": 12.3,
+        "image_width": 5280,
+        "image_height": 3956,
+        "min_angle_cam": -90,
+        "max_angle_cam": 35
+    },
+    "Mavic 4 Pro": {
+        "sensor_width": 18.57,
+        "sensor_height": 13,
+        "focal_length": 14.45,
+        "image_width": 12288,
+        "image_height": 8192,
+        "min_angle_cam": -90,
+        "max_angle_cam": 70
+    },
+    "Phantom 3/4": {
+        "sensor_width": 6.3,
+        "sensor_height": 4.7,
+        "focal_length": 3.61,
+        "image_width": "",
+        "image_height": "",
+        "min_angle_cam": -90,
+        "max_angle_cam": 30
+    },
+    "Phantom 4 Multispectral": {
+        "sensor_width": 4.98,
+        "sensor_height": 4.74,
+        "focal_length": 5.74,
+        "image_width": "",
+        "image_height": "",
+        "min_angle_cam": -90,
+        "max_angle_cam": 30
+    },
+    "Phantom 4 Pro / Advanced": {
+        "sensor_width": 13.2,
+        "sensor_height": 8.8,
+        "focal_length": 8.8,
+        "image_width": 5472,
+        "image_height": 3648,
+        "min_angle_cam": -90,
+        "max_angle_cam": 30
+    },
+    "Zenmuse X4S": {
+        "sensor_width": 12.83,
+        "sensor_height": 8.55,
         "focal_length": 8.6,
         "image_width": "",
         "image_height": "",
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
-    "Mavic 3 (All variants, wide angle module)": {
-        "sensor_width": 17.3,
-        "sensor_height": "",
-        "focal_length": 12.29,
-        "image_width": 5280,
-        "image_height": 3956,
-        "min_angle_cam": -90,
-        "max_angle_cam": 0
-    },
-    "Mavic 3E": {
-        "sensor_width": 17.3,
-        "sensor_height": "",
-        "focal_length": 12.3,
+    "Zenmuse H20 Thermal": {
+        "sensor_width": 7.68,
+        "sensor_height": 6.14,
+        "focal_length": 13.5,
         "image_width": "",
         "image_height": "",
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
-    "Mavic 4 Pro (wide, 25mp mode)": {
-        "sensor_width": 18.57,
-        "sensor_height": "",
-        "focal_length": 14.45,
-        "image_width": 6144,
-        "image_height": 4096,
-        "min_angle_cam": -90,
-        "max_angle_cam": 0
-    },
-    "Phantom 3/4": {
-        "sensor_width": 6.3,
-        "sensor_height": "",
-        "focal_length": 3.61,
+    "Zenmuse H20 Wide": {
+        "sensor_width": 6.16,
+        "sensor_height": 4.62,
+        "focal_length": 4.5,
         "image_width": "",
         "image_height": "",
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
-    "Phantom 4 Multispectral": {
-        "sensor_width": 4.98,
-        "sensor_height": "",
-        "focal_length": 5.74,
+    "Zenmuse H20 ZoomMin": {
+        "sensor_width": 7.76,
+        "sensor_height": 5.82,
+        "focal_length": 10.1,
         "image_width": "",
         "image_height": "",
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
-    "Phantom 4 Pro, Phantom 4 Adv, Phantom RTK": {
-        "sensor_width": 13.2,
-        "sensor_height": "",
-        "focal_length": 8.8,
-        "image_width": 5472,
-        "image_height": 3648,
+    "Zenmuse Z30 Min": {
+        "sensor_width": 4.71,
+        "sensor_height": 3.54,
+        "focal_length": 4.3,
+        "image_width": "",
+        "image_height": "",
         "min_angle_cam": -90,
         "max_angle_cam": 0
     }
