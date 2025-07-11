@@ -32,7 +32,7 @@ import csv
 
 class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooM_RC2, ab_groundM_RC2, dl_manualH_RC2, sCSV = loadParametros("H_Manual_RC2_Controller")
+        hVooM_RC2, ab_groundM_RC2, dl_manualH_RC2, ga_manualH_RC2, sCSV = loadParametros("H_Manual_RC2_Controller")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
@@ -41,6 +41,8 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundM_RC2))
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Spacing Between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manualH_RC2))
+        self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (+70 a -90 degrees)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=ga_manualH_RC2))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -58,6 +60,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         H = parameters['altura']
         terrain = parameters['above_ground']
         deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
+        gimbalAng = parameters['gimbalAng']
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -122,7 +125,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual_RC2_Controller", parameters['altura'], None, None, parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], None, None, None, None)
+        saveParametros("H_Manual_RC2_Controller", parameters['altura'], None, None, parameters['gimbalAng'], parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], None, None, None, None)
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -623,7 +626,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H_RC2", pontos_reproj, arquivo_csv, 1, 0, 0, 360, H, terrain, 0)
+            gerar_CSV("H_RC2", pontos_reproj, arquivo_csv, 1, 0, 0, 360, H, gimbalAng, terrain, 0)
 
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:

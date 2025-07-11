@@ -197,7 +197,7 @@
         "min_angle_cam": -90,
         "max_angle_cam": 0
     },
-    "Zenmuse H20 ZoomMin": {
+    "Zenmuse H20 Zoom Min": {
         "sensor_width": 7.76,
         "sensor_height": 5.82,
         "focal_length": 10.1,

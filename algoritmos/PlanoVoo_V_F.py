@@ -33,7 +33,7 @@ import csv
 
 class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, sCSV = loadParametros("VF")
+        hFac, altMinVF, dl_manualVF, df_manualVF, velocVF, tStayVF, ga_VF, sCSV = loadParametros("VF")
 
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Flight Base Line', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position Point of the Facade', types=[QgsProcessing.TypeVectorPoint]))
@@ -51,6 +51,8 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocVF))
         self.addParameter(QgsProcessingParameterNumber('tempo','Wait time for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayVF))
+        self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (+70 a -90 degrees)',
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=ga_VF))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -71,7 +73,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo   l
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
-        #caminho_kml = self.parameterAsFile(parameters, 'saida_kml', context)
+        gimbalAng = parameters['gimbalAng']
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =============================================================================
@@ -142,7 +144,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             raise ValueError(f"❌ Horizontal distance ({round(dist_ponto_base, 2)}) is 10 meters or less.")
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['saida_csv'], None, None, None, None, None, None, parameters['dl'], None, parameters['df'], parameters['alturaMin'], None)
+        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['saida_csv'], None, None, None, None, None, None, parameters['dl'], None, parameters['df'], parameters['alturaMin'], None)
 
         # Mostra valores parciais
         feedback.pushInfo(f"✅ Flight Line to Facade Distance: {round(dist_ponto_base, 2)}     Facade Height: {round(H, 2)}")
@@ -333,25 +335,12 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         feedback.pushInfo("")
         feedback.pushInfo("✅ Flight Line and Photo Spots completed.")
 
-        # =========Exportar para o Google  E a r t h   P r o  (kml)================================================
-
-        # feedback.pushInfo("")
-
-        # if caminho_kml and caminho_kml != 'TEMPORARY OUTPUT' and os.path.isdir(caminho_kml):
-        #     arquivo_kml = os.path.join(caminho_kml, "Pontos Fotos.kml")
-        #     gerar_kml(pontos_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
-
-        #     arquivo_kml = os.path.join(caminho_kml, "Linha de Voo.kml")
-        #     gerar_kml(linha_voo_reproj, arquivo_kml, crs_wgs, param_kml, feedback)
-        # else:
-        #     feedback.pushInfo("❌ kml path not specified. Export step skipped.")
-
         # =============L I T C H I==========================================================
 
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("VF", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, angulo_perpendicular, H)
+            gerar_CSV("VF", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, angulo_perpendicular, H, gimbalAng)
 
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:
