@@ -92,7 +92,7 @@ class Calculator_Dialog(QDialog):
         # Drone selection
         self.drone_data = {}
         self.droneCombo = QComboBox()
-        self.droneCombo.addItem("--- Select a Drone ---")
+        self.droneCombo.addItem("--- Select a Drone Model ---")
         try:
             with open(os.path.join(os.path.dirname(__file__), 'drone_data.json'), 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -127,7 +127,7 @@ class Calculator_Dialog(QDialog):
         gsd_box.setCollapsed(True)
         gsd_form = QFormLayout(gsd_box)
         self.altitudeInput.setValue(120)
-        gsd_form.addRow("Flight Altitude (2.5 a 500m):", self.altitudeInput)
+        gsd_form.addRow("Flight Altitude (2.5 to 500 m):", self.altitudeInput)
         gsd_form.addRow("Result:", self.gsdResult)
         gsd_form.addRow(gsd_btn)
         container_layout.addWidget(gsd_box)
@@ -142,7 +142,7 @@ class Calculator_Dialog(QDialog):
         altitude_box.setCollapsed(True)
         altitude_form = QFormLayout(altitude_box)
         self.gsdInput.setValue(5.0)
-        altitude_form.addRow("GSD: (0.5 a 20cm)", self.gsdInput)
+        altitude_form.addRow("GSD: (0.5 to 20 cm)", self.gsdInput)
         altitude_form.addRow("Result:", self.altitudeFromGSDResult)
         altitude_form.addRow(altitude_btn)
         container_layout.addWidget(altitude_box)
@@ -163,9 +163,9 @@ class Calculator_Dialog(QDialog):
         spacing_box.setCollapsed(True)
         spacing_form = QFormLayout(spacing_box)
         self.altitudeSpacing.setValue(120)
-        spacing_form.addRow("Flight Altitude (2.5 a 500m):", self.altitudeSpacing)
-        spacing_form.addRow("Frontal Overlap (50 a 95%):", self.frontOverlap)
-        spacing_form.addRow("Side Overlap (30 a 95%):", self.sideOverlap)
+        spacing_form.addRow("Flight Altitude (2.5 to 500 m):", self.altitudeSpacing)
+        spacing_form.addRow("Frontal Overlap (50 to 95%):", self.frontOverlap)
+        spacing_form.addRow("Side Overlap (30 to 95%):", self.sideOverlap)
         spacing_form.addRow("Result:", self.spacingResult)
         spacing_form.addRow(spacing_btn)
         container_layout.addWidget(spacing_box)
@@ -184,9 +184,9 @@ class Calculator_Dialog(QDialog):
         overlap_box.setCollapsed(True)
         overlap_form = QFormLayout(overlap_box)
         self.altitudeOverlap.setValue(120)
-        overlap_form.addRow("Flight Altitude (2.5 a 500m):", self.altitudeOverlap)
-        overlap_form.addRow("Forward Spacing Photos (1 a 50m):", self.spacingForward)
-        overlap_form.addRow("Side Spacing Lines (1 a 50m):", self.spacingSide)
+        overlap_form.addRow("Flight Altitude (2.5 to 500 m):", self.altitudeOverlap)
+        overlap_form.addRow("Forward Photo Spacing (1 to 50 m):", self.spacingForward)
+        overlap_form.addRow("Side Line Spacing (1 to 50 m):", self.spacingSide)
         overlap_form.addRow("Result:", self.overlapResult)
         overlap_form.addRow(overlap_btn)
         container_layout.addWidget(overlap_box)
@@ -235,7 +235,7 @@ class Calculator_Dialog(QDialog):
                 int(specs["image_height"]),
                 float(specs["focal_length"])
             )
-            self.gsdResult.setText(f"GSD: {gsd:.2f} cm/pixel")
+            self.gsdResult.setText(f"GSD = {gsd:.2f} cm/pixel")
         except Exception as e:
             QMessageBox.critical(self, "Calculation Error", str(e))
 
@@ -254,7 +254,7 @@ class Calculator_Dialog(QDialog):
                 int(specs["image_height"]),
                 float(specs["focal_length"])
             )
-            self.altitudeFromGSDResult.setText(f"Altitude: {alt:.2f} m")
+            self.altitudeFromGSDResult.setText(f"Altitude = {alt:.2f} m")
         except Exception as e:
             QMessageBox.critical(self, "Calculation Error", str(e))
 
@@ -273,7 +273,7 @@ class Calculator_Dialog(QDialog):
                 self.frontOverlap.value(),
                 self.sideOverlap.value()
             )
-            self.spacingResult.setText(f"Forward Photos: {fw:.1f} m; Side Lines: {sd:.1f} m")
+            self.spacingResult.setText(f"Forward Photos = {fw:.1f} m; Side Lines = {sd:.1f} m")
         except Exception as e:
             QMessageBox.critical(self, "Calculation Error", str(e))
 
@@ -292,7 +292,7 @@ class Calculator_Dialog(QDialog):
                 self.spacingForward.value(),
                 self.spacingSide.value()
             )
-            self.overlapResult.setText(f"Front Photos: {front:.1f} %; Side Lines: {side:.1f} %")
+            self.overlapResult.setText(f"Front Photos = {front:.1f} %; Side Lines = {side:.1f} %")
         except Exception as e:
             QMessageBox.critical(self, "Calculation Error", str(e))
 
