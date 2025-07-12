@@ -40,12 +40,11 @@ class GeoFlightPlanner:
 
         icon_dir = os.path.join(self.plugin_dir, "images")
 
-        # Create the main plugin menu only once
-        self.menu = self.iface.mainWindow().findChild(QMenu, "GeoFlight Planner")
-        if not self.menu:
-            self.menu = QMenu("GeoFlight Planner", self.iface.mainWindow())
-            self.menu.setObjectName("GeoFlight Planner")
-            self.iface.mainWindow().menuBar().addMenu(self.menu)
+        # Create the main plugin menu
+        self.menu = QMenu("GeoFlight Planner", self.iface.mainWindow())
+        self.menu.setObjectName("GeoFlight Planner")
+        standard_menu = self.iface.firstRightStandardMenu()
+        self.iface.mainWindow().menuBar().insertMenu(standard_menu.menuAction(), self.menu)
 
         # Clear previous actions if plugin was reloaded
         self.menu.clear()
@@ -71,27 +70,22 @@ class GeoFlightPlanner:
         self.menu.addMenu(vertical_menu)
 
     def unload(self):
-        # Remove all actions from the menu and toolbar
         for action in self.actions:
-            self.iface.removePluginMenu("GeoFlight Planner", action)
             self.iface.removeToolBarIcon(action)
+        self.actions = []
 
-        # Remove the plugin menu if it exists
-        try:
-            if self.menu and self.menu.menuAction():
+        if self.menu:
+            try:
                 self.iface.mainWindow().menuBar().removeAction(self.menu.menuAction())
-        except RuntimeError:
-            pass  # menu was already deleted
-        finally:
+            except RuntimeError:
+                pass  # menu já foi removido
             self.menu = None
 
-        # Unregister the processing provider safely
         try:
             QgsApplication.processingRegistry().removeProvider(self.provider)
         except RuntimeError:
-            pass  # Provider already deleted by QGIS internally
-        finally:
-            self.provider = None
+            pass
+        self.provider = None
 
     def _add_action(self, label, callback, parent_menu=None, icon_path=None):
         if icon_path and os.path.exists(icon_path):
@@ -102,12 +96,11 @@ class GeoFlightPlanner:
 
         action.triggered.connect(callback)
         self.actions.append(action)
+
         if parent_menu:
             parent_menu.addAction(action)
-        else:
-            self.iface.addPluginToMenu("GeoFlight Planner", action)
-            if self.menu:
-                self.menu.addAction(action)
+        elif self.menu:
+            self.menu.addAction(action)
 
     def _open_calculator(self):
         try:
