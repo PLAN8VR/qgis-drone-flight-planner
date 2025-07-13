@@ -296,9 +296,17 @@ class Calculator_Dialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "Calculation Error", str(e))
 
+
     def open_help(self):
-            help_file_path = os.path.join(os.path.dirname(__file__), '..', 'calculator', 'calculator.html')
-            if os.path.exists(help_file_path):
-                QDesktopServices.openUrl(QUrl.fromLocalFile(help_file_path))
-            else:
-                QMessageBox.warning(self, "Help", f"Help file not found: {help_file_path}")
+        url = QUrl("https://geoone.com.br/gsd-e-sobreposicao-no-voo-com-drones")
+        # help_file_path = os.path.join(os.path.dirname(__file__), '..', 'calculator', 'calculator.html')
+        # if os.path.exists(help_file_path):
+        #     QDesktopServices.openUrl(QUrl.fromLocalFile(help_file_path))
+        # else:
+        #     QMessageBox.warning(self, "Help", f"Help file not found: {help_file_path}")
+        if url.isValid():
+            QDesktopServices.openUrl(url)
+        else:
+            QMessageBox.warning(self, "Help", "The documentation link appears to be offline.")
+        
+        
