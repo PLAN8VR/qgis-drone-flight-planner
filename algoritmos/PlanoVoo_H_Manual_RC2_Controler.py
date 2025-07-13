@@ -41,7 +41,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundM_RC2))
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Spacing Between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manualH_RC2))
-        self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (+70 a -90 degrees)',
+        self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=ga_manualH_RC2))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
