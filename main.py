@@ -54,7 +54,7 @@ class GeoFlightPlanner:
         vertical_menu = QMenu("Vertical Flight Plan", self.menu)
 
         # Add Calculator action directly to main menu
-        self._add_action("GSD and Overlap - Mission Calculator...", self._open_calculator, icon_path=os.path.join(icon_dir, "GeoFlightPlanner.png"))
+        self._add_action("GSD and Overlap - Mission Calculator...", self._open_calculator, icon_path=os.path.join(icon_dir, "calculator.png"))
 
         # Add Horizontal submenu actions
         self._add_action("Manual", lambda: self._run_algorithm("Flight_Plan_H_Manual"), horizontal_menu, os.path.join(icon_dir, "Horizontal.png"))
