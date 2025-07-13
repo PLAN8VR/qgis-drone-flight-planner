@@ -51,7 +51,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocHm))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayHm))
-        self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (+70 a -90 degrees)',
+        self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=ga_manualH))
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
