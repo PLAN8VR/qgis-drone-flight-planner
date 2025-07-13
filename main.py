@@ -54,7 +54,7 @@ class GeoFlightPlanner:
         vertical_menu = QMenu("Vertical Flight Plan", self.menu)
 
         # Add Calculator action directly to main menu
-        self._add_action("GSD Calculator", self._open_calculator, icon_path=os.path.join(icon_dir, "GeoFlightPlanner.png"))
+        self._add_action("GSD and Overlap - Mission Calculator...", self._open_calculator, icon_path=os.path.join(icon_dir, "GeoFlightPlanner.png"))
 
         # Add Horizontal submenu actions
         self._add_action("Manual", lambda: self._run_algorithm("Flight_Plan_H_Manual"), horizontal_menu, os.path.join(icon_dir, "Horizontal.png"))
@@ -62,8 +62,8 @@ class GeoFlightPlanner:
         self._add_action("Sensor", lambda: self._run_algorithm("Flight_Plan_H_Sensor"), horizontal_menu, os.path.join(icon_dir, "Horizontal.png"))
 
         # Add Vertical submenu actions
-        self._add_action("Circular", lambda: self._run_algorithm("Flight_Plan_V_C"), vertical_menu, os.path.join(icon_dir, "Circular.jpg"))
-        self._add_action("Facade", lambda: self._run_algorithm("Flight_Plan_V_F"), vertical_menu, os.path.join(icon_dir, "Facade.jpg"))
+        self._add_action("Circular", lambda: self._run_algorithm("Flight_Plan_V_C"), vertical_menu, os.path.join(icon_dir, "Vertical.png"))
+        self._add_action("Facade", lambda: self._run_algorithm("Flight_Plan_V_F"), vertical_menu, os.path.join(icon_dir, "Vertical.png"))
 
         # Add submenus to main menu
         self.menu.addMenu(horizontal_menu)
