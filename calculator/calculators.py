@@ -77,7 +77,7 @@ class Calculator_Dialog(QDialog):
     def __init__(self, iface):
         super().__init__()
 
-        self.setWindowTitle("GSD Calculator")
+        self.setWindowTitle("GSD & Overlap - Mission Calculator")
         self.resize(550, 540)
 
         layout = QVBoxLayout(self)
@@ -123,7 +123,7 @@ class Calculator_Dialog(QDialog):
         self.gsdResult = QLabel("GSD: --")
         gsd_btn = QPushButton("Calculate GSD")
         gsd_btn.clicked.connect(self.calculate_gsd)
-        gsd_box = QgsCollapsibleGroupBox("GSD Calculation (by sensor dimension)")
+        gsd_box = QgsCollapsibleGroupBox("Ground Sample Distance (GSD) Estimation")
         gsd_box.setCollapsed(True)
         gsd_form = QFormLayout(gsd_box)
         self.altitudeInput.setValue(120)
@@ -138,7 +138,7 @@ class Calculator_Dialog(QDialog):
         self.altitudeFromGSDResult = QLabel("Altitude: --")
         altitude_btn = QPushButton("Calculate Altitude")
         altitude_btn.clicked.connect(self.calculate_altitude_from_gsd)
-        altitude_box = QgsCollapsibleGroupBox("Flight Altitude from GSD")
+        altitude_box = QgsCollapsibleGroupBox("Compute Altitude for desired GSD")
         altitude_box.setCollapsed(True)
         altitude_form = QFormLayout(altitude_box)
         self.gsdInput.setValue(5.0)
@@ -159,7 +159,7 @@ class Calculator_Dialog(QDialog):
         self.spacingResult = QLabel("Spacing: --")
         spacing_btn = QPushButton("Calculate Spacing")
         spacing_btn.clicked.connect(self.calculate_spacing)
-        spacing_box = QgsCollapsibleGroupBox("Ideal Spacing Calculation")
+        spacing_box = QgsCollapsibleGroupBox("Calculate Spacing from Overlaps")
         spacing_box.setCollapsed(True)
         spacing_form = QFormLayout(spacing_box)
         self.altitudeSpacing.setValue(120)
@@ -180,7 +180,7 @@ class Calculator_Dialog(QDialog):
         self.overlapResult = QLabel("Overlap: --")
         overlap_btn = QPushButton("Calculate Overlap")
         overlap_btn.clicked.connect(self.calculate_overlap)
-        overlap_box = QgsCollapsibleGroupBox("Overlap Calculation")
+        overlap_box = QgsCollapsibleGroupBox("Calculate Overlap from Spacing")
         overlap_box.setCollapsed(True)
         overlap_form = QFormLayout(overlap_box)
         self.altitudeOverlap.setValue(120)
@@ -192,7 +192,7 @@ class Calculator_Dialog(QDialog):
         container_layout.addWidget(overlap_box)
 
         # Help Button
-        help_btn = QPushButton("Open Help")
+        help_btn = QPushButton("User Guide")
         help_btn.clicked.connect(self.open_help)
         container_layout.addWidget(help_btn)
 
