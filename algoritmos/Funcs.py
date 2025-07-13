@@ -439,7 +439,7 @@ def loadParametros(tipoVoo):
       df_manualVF = my_settings.value("qgis-drone-flight-planner/df_manualVF", 3)
       velocVF = my_settings.value("qgis-drone-flight-planner/velocVF", 1)
       tStayVF = my_settings.value("qgis-drone-flight-planner/tStayVF", 2)
-      ga_VF = my_settings.value("qgis-drone-flight-planner/ga_VF", -90)
+      ga_VF = my_settings.value("qgis-drone-flight-planner/ga_VF", 0)
    elif tipoVoo == "VC":
       hObj = my_settings.value("qgis-drone-flight-planner/hObj", 15)
       altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 2.5)
@@ -447,7 +447,7 @@ def loadParametros(tipoVoo):
       dVertVC = my_settings.value("qgis-drone-flight-planner/dVertVC", 3)
       velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 1)
       tStayVC = my_settings.value("qgis-drone-flight-planner/tStayVC", 2)
-      ga_VC = my_settings.value("qgis-drone-flight-planner/ga_VC", -90)
+      ga_VC = my_settings.value("qgis-drone-flight-planner/ga_VC", 0)
 
    #skml = my_settings.value("qgis-drone-flight-planner/skml", "")
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
