@@ -91,7 +91,7 @@ It enables the planning of a precise vertical trajectory with appropriate overla
 ## How to contribute by learning more
 Purchase one of our online courses or e-book on the GeoOne platform.
 <div style="text-align: center;"><a
- href="https://geoone.com.br/pvplanodevoo2"><img
+ href="https://geoone.com.br/pvplanodevoo"><img
  style="border: 2px solid ;" alt="Plano de Voo"
  title="PLANO DE VOO NO QGIS"
  src="https://geoone.com.br/wp-content/uploads/2025/01/Plano-de-voo-no-QGIS.jpg"></a>
