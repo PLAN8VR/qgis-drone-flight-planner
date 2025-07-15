@@ -298,7 +298,7 @@ class Calculator_Dialog(QDialog):
 
 
     def open_help(self):
-        url = QUrl("https://geoone.com.br/gsd-e-sobreposicao-no-voo-com-drones")
+        url = QUrl("https://geoone.com.br/entendendo-o-gsd-e-a-sobreposicao-no-voo-com-drones/")
         # help_file_path = os.path.join(os.path.dirname(__file__), '..', 'calculator', 'calculator.html')
         # if os.path.exists(help_file_path):
         #     QDesktopServices.openUrl(QUrl.fromLocalFile(help_file_path))
