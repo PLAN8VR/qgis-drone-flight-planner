@@ -308,5 +308,3 @@ class Calculator_Dialog(QDialog):
             QDesktopServices.openUrl(url)
         else:
             QMessageBox.warning(self, "Help", "The documentation link appears to be offline.")
-        
-        
