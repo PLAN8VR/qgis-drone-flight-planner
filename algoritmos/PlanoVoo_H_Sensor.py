@@ -84,10 +84,10 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         # ===END Prof.Ilton===========================================================================================
         """
         
-        self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Horizontal Size (mm)',
+        self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Width (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=sensorH)) # default p/o Air 2S
-        self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Vertical Size (mm)',
+        self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Height (mm)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,defaultValue=sensorV)) # default p/o Air 2S
         self.addParameter(QgsProcessingParameterNumber('f','Sensor: Focal Length (mm)',
