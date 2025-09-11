@@ -32,31 +32,31 @@ import csv
 
 class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooS, ab_groundS, sLateral, sFrontal, velocHs, tStayHs, ga_sensor, sCSV = loadParametros("H_Sensor")
+        hVooS, abGroundS, dlS, dfS, velocS, tStayS, gimbalS, raster, csv = loadParametros("H_Sensor")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooS))
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundS))
+        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=abGroundS))
 
         
         self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (75% = 0.75)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.30,maxValue=0.95,defaultValue=sLateral))
+                                                       minValue=0.30,maxValue=0.95,defaultValue=dlS))
         self.addParameter(QgsProcessingParameterNumber('percF','Forward Overlap (85% = 0.85)',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0.50,maxValue=0.95,defaultValue=sFrontal))
+                                                       minValue=0.50,maxValue=0.95,defaultValue=dfS))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocHs))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocS))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayHs))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayS))
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=ga_sensor))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=gimbalS))
         
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=raster, optional=True))
 
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csv))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -154,7 +154,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             raise QgsProcessingException("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['saida_csv'], parameters['above_ground'], parameters['percL'], parameters['percF'], None, None, None, None, None)
+        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['raster'], parameters['saida_csv'], parameters['above_ground'], parameters['percL'], parameters['percF'], None, None, None, None)
 
          # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral

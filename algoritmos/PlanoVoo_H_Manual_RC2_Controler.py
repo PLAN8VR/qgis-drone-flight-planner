@@ -32,20 +32,20 @@ import csv
 
 class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooM_RC2, ab_groundM_RC2, dl_manualH_RC2, ga_manualH_RC2, sCSV = loadParametros("H_Manual_RC2_Controller")
+        hVooRC2, abGroundRC2, dlRC2, gimbalRC2, raster, csv = loadParametros("H_Manual_RC2_Controller")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooM_RC2))
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundM_RC2))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooRC2))
+        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=abGroundRC2))
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Spacing Between Flight Lines (m)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manualH_RC2))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dlRC2))
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=ga_manualH_RC2))
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=gimbalRC2))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=raster, optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csv))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -125,7 +125,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual_RC2_Controller", parameters['altura'], None, None, parameters['gimbalAng'], parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], None, None, None, None)
+        saveParametros("H_Manual_RC2_Controller", parameters['altura'], None, None, parameters['gimbalAng'], parameters['raster'], parameters['saida_csv'], parameters['above_ground'], parameters['dl'], None, None, None, None, None)
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography

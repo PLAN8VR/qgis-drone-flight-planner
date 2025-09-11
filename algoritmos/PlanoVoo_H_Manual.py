@@ -32,30 +32,30 @@ import csv
 
 class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, ga_manualH, sCSV = loadParametros("H_Manual")
+        hVooM, abGroundM, dlM, dfopM, dfM, velocM, tStayM, gimbalM, raster, csv = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooM))
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundM))
+        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=abGroundM))
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Spacing Between Flight Lines (m)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dl_manualH))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dlM))
 
         frontal = [self.tr('Distance (meters)'), self.tr('Time (seconds)')]
-        self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Front Spacing Between Photos -- Options'), options = frontal, defaultValue= df_op))
+        self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Front Spacing Between Photos -- Options'), options = frontal, defaultValue= dfopM))
         self.addParameter(QgsProcessingParameterNumber('df','Front Spacing Between Photos -- Value',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=df_manualH))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=dfM))
 
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocHm))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocM))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayHm))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayM))
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=ga_manualH))
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
+                                                       type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=gimbalM))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=raster, optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csv))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -139,7 +139,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['saida_csv'], parameters['above_ground'], None, None, None, None, None, parameters['dl'], parameters['df_op'], parameters['df'], None, None)
+        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['saida_csv'], parameters['above_ground'], parameters['dl'], parameters['df'], parameters['df_op'], None, None, None)
 
         # ===== Sobreposições digitadas manualmente ====================================================
 
