@@ -75,6 +75,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
+        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -139,7 +140,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['saida_csv'], parameters['above_ground'], parameters['dl'], parameters['df'], parameters['df_op'], None, None, None)
+        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], raster_layer, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df'], parameters['df_op'], None, None, None)
 
         # ===== Sobreposições digitadas manualmente ====================================================
 

@@ -82,6 +82,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
+        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -154,7 +155,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             raise QgsProcessingException("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['raster'], parameters['saida_csv'], parameters['above_ground'], parameters['percL'], parameters['percF'], None, None, None, None)
+        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], raster_layer, arquivo_csv, parameters['above_ground'], parameters['percL'], parameters['percF'], None, None, None, None)
 
          # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral

@@ -30,7 +30,7 @@ import os
 import math
 import csv
 
-class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
+class PlanoVoo_H_RC2(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         hVooRC2, abGroundRC2, dlRC2, gimbalRC2, raster, csv = loadParametros("H_Manual_RC2_Controller")
 
@@ -61,6 +61,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         terrain = parameters['above_ground']
         deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
         gimbalAng = parameters['gimbalAng']
+        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -125,7 +126,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual_RC2_Controller", parameters['altura'], None, None, parameters['gimbalAng'], parameters['raster'], parameters['saida_csv'], parameters['above_ground'], parameters['dl'], None, None, None, None, None)
+        saveParametros("H_Manual_RC2_Controller", parameters['altura'], None, None, parameters['gimbalAng'], raster_layer, arquivo_csv, parameters['above_ground'], parameters['dl'], None, None, None, None, None)
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -644,10 +645,10 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         return {}
 
     def name(self):
-        return 'Flight_Plan_H_Manual_RC2_Controler'
+        return 'PlanoVoo_H_RC2'
 
     def displayName(self):
-        return self.tr('Following terrain - Manual RC2_Controller')
+        return self.tr('Following terrain - RC2 Controller')
 
     def group(self):
         return 'Horizontal Flight'
@@ -659,7 +660,7 @@ class PlanoVoo_H_Manual_RC2_Controler(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return PlanoVoo_H_Manual_RC2_Controler()
+        return PlanoVoo_H_RC2()
 
     def tags(self):
         return self.tr('Flight Plan,Measure,Topography,Plano voo,Plano de voo,voo,drone,GeoOne').split(',')
