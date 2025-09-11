@@ -214,5 +214,14 @@
         "image_height": 3000,
         "min_angle_cam": -90,
         "max_angle_cam": 0
+    },
+    "Custom": {
+        "sensor_width": 10.1,
+        "sensor_height": 10.2,
+        "focal_length": 10.3,
+        "image_width": 7000.0,
+        "image_height": 7000.0,
+        "min_angle_cam": -90.0,
+        "max_angle_cam": 0.0
     }
 }

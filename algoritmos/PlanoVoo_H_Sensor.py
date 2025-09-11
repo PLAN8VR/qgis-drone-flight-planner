@@ -32,7 +32,7 @@ import csv
 
 class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooS, ab_groundS, sensorH, sensorV, dFocal, sLateral, sFrontal, velocHs, tStayHs, ga_sensor, sCSV = loadParametros("H_Sensor")
+        hVooS, ab_groundS, sLateral, sFrontal, velocHs, tStayHs, ga_sensor, sCSV = loadParametros("H_Sensor")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
@@ -40,61 +40,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooS))
         self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=ab_groundS))
 
-        """
-        # ===Prof.Ilton===============================================================================================
-
-        # --- Sensor Information ---
-        settings = QSettings()
-        selected_sensor = settings.value("GeoFlightPlanner/selected_sensor", None)
         
-        sensor_name_display_value = "No Sensor Selected!"
-        sensor_width_display_value = "N/A"
-        sensor_height_display_value = "N/A"
-        focal_length_display_value = "N/A"
-
-        if selected_sensor:
-            try:
-                sensor_data = get_drone_feature(selected_sensor)
-                required_fields = ["sensor_width", "sensor_height", "focal_length"]
-                
-                if all(field in sensor_data and sensor_data[field] is not None for field in required_fields):
-                    sensor_name_display_value = selected_sensor
-                    sensor_width_display_value = str(sensor_data.get('sensor_width')) + " mm"
-                    sensor_height_display_value = str(sensor_data.get('sensor_height')) + " mm"
-                    focal_length_display_value = str(sensor_data.get('focal_length')) + " mm"
-                else:
-                    sensor_name_display_value = f"Warning: '{selected_sensor}' (incomplete data)"
-                    # The N/A values will remain for width, height, focal length
-            except Exception as e:
-                sensor_name_display_value = f"Error loading: {selected_sensor}"
-                # The N/A values will remain for width, height, focal length
-        else:
-            # If no sensor selected, all values remain N/A and the name field shows the warning
-            pass # Already initialized with warning message
-
-        self.addParameter(QgsProcessingParameterString('sensor_name_display', 'Selected Sensor:',
-                                                        defaultValue=sensor_name_display_value))
-        self.addParameter(QgsProcessingParameterString('dc', 'Width (mm):', 
-                                                       defaultValue=sensor_width_display_value))
-        self.addParameter(QgsProcessingParameterString('dl', 'Height (mm):', 
-                                                       defaultValue=sensor_height_display_value))
-        self.addParameter(QgsProcessingParameterString('f', 'Focal Length (mm):',
-                                                        defaultValue=focal_length_display_value))
-
-        # ===END Prof.Ilton===========================================================================================
-        """
-        
-        self.addParameter(QgsProcessingParameterNumber('dc','Sensor: Width (mm)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=sensorH)) # default p/o Air 2S
-        self.addParameter(QgsProcessingParameterNumber('dl','Sensor: Height (mm)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=sensorV)) # default p/o Air 2S
-        self.addParameter(QgsProcessingParameterNumber('f','Sensor: Focal Length (mm)',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       minValue=0,defaultValue=dFocal)) # default p/o Air 2S
-        
-
         self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (75% = 0.75)',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.30,maxValue=0.95,defaultValue=sLateral))
@@ -107,6 +53,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayHs))
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=ga_sensor))
+        
         self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', optional=True))
 
         self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=sCSV))
@@ -123,37 +70,12 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         H = parameters['altura']
         terrain = parameters['above_ground']
-        dc = parameters['dc']
-        dl = parameters['dl']
-        f = parameters['f']
 
-        """
-        # ===Prof.Ilton===============================================================================================
-
-        # --- Get Sensor Data (dc, dl and f) from Global Settings ---
-        settings = QSettings()
-        selected_sensor = settings.value("GeoFlightPlanner/selected_sensor", None)
-        
-        if not selected_sensor:
-            raise QgsProcessingException("❌ No global sensor selected. Please select a sensor in the Calculators window (GeoFlightPlanner -> Calculators).")
-        
-        try:
-            sensor_data = get_drone_feature(selected_sensor)
-            required_fields = ["sensor_width", "sensor_height", "focal_length"]
-            if not all(field in sensor_data and sensor_data[field] is not None for field in required_fields):
-                raise QgsProcessingException(f"❌ Global sensor '{selected_sensor}' has incomplete data. Check 'sensor_width', 'sensor_height' and 'focal_length'.")
-
-            dc = float(sensor_data['dc'])
-            dl = float(sensor_data['dl'])
-            f = float(sensor_data['f'])
-
-        except Exception as e:
-            raise QgsProcessingException(f"❌ Error getting data from global sensor '{selected_sensor}': {e}. Please check the sensor settings in the Calculators window.")
-
-        feedback.pushInfo(f"✅ Sensor Parameters Used (Global): Width={dc}mm, Height={dl}mm, Focal Dist.={f}mm") 
-
-        # ===END Prof.Ilton===========================================================================================
-        """
+        # Drone Sensor Parameters from QGIS Settings - Calculator
+        s = QgsSettings()
+        dc = s.value("qgis-drone-flight-planner/sensorH")
+        dl = s.value("qgis-drone-flight-planner/sensorV")
+        f = s.value("qgis-drone-flight-planner/dFocal")
 
         percL = parameters['percL'] # Lateral
         percF = parameters['percF'] # Frontal
@@ -232,7 +154,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             raise QgsProcessingException("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['saida_csv'], parameters['above_ground'], parameters['dc'], parameters['dl'], parameters['f'], parameters['percL'], parameters['percF'], None, None, None, None, None)
+        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['saida_csv'], parameters['above_ground'], parameters['percL'], parameters['percF'], None, None, None, None, None)
 
          # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
@@ -762,7 +684,10 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
 
-    texto = """This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and calculating lateral and frontal overlaps based on the <b>drone's sensor parameters</b>.<br>
+    s = QgsSettings()
+    drone = s.value("qgis-drone-flight-planner/nameDrone", "No drone defined in Calculator")
+    print(drone)
+    texto = f"""<h3>Selected Drone from Calculator: <b>{drone}</b></h3><p>This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and calculating lateral and frontal overlaps based on the <b>drone's sensor parameters</b>.<br>
 It generates <b>CSV</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
 <p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
 <p><b>Learn more:</b><o:p></o:p></p>

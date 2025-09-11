@@ -19,12 +19,13 @@ __revision__ = '$Format:%H$'
 
 import os
 import json
+from qgis.core import QgsSettings
 
-from qgis.PyQt.QtWidgets import (QDialog, QScrollArea, QWidget, QVBoxLayout, QFormLayout,
+from qgis.PyQt.QtWidgets import (QDialog, QScrollArea, QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
     QGroupBox, QLabel, QComboBox, QPushButton, QDoubleSpinBox, QSpinBox, QMessageBox, QTableWidget, QTableWidgetItem)
 from qgis.gui import QgsCollapsibleGroupBox
 from qgis.PyQt.QtGui import QDesktopServices
-from qgis.PyQt.QtCore import QUrl
+from qgis.PyQt.QtCore import QUrl, Qt
 
 # Calculation functions
 def calculate_gsd_by_sensor(altitude_m, sensor_width_mm, sensor_height_mm, image_width_px, image_height_px, focal_mm):
@@ -102,10 +103,22 @@ class Calculator_Dialog(QDialog):
         except Exception as e:
             QMessageBox.warning(self, "Warning", f"Failed to load drone data:\n{e}")
 
+        self.saveButton = QPushButton("Save Custom Drone Data")
+        self.saveButton.setVisible(False)
+        self.saveButton.clicked.connect(self._save_custom_drone)
+
         drone_group = QGroupBox("GeoFlight Planner")
         form = QFormLayout(drone_group)
-        form.addRow("Drone Model:", self.droneCombo)
+        
+        # Combobox + SAVE button side by side
+        drone_row_widget = QWidget()
+        drone_row_layout = QHBoxLayout(drone_row_widget)
+        drone_row_layout.setContentsMargins(0, 0, 0, 0)
+        drone_row_layout.addWidget(self.droneCombo)
+        drone_row_layout.addWidget(self.saveButton)
+        form.addRow("Drone Model:", drone_row_widget)
 
+        # Sensor info table
         self.table = QTableWidget(0, 2)
         self.table.setHorizontalHeaderLabels(["Parameter", "Value"])
         self.table.verticalHeader().setVisible(False)
@@ -116,6 +129,11 @@ class Calculator_Dialog(QDialog):
 
         container_layout.addWidget(drone_group)
         self.droneCombo.currentIndexChanged.connect(self._update_sensor_info)
+
+        # Save buttom, data Drone in QGIS Environment
+        self.saveToQGISButton = QPushButton("Save Drone Data to Flight Planner")
+        self.saveToQGISButton.clicked.connect(self._save_to_qgis_environment)
+        form.addRow(self.saveToQGISButton)
 
         # GSD Section
         self.altitudeInput = QDoubleSpinBox()
@@ -197,12 +215,15 @@ class Calculator_Dialog(QDialog):
         container_layout.addWidget(help_btn)
 
     def _get_specs(self):
-        model = self.droneCombo.currentText()
-        return self.drone_data.get(model) if model in self.drone_data else None
+        selected = self.droneCombo.currentText()
+        return self.drone_data.get(selected)
 
     def _update_sensor_info(self):
-        specs = self._get_specs()
+        selected = self.droneCombo.currentText()
         self.table.setRowCount(0)
+        self.saveButton.setVisible(selected == "Custom")
+
+        specs = self._get_specs()
         if specs:
             units = {
                 "sensor_width": "mm",
@@ -215,11 +236,104 @@ class Calculator_Dialog(QDialog):
             }
             for row, (key, value) in enumerate(specs.items()):
                 self.table.insertRow(row)
+
+                # Coluna Parameter (sempre não editável)
+                key_item = QTableWidgetItem(str(key))
+                key_item.setFlags(key_item.flags() & ~Qt.ItemIsEditable)
+                self.table.setItem(row, 0, key_item)
+
+                # Coluna Value (editável apenas se for Custom)
                 unit = units.get(key, "")
                 display_value = f"{value} {unit}" if unit else str(value)
-                self.table.setItem(row, 0, QTableWidgetItem(str(key)))
-                self.table.setItem(row, 1, QTableWidgetItem(display_value))
+                value_item = QTableWidgetItem(display_value)
+                if selected != "Custom":
+                    value_item.setFlags(value_item.flags() & ~Qt.ItemIsEditable)
+                self.table.setItem(row, 1, value_item)
 
+    def _save_custom_drone(self):
+        custom_specs = {}
+        for row in range(self.table.rowCount()):
+            key_item = self.table.item(row, 0)
+            value_item = self.table.item(row, 1)
+            if key_item and value_item:
+                key = key_item.text()
+                value_text = value_item.text().split()[0]  # remove unidade
+                try:
+                    value = float(value_text)
+                except ValueError:
+                    QMessageBox.warning(self, "Invalid Input", f"Value for '{key}' is not a valid number.")
+                    return
+                custom_specs[key] = value
+
+        try:
+            json_path = os.path.join(os.path.dirname(__file__), 'drone_data.json')
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            data["Custom"] = custom_specs
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
+            QMessageBox.information(self, "Saved", "Custom drone data saved successfully.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save custom drone data:\n{e}")
+            
+    def _save_to_qgis_environment(self):
+        selected = self.droneCombo.currentText()
+        if selected == "--- Select a Drone Model ---":
+            QMessageBox.warning(self, "Warning", "Please select a valid drone model.")
+            return
+
+        # Mapeamento entre chave da tabela e nome da variável no QGIS
+        key_map = {
+            "sensor_width": "sensorH",
+            "sensor_height": "sensorV",
+            "focal_length": "dFocal",
+            "image_width": "imageW",
+            "image_height": "imageH",
+            "min_angle_cam": "minAngleCam",
+            "max_angle_cam": "maxAngleCam"
+        }
+
+        values_to_save = {}
+
+        for row in range(self.table.rowCount()):
+            key_item = self.table.item(row, 0)
+            value_item = self.table.item(row, 1)
+
+            if not key_item or not value_item:
+                continue
+
+            key = key_item.text()
+            value_text = value_item.text().split()[0]  # remove unidade
+
+            # Validação obrigatória para Custom
+            if selected == "Custom":
+                if value_text.strip() == "":
+                    QMessageBox.warning(self, "Incomplete Data", f"Missing value for '{key}'. Please fill all fields before saving.")
+                    return
+                try:
+                    float(value_text)
+                except ValueError:
+                    QMessageBox.warning(self, "Invalid Input", f"Value for '{key}' must be numeric.")
+                    return
+
+            try:
+                value = float(value_text)
+            except ValueError:
+                value = 0  # fallback silencioso para drones não-Custom
+
+            if key in key_map:
+                values_to_save[key_map[key]] = value
+
+        try:
+            settings = QgsSettings()
+            settings.setValue("qgis-drone-flight-planner/nameDrone", selected)
+            for var_name, var_value in values_to_save.items():
+                settings.setValue(f"qgis-drone-flight-planner/{var_name}", var_value)
+
+            QMessageBox.information(self, "Saved", f"Drone '{selected}' parameters saved to QGIS environment.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save parameters:\n{e}")
+               
     def calculate_gsd(self):
         specs = self._get_specs()
         if not specs:

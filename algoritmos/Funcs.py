@@ -410,9 +410,6 @@ def loadParametros(tipoVoo):
    if tipoVoo == "H_Sensor":
       hVooS = my_settings.value("qgis-drone-flight-planner/hVooS", 100)
       ab_groundS = my_settings.value("qgis-drone-flight-planner/ab_groundS", True)
-      sensorH = my_settings.value("qgis-drone-flight-planner/sensorH", 13.2) # Air 2S
-      sensorV = my_settings.value("qgis-drone-flight-planner/sensorV", 8.8)
-      dFocal = my_settings.value("qgis-drone-flight-planner/dFocal", 8.38)
       sLateral = my_settings.value("qgis-drone-flight-planner/sLateral", 0.75)
       sFrontal = my_settings.value("qgis-drone-flight-planner/sFrontal", 0.85)
       velocHs = my_settings.value("qgis-drone-flight-planner/velocHs", 8)
@@ -453,7 +450,7 @@ def loadParametros(tipoVoo):
    sCSV = my_settings.value("qgis-drone-flight-planner/sCSV", "")
 
    if tipoVoo == "H_Sensor":
-      return hVooS, ab_groundS, sensorH, sensorV, dFocal, sLateral, sFrontal, velocHs, tStayHs, ga_sensor, sCSV
+      return hVooS, ab_groundS, sLateral, sFrontal, velocHs, tStayHs, ga_sensor, sCSV
    elif tipoVoo == "H_Manual":
       return hVooM, ab_groundM, dl_manualH, df_op, df_manualH, velocHm, tStayHm, ga_manualH, sCSV
    elif tipoVoo == "H_Manual_RC2_Controller":
@@ -463,15 +460,12 @@ def loadParametros(tipoVoo):
    elif tipoVoo == "VC":
       return hObj, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, ga_VC, sCSV
 
-def saveParametros(tipoVoo, h, v, t, ga, sCSV, ab_ground=None, sensorH=None, sensorV=None, dFocal=None, sLateral=None, sFrontal=None, dl=None, dfop=None, df=None, alt_min=None, nPartesVC=None):
+def saveParametros(tipoVoo, h, v, t, ga, sCSV, ab_ground=None, sLateral=None, sFrontal=None, dl=None, dfop=None, df=None, alt_min=None, nPartesVC=None):
    my_settings = QgsSettings()
 
    if tipoVoo == "H_Sensor":
       my_settings.setValue("qgis-drone-flight-planner/hVooS", h)
       my_settings.setValue("qgis-drone-flight-planner/ab_groundS", ab_ground)
-      my_settings.setValue("qgis-drone-flight-planner/sensorH", sensorH)
-      my_settings.setValue("qgis-drone-flight-planner/sensorV", sensorV)
-      my_settings.setValue("qgis-drone-flight-planner/dFocal", dFocal)
       my_settings.setValue("qgis-drone-flight-planner/sLateral", sLateral)
       my_settings.setValue("qgis-drone-flight-planner/sFrontal", sFrontal)
       my_settings.setValue("qgis-drone-flight-planner/velocHs", v)
