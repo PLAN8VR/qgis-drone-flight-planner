@@ -404,110 +404,131 @@ def duplicaPontoInicial(layer):
 
    return
 
+def saveParametros(tipoVoo, h, v, t, gimbal, raster, csv,
+                   abGround=None, dl=None, df=None, dfop=None,
+                   altMin=None, nPartesVC=None, dVertVC=None):
+    s = QgsSettings()
+    prefixo = "qgis-drone-flight-planner/"
+
+    if tipoVoo == "H_Sensor":
+        s.setValue(prefixo + "hVooS", h)
+        s.setValue(prefixo + "abGroundS", abGround)
+        s.setValue(prefixo + "dlS", dl)
+        s.setValue(prefixo + "dfS", df)
+        s.setValue(prefixo + "velocS", v)
+        s.setValue(prefixo + "tStayS", t)
+        s.setValue(prefixo + "gimbalS", gimbal)
+        s.setValue(prefixo + "rasterS", raster)
+        s.setValue(prefixo + "csvS", csv)
+
+    elif tipoVoo == "H_Manual":
+        s.setValue(prefixo + "hVooM", h)
+        s.setValue(prefixo + "abGroundM", abGround)
+        s.setValue(prefixo + "dlM", dl)
+        s.setValue(prefixo + "dfopM", dfop)
+        s.setValue(prefixo + "dfM", df)
+        s.setValue(prefixo + "velocM", v)
+        s.setValue(prefixo + "tStayM", t)
+        s.setValue(prefixo + "gimbalM", gimbal)
+        s.setValue(prefixo + "rasterM", raster)
+        s.setValue(prefixo + "csvM", csv)
+
+    elif tipoVoo == "H_Manual_RC2_Controller":
+        s.setValue(prefixo + "hVooRC2", h)
+        s.setValue(prefixo + "abGroundRC2", abGround)
+        s.setValue(prefixo + "dlRC2", dl)
+        s.setValue(prefixo + "gimbalRC2", gimbal)
+        s.setValue(prefixo + "rasterRC2", raster)
+        s.setValue(prefixo + "csvRC2", csv)
+
+    elif tipoVoo == "VF":
+        s.setValue(prefixo + "hObjVF", h)
+        s.setValue(prefixo + "altMinVF", altMin)
+        s.setValue(prefixo + "dlVF", dl)
+        s.setValue(prefixo + "dfVF", df)
+        s.setValue(prefixo + "velocVF", v)
+        s.setValue(prefixo + "tStayVF", t)
+        s.setValue(prefixo + "gimbalVF", gimbal)
+        s.setValue(prefixo + "rasterVF", raster)
+        s.setValue(prefixo + "csvVF", csv)
+
+    elif tipoVoo == "VC":
+        s.setValue(prefixo + "hObjVC", h)
+        s.setValue(prefixo + "altMinVC", altMin)
+        s.setValue(prefixo + "nPartesVC", nPartesVC)
+        s.setValue(prefixo + "dVertVC", dVertVC)
+        s.setValue(prefixo + "velocVC", v)
+        s.setValue(prefixo + "tStayVC", t)
+        s.setValue(prefixo + "gimbalVC", gimbal)
+        s.setValue(prefixo + "rasterVC", raster)
+        s.setValue(prefixo + "csvVC", csv)
+
 def loadParametros(tipoVoo):
-   my_settings = QgsSettings()
+    s = QgsSettings()
+    prefixo = "qgis-drone-flight-planner/"
 
-   if tipoVoo == "H_Sensor":
-      hVooS = my_settings.value("qgis-drone-flight-planner/hVooS", 100)
-      abGroundS = my_settings.value("qgis-drone-flight-planner/abGroundS", True)
-      dlS = my_settings.value("qgis-drone-flight-planner/dlS", 0.75)
-      dfS = my_settings.value("qgis-drone-flight-planner/dfS", 0.85)
-      velocS = my_settings.value("qgis-drone-flight-planner/velocS", 8)
-      tStayS = my_settings.value("qgis-drone-flight-planner/tStayS", 0)
-      gimbalS = my_settings.value("qgis-drone-flight-planner/gimbalS", -90)
-   elif tipoVoo == "H_Manual":
-      hVooM = my_settings.value("qgis-drone-flight-planner/hVooM", 100)
-      abGroundM = my_settings.value("qgis-drone-flight-planner/abGroundM", True)
-      dlM = my_settings.value("qgis-drone-flight-planner/dlM", 10)
-      dfopM = my_settings.value("qgis-drone-flight-planner/dfopM", 0)
-      dfM = my_settings.value("qgis-drone-flight-planner/dfM", 10)
-      velocM = my_settings.value("qgis-drone-flight-planner/velocM", 8)
-      tStayM = my_settings.value("qgis-drone-flight-planner/tStayM", 0)
-      gimbalM = my_settings.value("qgis-drone-flight-planner/gimbalM", -90)
-   elif tipoVoo == "H_Manual_RC2_Controller":
-      hVooRC2 = my_settings.value("qgis-drone-flight-planner/hVooRC2", 100)
-      abGroundRC2 = my_settings.value("qgis-drone-flight-planner/abGroundRC2", True)
-      dlRC2 = my_settings.value("qgis-drone-flight-planner/dlRC2", 10)
-      gimbalRC2 = my_settings.value("qgis-drone-flight-planner/gimbalRC2", -90)
-   elif tipoVoo == "VF":
-      hVooVF = my_settings.value("qgis-drone-flight-planner/hVooVF", 15)
-      altMinVF = my_settings.value("qgis-drone-flight-planner/altMinVF", 2.5)
-      dlVF = my_settings.value("qgis-drone-flight-planner/dlVF", 5)
-      dfVF = my_settings.value("qgis-drone-flight-planner/dfVF", 3)
-      velocVF = my_settings.value("qgis-drone-flight-planner/velocVF", 1)
-      tStayVF = my_settings.value("qgis-drone-flight-planner/tStayVF", 2)
-      gimbalVF = my_settings.value("qgis-drone-flight-planner/gimbalVF", 0)
-   elif tipoVoo == "VC":
-      hVooVC = my_settings.value("qgis-drone-flight-planner/hVooVC", 15)
-      altMinVC = my_settings.value("qgis-drone-flight-planner/altMinVC", 2.5)
-      nPartesVC = my_settings.value("qgis-drone-flight-planner/nPartesVC", 8)
-      dVertVC = my_settings.value("qgis-drone-flight-planner/dVertVC", 3)
-      velocVC = my_settings.value("qgis-drone-flight-planner/velocVC", 1)
-      tStayVC = my_settings.value("qgis-drone-flight-planner/tStayVC", 2)
-      gimbalVC = my_settings.value("qgis-drone-flight-planner/gimbalVC", 0)
+    if tipoVoo == "H_Sensor":
+        return (
+            s.value(prefixo + "hVooS", 100),
+            s.value(prefixo + "abGroundS", True),
+            s.value(prefixo + "dlS", 0.75),
+            s.value(prefixo + "dfS", 0.85),
+            s.value(prefixo + "velocS", 8),
+            s.value(prefixo + "tStayS", 0),
+            s.value(prefixo + "gimbalS", -90),
+            s.value(prefixo + "rasterS", ""),
+            s.value(prefixo + "csvS", "")
+        )
 
-   raster = my_settings.value("qgis-drone-flight-planner/raster", "")
-   #skml = my_settings.value("qgis-drone-flight-planner/skml", "")
-   csv = my_settings.value("qgis-drone-flight-planner/csv", "")
+    elif tipoVoo == "H_Manual":
+        return (
+            s.value(prefixo + "hVooM", 100),
+            s.value(prefixo + "abGroundM", True),
+            s.value(prefixo + "dlM", 10),
+            s.value(prefixo + "dfopM", 0),
+            s.value(prefixo + "dfM", 10),
+            s.value(prefixo + "velocM", 8),
+            s.value(prefixo + "tStayM", 0),
+            s.value(prefixo + "gimbalM", -90),
+            s.value(prefixo + "rasterM", ""),
+            s.value(prefixo + "csvM", "")
+        )
 
-   if tipoVoo == "H_Sensor":
-      return hVooS, abGroundS, dlS, dfS, velocS, tStayS, gimbalS, raster, csv
-   elif tipoVoo == "H_Manual":
-      return hVooM, abGroundM, dlM, dfopM, dfM, velocM, tStayM, gimbalM, raster, csv
-   elif tipoVoo == "H_Manual_RC2_Controller":
-      return hVooRC2, abGroundRC2, dlRC2, gimbalRC2, raster, csv
-   elif tipoVoo == "VF":
-      return hVooVF, altMinVF, dlVF, dfVF, velocVF, tStayVF, gimbalVF, raster, csv
-   elif tipoVoo == "VC":
-      return hVooVC, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, gimbalVC, raster, csv
+    elif tipoVoo == "H_Manual_RC2_Controller":
+        return (
+            s.value(prefixo + "hVooRC2", 100),
+            s.value(prefixo + "abGroundRC2", True),
+            s.value(prefixo + "dlRC2", 10),
+            s.value(prefixo + "gimbalRC2", -90),
+            s.value(prefixo + "rasterRC2", ""),
+            s.value(prefixo + "csvRC2", "")
+        )
 
-def saveParametros(tipoVoo, h, v, t, gimbal, raster, csv, abGround=None, dl=None, df=None, dfop=None, altMin=None, nPartesVC=None, dVertVC=None):
-   my_settings = QgsSettings()
+    elif tipoVoo == "VF":
+        return (
+            s.value(prefixo + "hObjVF", 15),
+            s.value(prefixo + "altMinVF", 2.5),
+            s.value(prefixo + "dlVF", 5),
+            s.value(prefixo + "dfVF", 3),
+            s.value(prefixo + "velocVF", 1),
+            s.value(prefixo + "tStayVF", 2),
+            s.value(prefixo + "gimbalVF", 0),
+            s.value(prefixo + "rasterVF", ""),
+            s.value(prefixo + "csvVF", "")
+        )
 
-   if tipoVoo == "H_Sensor":
-      my_settings.setValue("qgis-drone-flight-planner/hVooS", h)
-      my_settings.setValue("qgis-drone-flight-planner/abGroundS", abGround)
-      my_settings.setValue("qgis-drone-flight-planner/dlS", dl)
-      my_settings.setValue("qgis-drone-flight-planner/dfS", df)
-      my_settings.setValue("qgis-drone-flight-planner/velocS", v)
-      my_settings.setValue("qgis-drone-flight-planner/tStayS", t)
-      my_settings.setValue("qgis-drone-flight-planner/gimbalS", gimbal)
-   elif tipoVoo == "H_Manual":
-      my_settings.setValue("qgis-drone-flight-planner/hVooM", h)
-      my_settings.setValue("qgis-drone-flight-planner/abGroundM", abGround)
-      my_settings.setValue("qgis-drone-flight-planner/dlM", dl)
-      my_settings.setValue("qgis-drone-flight-planner/dfopM", dfop)
-      my_settings.setValue("qgis-drone-flight-planner/dfM", df)
-      my_settings.setValue("qgis-drone-flight-planner/velocM", v)
-      my_settings.setValue("qgis-drone-flight-planner/tStayM", t)
-      my_settings.setValue("qgis-drone-flight-planner/gimbalM", gimbal)
-   elif tipoVoo == "H_Manual_RC2_Controller":
-      my_settings.setValue("qgis-drone-flight-planner/hVooRC2", h)
-      my_settings.setValue("qgis-drone-flight-planner/abGroundRC2", abGround)
-      my_settings.setValue("qgis-drone-flight-planner/dlRC2", dl)
-      my_settings.setValue("qgis-drone-flight-planner/gimbalRC2", gimbal)
-   elif tipoVoo == "VF":
-      my_settings.setValue("qgis-drone-flight-planner/hVooVF", h)
-      my_settings.setValue("qgis-drone-flight-planner/altMinVF", altMin)
-      my_settings.setValue("qgis-drone-flight-planner/dlVF", dl)
-      my_settings.setValue("qgis-drone-flight-planner/dfVF", df)
-      my_settings.setValue("qgis-drone-flight-planner/velocVF", v)
-      my_settings.setValue("qgis-drone-flight-planner/tStayVF", t)
-      my_settings.setValue("qgis-drone-flight-planner/gimbalVF", gimbal)
-   elif tipoVoo == "VC":
-      my_settings.setValue("qgis-drone-flight-planner/hVooVC", h)
-      my_settings.setValue("qgis-drone-flight-planner/altMinVC", altMin)
-      my_settings.setValue("qgis-drone-flight-planner/nPartesVC", nPartesVC)
-      my_settings.setValue("qgis-drone-flight-planner/dVertVC", dVertVC)
-      my_settings.setValue("qgis-drone-flight-planner/velocVC", v)
-      my_settings.setValue("qgis-drone-flight-planner/tStayVC", t)
-      my_settings.setValue("qgis-drone-flight-planner/gimbalVC", gimbal)
-
-   my_settings.setValue("qgis-drone-flight-planner/sCSV", raster)
-   #my_settings.setValue("qgis-drone-flight-planner/skml", skml)
-   my_settings.setValue("qgis-drone-flight-planner/sCSV", csv)
-
-   return
+    elif tipoVoo == "VC":
+        return (
+            s.value(prefixo + "hObjVC", 15),
+            s.value(prefixo + "altMinVC", 2.5),
+            s.value(prefixo + "nPartesVC", 8),
+            s.value(prefixo + "dVertVC", 3),
+            s.value(prefixo + "velocVC", 1),
+            s.value(prefixo + "tStayVC", 2),
+            s.value(prefixo + "gimbalVC", 0),
+            s.value(prefixo + "rasterVC", ""),
+            s.value(prefixo + "csvVC", "")
+        )
 
 def removeLayersReproj(txtFinal):
    layers_to_remove = []

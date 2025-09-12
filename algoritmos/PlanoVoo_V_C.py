@@ -32,14 +32,14 @@ import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooVC, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, gimbalVC, raster, csv = loadParametros("VC")
+        hObjVC, altMinVC, nPartesVC, dVertVC, velocVC, tStayVC, gimbalVC, rasterVC, csvVC = loadParametros("VC")
 
         self.addParameter(QgsProcessingParameterVectorLayer('circulo_base','Flight Base Circle', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_inicial','Start Point', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Object Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooVC))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hObjVC))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0.5,defaultValue=altMinVC))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMinVC))
         self.addParameter(QgsProcessingParameterNumber('num_partes','Horizontal Division into PARTS of Base Circle',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=nPartesVC))
         self.addParameter(QgsProcessingParameterNumber('deltaVertical','Vertical Spacing (m)',
@@ -50,9 +50,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayVC))
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=gimbalVC))
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=raster, optional=True))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=rasterVC, optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csv))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csvVC))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -130,7 +130,16 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
             raise ValueError("❌ Start Point must contain only on point.")
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VC", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['raster'], parameters['saida_csv'], None, None, None, None, parameters['alturaMin'], parameters['num_partes'], parameters['deltaVertical'])
+        saveParametros("VC",
+                        h=parameters['altura'],
+                        v=parameters['velocidade'],
+                        t=parameters['tempo'],
+                        gimbal=parameters['gimbalAng'],
+                        raster=raster_layer.source() if raster_layer else "",
+                        csv=arquivo_csv,
+                        altMin=parameters['alturaMin'],
+                        nPartesVC=parameters['num_partes'],
+                        dVertVC=parameters['deltaVertical'])
 
         # ===== Cálculos Iniciais ================================================
 

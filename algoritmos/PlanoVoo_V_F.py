@@ -33,12 +33,12 @@ import csv
 
 class PlanoVoo_V_F(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooVF, altMinVF, dlVF, dfVF, velocVF, tStayVF, gimbalVF, raster, csv = loadParametros("VF")
+        hObjVF, altMinVF, dlVF, dfVF, velocVF, tStayVF, gimbalVF, rasterVF, csvVF = loadParametros("VF")
 
         self.addParameter(QgsProcessingParameterVectorLayer('linha_base','Flight Base Line', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterVectorLayer('ponto_base','Position Point of the Facade', types=[QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterNumber('altura','Facade Height (m)',
-                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hVooVF))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hObjVF))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMinVF))
         self.addParameter(QgsProcessingParameterNumber('dl','Spacing between Flight Lines (m)',
@@ -53,9 +53,9 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayVF))
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=gimbalVF))
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=raster, optional=True))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=rasterVF, optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csv))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csvVF))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -70,7 +70,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         H = parameters['altura']
         h = parameters['alturaMin']
         deltaLat = parameters['dl']   # Distância das linhas de voo paralelas - sem cálculo
-        deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo   l
+        deltaFront = parameters['df'] # Espaçamento Frontal entre as fotografias- sem cálculo
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
@@ -144,7 +144,16 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
             raise ValueError(f"❌ Horizontal distance ({round(dist_ponto_base, 2)}) is 10 meters or less.")
 
         # ===== Grava Parâmetros =====================================================
-        saveParametros("VF", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], parameters['raster'], parameters['saida_csv'], None, parameters['dl'], None, parameters['df'], None, parameters['alturaMin'], None, None)
+        saveParametros("VF",
+                        h=parameters['altura'],
+                        v=parameters['velocidade'],
+                        t=parameters['tempo'],
+                        gimbal=parameters['gimbalAng'],
+                        raster=raster_layer.source() if raster_layer else "",
+                        csv=arquivo_csv,
+                        altMin=parameters['alturaMin'],
+                        dl=parameters['dl'],
+                        df=parameters['df'])
 
         # Mostra valores parciais
         feedback.pushInfo(f"✅ Flight Line to Facade Distance: {round(dist_ponto_base, 2)}     Facade Height: {round(H, 2)}")

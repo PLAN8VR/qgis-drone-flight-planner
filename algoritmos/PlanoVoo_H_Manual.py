@@ -32,13 +32,13 @@ import csv
 
 class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooM, abGroundM, dlM, dfopM, dfM, velocM, tStayM, gimbalM, raster, csv = loadParametros("H_Manual")
+        hVooM, abGroundM, dlM, dfopM, dfM, velocM, tStayM, gimbalM, rasterM, csvM = loadParametros("H_Manual")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooM))
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=abGroundM))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hVooM))
+        self.addParameter(QgsProcessingParameterBoolean('aboveGround', 'Above Ground (Follow Terrain)', defaultValue=abGroundM))
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Spacing Between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dlM))
 
@@ -53,9 +53,9 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Integer, minValue=0,maxValue=10,defaultValue=tStayM))
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=gimbalM))
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=raster, optional=True))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=rasterM, optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csv))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csvM))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -75,7 +75,6 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
-        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -140,8 +139,18 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], raster_layer, arquivo_csv, parameters['above_ground'], parameters['dl'], parameters['df'], parameters['df_op'], None, None, None)
-
+        saveParametros("H_Manual",
+                        h=parameters['altura'],
+                        v=parameters['velocidade'],
+                        t=parameters['tempo'],
+                        gimbal=parameters['gimbalAng'],
+                        raster=raster_layer.source() if raster_layer else "",
+                        csv=arquivo_csv,
+                        abGround=parameters['aboveGround'],
+                        dl=parameters['dist_lateral'],
+                        df=parameters['dist_frontal'],
+                        dfop=parameters['dist_frontal_opcional'])
+        
         # ===== Sobreposições digitadas manualmente ====================================================
 
         if deltaFront_op == 0:

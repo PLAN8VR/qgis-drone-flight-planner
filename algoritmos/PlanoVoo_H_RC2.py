@@ -32,20 +32,20 @@ import csv
 
 class PlanoVoo_H_RC2(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooRC2, abGroundRC2, dlRC2, gimbalRC2, raster, csv = loadParametros("H_Manual_RC2_Controller")
+        hVooRC2, abGroundRC2, dlRC2, gimbalRC2, rasterRC2, csvRC2 = loadParametros("H_Manual_RC2_Controller")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooRC2))
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=abGroundRC2))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hVooRC2))
+        self.addParameter(QgsProcessingParameterBoolean('aboveGround', 'Above Ground (Follow Terrain)', defaultValue=abGroundRC2))
         self.addParameter(QgsProcessingParameterNumber('dl','Lateral Spacing Between Flight Lines (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dlRC2))
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=gimbalRC2))
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=raster, optional=True))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=rasterRC2, optional=True))
         #self.addParameter(QgsProcessingParameterFolderDestination('saida_kml', 'Output Folder for kml (Google Earth)', defaultValue=skml, optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csv))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csvRC2))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -61,7 +61,6 @@ class PlanoVoo_H_RC2(QgsProcessingAlgorithm):
         terrain = parameters['above_ground']
         deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
         gimbalAng = parameters['gimbalAng']
-        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -126,7 +125,13 @@ class PlanoVoo_H_RC2(QgsProcessingAlgorithm):
             raise ValueError("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Manual_RC2_Controller", parameters['altura'], None, None, parameters['gimbalAng'], raster_layer, arquivo_csv, parameters['above_ground'], parameters['dl'], None, None, None, None, None)
+        saveParametros("H_Manual_RC2_Controller",
+                        h=parameters['altura'],
+                        gimbal=parameters['gimbalAng'],
+                        raster=raster_layer.source() if raster_layer else "",
+                        csv=arquivo_csv,
+                        abGround=parameters['aboveGround'],
+                        dl=parameters['dist_lateral'])
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography
@@ -645,7 +650,7 @@ class PlanoVoo_H_RC2(QgsProcessingAlgorithm):
         return {}
 
     def name(self):
-        return 'PlanoVoo_H_RC2'
+        return 'Flight_Plan_H_RC2'
 
     def displayName(self):
         return self.tr('Following terrain - RC2 Controller')

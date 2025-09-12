@@ -32,13 +32,13 @@ import csv
 
 class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
-        hVooS, abGroundS, dlS, dfS, velocS, tStayS, gimbalS, raster, csv = loadParametros("H_Sensor")
+        hVooS, abGroundS, dlS, dfS, velocS, tStayS, gimbalS, rasterS, csvS = loadParametros("H_Sensor")
 
         self.addParameter(QgsProcessingParameterVectorLayer('terreno', 'Area', types=[QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterVectorLayer('primeira_linha','First line - direction flight', types=[QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterNumber('altura','Flight Height (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=2,defaultValue=hVooS))
-        self.addParameter(QgsProcessingParameterBoolean('above_ground', 'Above Ground (Follow Terrain)', defaultValue=abGroundS))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hVooS))
+        self.addParameter(QgsProcessingParameterBoolean('aboveGround', 'Above Ground (Follow Terrain)', defaultValue=abGroundS))
 
         
         self.addParameter(QgsProcessingParameterNumber('percL','Side Overlap (75% = 0.75)',
@@ -54,9 +54,9 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber('gimbalAng','Gimbal Angle (degrees)',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=-90, maxValue=70, defaultValue=gimbalS))
         
-        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=raster, optional=True))
+        self.addParameter(QgsProcessingParameterRasterLayer('raster','Input Raster (if any)', defaultValue=rasterS, optional=True))
 
-        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csv))
+        self.addParameter(QgsProcessingParameterFileDestination('saida_csv', 'Output CSV File (Litchi)', fileFilter='CSV files (*.csv)', defaultValue=csvS))
 
     def processAlgorithm(self, parameters, context, feedback):
         teste = False # Quando True mostra camadas intermediárias
@@ -82,7 +82,6 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
-        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -155,7 +154,16 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
             raise QgsProcessingException("❌ The First Line must contain only one line.")
 
         # Grava Parâmetros
-        saveParametros("H_Sensor", parameters['altura'], parameters['velocidade'], parameters['tempo'], parameters['gimbalAng'], raster_layer, arquivo_csv, parameters['above_ground'], parameters['percL'], parameters['percF'], None, None, None, None)
+        saveParametros("H_Sensor",
+                        h=parameters['altura'],
+                        v=parameters['velocidade'],
+                        t=parameters['tempo'],
+                        gimbal=parameters['gimbalAng'],
+                        raster=raster_layer.source() if raster_layer else "",
+                        csv=arquivo_csv,
+                        abGround=parameters['aboveGround'],
+                        dl=parameters['percL'],
+                        df=parameters['percF'])
 
          # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
