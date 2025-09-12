@@ -58,9 +58,10 @@ class PlanoVoo_H_RC2(QgsProcessingAlgorithm):
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
         H = parameters['altura']
-        terrain = parameters['above_ground']
+        terrain = parameters['aboveGround']
         deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
         gimbalAng = parameters['gimbalAng']
+        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -131,7 +132,7 @@ class PlanoVoo_H_RC2(QgsProcessingAlgorithm):
                         raster=raster_layer.source() if raster_layer else "",
                         csv=arquivo_csv,
                         abGround=parameters['aboveGround'],
-                        dl=parameters['dist_lateral'])
+                        dl=parameters['dl'])
 
         # ===============================================================================
         # Reprojetar para WGS 84 (EPSG:4326), usado pelo OpenTopography

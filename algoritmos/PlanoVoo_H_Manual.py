@@ -43,7 +43,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dlM))
 
         frontal = [self.tr('Distance (meters)'), self.tr('Time (seconds)')]
-        self.addParameter(QgsProcessingParameterEnum('df_op', self.tr('Front Spacing Between Photos -- Options'), options = frontal, defaultValue= dfopM))
+        self.addParameter(QgsProcessingParameterEnum('dfOpc', self.tr('Front Spacing Between Photos -- Options'), options = frontal, defaultValue= dfopM))
         self.addParameter(QgsProcessingParameterNumber('df','Front Spacing Between Photos -- Value',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,defaultValue=dfM))
 
@@ -68,13 +68,14 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
         H = parameters['altura']
-        terrain = parameters['above_ground']
+        terrain = parameters['aboveGround']
         deltaLat = parameters['dl']          # Distância das linhas de voo paralelas - sem cálculo
-        deltaFront_op = parameters['df_op']  # Em metros ou segundos
+        deltaFrontOpc = parameters['dfOpc']  # Em metros ou segundos
         deltaFront = parameters['df']        # Espaçamento Frontal entre as fotografias- sem cálculo
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
+        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
@@ -147,13 +148,13 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
                         raster=raster_layer.source() if raster_layer else "",
                         csv=arquivo_csv,
                         abGround=parameters['aboveGround'],
-                        dl=parameters['dist_lateral'],
-                        df=parameters['dist_frontal'],
-                        dfop=parameters['dist_frontal_opcional'])
+                        dl=parameters['dl'],
+                        df=parameters['df'],
+                        dfop=parameters['dfOpc'])
         
         # ===== Sobreposições digitadas manualmente ====================================================
 
-        if deltaFront_op == 0:
+        if deltaFrontOpc == 0:
             feedback.pushInfo(f"✅ Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
         else:
             feedback.pushInfo(f"✅ Lateral Spacing: {round(deltaLat,2)}, Frontal Time: {round(deltaFront,2)}")
@@ -557,7 +558,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
             vertices_adicionados.append(QgsPointXY(ponto))  # Store vertex positions
 
         # Then, add points along the flight line
-        if deltaFront_op == 0:
+        if deltaFrontOpc == 0:
             comprimento = linha_voo_geom.length()
             distAtual = 0
 
@@ -654,7 +655,7 @@ class PlanoVoo_H_Manual(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, gimbalAng, terrain, deltaFront_op)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, gimbalAng, terrain, deltaFrontOpc)
 
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:

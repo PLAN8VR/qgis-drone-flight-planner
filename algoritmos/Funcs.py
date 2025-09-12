@@ -404,8 +404,8 @@ def duplicaPontoInicial(layer):
 
    return
 
-def saveParametros(tipoVoo, h, v, t, gimbal, raster, csv,
-                   abGround=None, dl=None, df=None, dfop=None,
+def saveParametros(tipoVoo, h, gimbal, raster, csv, 
+                   v=None, t=None, abGround=None, dl=None, df=None, dfop=None,
                    altMin=None, nPartesVC=None, dVertVC=None):
     s = QgsSettings()
     prefixo = "qgis-drone-flight-planner/"

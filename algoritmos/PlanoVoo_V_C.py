@@ -28,6 +28,7 @@ from ..images.Imgs import *
 import processing
 import os
 import math
+import numpy as np
 import csv
 
 class PlanoVoo_V_C(QgsProcessingAlgorithm):
@@ -40,10 +41,10 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double, minValue=2,defaultValue=hObjVC))
         self.addParameter(QgsProcessingParameterNumber('alturaMin','Start Height (m)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=altMinVC))
-        self.addParameter(QgsProcessingParameterNumber('num_partes','Horizontal Division into PARTS of Base Circle',
+        self.addParameter(QgsProcessingParameterNumber('numpartes','Horizontal Division into PARTS of Base Circle',
                                                        type=QgsProcessingParameterNumber.Integer, minValue=4,defaultValue=nPartesVC))
         self.addParameter(QgsProcessingParameterNumber('deltaVertical','Vertical Spacing (m)',
-                                                       type=QgsProcessingParameterNumber.Integer, minValue=0.5,defaultValue=dVertVC))
+                                                       type=QgsProcessingParameterNumber.Double, minValue=0.5,defaultValue=dVertVC))
         self.addParameter(QgsProcessingParameterNumber('velocidade','Flight Speed (m/s)',
                                                        type=QgsProcessingParameterNumber.Double, minValue=1,maxValue=20,defaultValue=velocVC))
         self.addParameter(QgsProcessingParameterNumber('tempo','Time to Wait for Photo (seconds)',
@@ -66,11 +67,12 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
 
         H = parameters['altura']
         h = parameters['alturaMin']
-        num_partes = parameters['num_partes'] # deltaH será calculado
+        numpartes = parameters['numpartes'] # deltaH será calculado
         deltaV = parameters['deltaVertical']
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
+        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações ==================================================================
@@ -138,7 +140,7 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
                         raster=raster_layer.source() if raster_layer else "",
                         csv=arquivo_csv,
                         altMin=parameters['alturaMin'],
-                        nPartesVC=parameters['num_partes'],
+                        nPartesVC=parameters['numpartes'],
                         dVertVC=parameters['deltaVertical'])
 
         # ===== Cálculos Iniciais ================================================
@@ -159,9 +161,9 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         centro = bounding_box.center()
         raio = bounding_box.width() / 2
         comprimento_circulo = circulo_base_geom.length()
-        deltaH = comprimento_circulo / num_partes
+        deltaH = comprimento_circulo / numpartes
 
-        alturas = [i for i in range(h, H + h + 1, deltaV)]
+        alturas = list(np.arange(h, H + h + deltaV, deltaV))
 
         feedback.pushInfo(f"✅ Height: {H}, Horizontal Spacing: {round(deltaH,2)}, Vertical Spacing: {deltaV}")
 
@@ -174,8 +176,8 @@ class PlanoVoo_V_C(QgsProcessingAlgorithm):
         # ===== Criar Polígono Inscrito ===========================================
         # Calcular vértices do polígono inscrito
         pontos = []
-        for i in range(num_partes):
-            angulo = math.radians(360 / num_partes * i)
+        for i in range(numpartes):
+            angulo = math.radians(360 / numpartes * i)
             x = centro.x() + raio * math.cos(angulo)
             y = centro.y() + raio * math.sin(angulo)
             pontos.append(QgsPointXY(x, y))

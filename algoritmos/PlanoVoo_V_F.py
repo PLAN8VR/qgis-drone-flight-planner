@@ -74,6 +74,7 @@ class PlanoVoo_V_F(QgsProcessingAlgorithm):
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
+        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =============================================================================

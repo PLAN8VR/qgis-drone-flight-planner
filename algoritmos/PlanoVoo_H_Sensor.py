@@ -69,7 +69,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
         H = parameters['altura']
-        terrain = parameters['above_ground']
+        terrain = parameters['aboveGround']
 
         # Drone Sensor Parameters from QGIS Settings - Calculator
         s = QgsSettings()
@@ -82,6 +82,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         velocidade = parameters['velocidade']
         tempo = parameters['tempo']
         gimbalAng = parameters['gimbalAng']
+        raster_layer = self.parameterAsRasterLayer(parameters, 'raster', context)
         arquivo_csv = self.parameterAsFile(parameters, 'saida_csv', context)
 
         # ===== Verificações =====================================================
