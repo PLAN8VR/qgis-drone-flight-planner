@@ -696,8 +696,11 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
     s = QgsSettings()
     drone = s.value("qgis-drone-flight-planner/nameDrone", "No drone defined in Calculator")
+    dc = s.value("qgis-drone-flight-planner/sensorH")
+    dl = s.value("qgis-drone-flight-planner/sensorV")
+    f = s.value("qgis-drone-flight-planner/dFocal")
     print(drone)
-    texto = f"""<h3>Selected Drone from Calculator: <b>{drone}</b></h3><p>This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and calculating lateral and frontal overlaps based on the <b>drone's sensor parameters</b>.<br>
+    texto = f"""<h3>Selected Drone from Calculator: <b>{drone}</b> \n sensor_width: {dc} mm - sensor_height: {dl} mm - focal_lenght: {f} mm</h3><p>This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and calculating lateral and frontal overlaps based on the <b>drone's sensor parameters</b>.<br>
 It generates <b>CSV</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
 <p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
 <p><b>Learn more:</b><o:p></o:p></p>
