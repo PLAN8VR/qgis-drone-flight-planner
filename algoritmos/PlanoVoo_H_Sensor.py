@@ -73,9 +73,13 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         # Drone Sensor Parameters from QGIS Settings - Calculator
         s = QgsSettings()
+        drone = s.value("qgis-drone-flight-planner/nameDrone", "No drone defined in Calculator")
         dc = s.value("qgis-drone-flight-planner/sensorH")
         dl = s.value("qgis-drone-flight-planner/sensorV")
         f = s.value("qgis-drone-flight-planner/dFocal")
+
+        feedback.pushInfo("")
+        feedback.pushInfo(f"✅ Drone {drone}: sensor_width: {dc} mm - sensor_height: {dl} mm - focal_lenght: {f} mm")
 
         percL = parameters['percL'] # Lateral
         percF = parameters['percF'] # Frontal
