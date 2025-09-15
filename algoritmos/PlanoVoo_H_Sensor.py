@@ -697,40 +697,47 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/Horizontal.png'))
-
-    s = QgsSettings()
-    drone = s.value("qgis-drone-flight-planner/nameDrone", "No drone defined in Calculator")
-    dc = s.value("qgis-drone-flight-planner/sensorH")
-    dl = s.value("qgis-drone-flight-planner/sensorV")
-    f = s.value("qgis-drone-flight-planner/dFocal")
-    print(drone)
-    texto = f"""<h3>Selected Drone from Calculator: <b>{drone}</b> \n sensor_width: {dc} mm - sensor_height: {dl} mm - focal_lenght: {f} mm</h3><p>This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and calculating lateral and frontal overlaps based on the <b>drone's sensor parameters</b>.<br>
-It generates <b>CSV</b> file compatible with the <b>Litchi app</b> and 2 Layers - <b>Flight Line</b> and <b>Photos Points</b>.
-<p>It can also be used with other flight applications, utilizing the 2 genereted Layers for flight lines and waypoints.</p>
-<p><b>Learn more:</b><o:p></o:p></p>
-<ul style="margin-top: 0cm;" type="disc">
-   <li><a href="https://geoone.com.br/pvplanodevoo">Sign up for GeoFlight Planner course</a><o:p></o:p></li>
-   <li><a href="https://portal.geoone.com.br/m/lessons/planodevoo?classId=5679">Click here to access the class with all the details about this tool!</a><o:p></o:p></li>
-</ul>
-<p><b>Tips:</b><o:p></o:p></p>
-<ul style="margin-top: 0cm;" type="disc">
-  <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a><o:p></o:p></li>
-  <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a><o:p></o:p></span></li>
-</ul>
-"""
-
+    
     figura2 = 'images/Terrain_Follow.jpg'
 
     def shortHelpString(self):
-        corpo = '''<div align="center">
-                      <img src="'''+ os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figura2) +'''">
-                      </div>
-                      <div align="right">
-                      <p align="right">
-                      <b>Autores: Prof Cazaroli & Leandro França</b>
-                      </p>
-                      <a target="_blank" rel="noopener noreferrer" href="https://geoone.com.br/"><img title="GeoOne" src="data:image/png;base64,'''+ GeoOne +'''"></a>
-					  <p><i>"Automated, easy and straight to the point mapping is at GeoOne!"</i></p>
-                      </div>
-                    </div>'''
-        return self.tr(self.texto) + corpo
+        s = QgsSettings()
+        drone = s.value("qgis-drone-flight-planner/nameDrone", "No drone defined in Calculator")
+        dc = s.value("qgis-drone-flight-planner/sensorH", "–")
+        dl = s.value("qgis-drone-flight-planner/sensorV", "–")
+        f = s.value("qgis-drone-flight-planner/dFocal", "–")
+
+        texto = f"""
+        <h3>Selected Drone from Calculator: <b style="font-size: 150%;">{drone}</b></h3>
+        <p><b>Sensor Width:</b> {dc} mm &nbsp;&nbsp; <b>Sensor Height:</b> {dl} mm &nbsp;&nbsp; <b>Focal Length:</b> {f} mm</p>
+        <p>This tool enables drone flight planning for photogrammetry, following terrain elevations (optionally), and calculating lateral and frontal overlaps based on the <b>drone's sensor parameters</b>.</p>
+        <p>It generates a <b>CSV</b> file compatible with the <b>Litchi app</b> and two layers: <b>Flight Line</b> and <b>Photo Points</b>.</p>
+        <p>It can also be used with other flight applications, utilizing the generated layers for flight lines and waypoints.</p>
+
+        <p><b>Learn more:</b></p>
+        <ul>
+            <li><a href="https://geoone.com.br/pvplanodevoo">Sign up for GeoFlight Planner course</a></li>
+            <li><a href="https://portal.geoone.com.br/m/lessons/planodevoo?classId=5679">Click here to access the class with all the details about this tool!</a></li>
+        </ul>
+
+        <p><b>Tips:</b></p>
+        <ul>
+            <li><a href="https://geoone.com.br/plano-de-voo-para-drone-com-python/#sensor">Check your drone sensor parameters</a></li>
+            <li><a href="https://geoone.com.br/opentopography-qgis/">Obtain the MDE for the Open Topography plugin</a></li>
+        </ul>
+        """
+
+        corpo = f'''
+        <div align="center">
+            <img src="{os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figura2)}">
+        </div>
+        <div align="right">
+            <p><b>Autores: Prof Cazaroli & Leandro França</b></p>
+            <a target="_blank" rel="noopener noreferrer" href="https://geoone.com.br/">
+                <img title="GeoOne" src="data:image/png;base64,{GeoOne}">
+            </a>
+            <p><i>"Automated, easy and straight to the point mapping is at GeoOne!"</i></p>
+        </div>
+        '''
+
+        return self.tr(texto) + corpo

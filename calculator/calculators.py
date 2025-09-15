@@ -218,7 +218,7 @@ class Calculator_Dialog(QDialog):
         selected = self.droneCombo.currentText()
         return self.drone_data.get(selected)
 
-    def _update_sensor_info(self):
+    def _update_sensor_info(self): # Info Data Drone selected for Table Data 
         selected = self.droneCombo.currentText()
         self.table.setRowCount(0)
         self.saveButton.setVisible(selected == "Custom")
@@ -250,7 +250,7 @@ class Calculator_Dialog(QDialog):
                     value_item.setFlags(value_item.flags() & ~Qt.ItemIsEditable)
                 self.table.setItem(row, 1, value_item)
 
-    def _save_custom_drone(self):
+    def _save_custom_drone(self): # Save Custom Drone in JSON file
         custom_specs = {}
         for row in range(self.table.rowCount()):
             key_item = self.table.item(row, 0)
@@ -276,7 +276,7 @@ class Calculator_Dialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save custom drone data:\n{e}")
             
-    def _save_to_qgis_environment(self):
+    def _save_to_qgis_environment(self): # Save Data for Flighting
         selected = self.droneCombo.currentText()
         if selected == "--- Select a Drone Model ---":
             QMessageBox.warning(self, "Warning", "Please select a valid drone model.")
