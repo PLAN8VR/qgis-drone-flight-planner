@@ -216,12 +216,12 @@
         "max_angle_cam": 0
     },
     "Custom": {
-        "sensor_width": 15.0,
-        "sensor_height": 15.0,
-        "focal_length": 10.0,
-        "image_width": 0.0,
-        "image_height": 0.0,
+        "sensor_width": 10.7,
+        "sensor_height": 10.8,
+        "focal_length": 10.9,
+        "image_width": 7000.0,
+        "image_height": 7000.0,
         "min_angle_cam": -90.0,
-        "max_angle_cam": 50.0
+        "max_angle_cam": 40.0
     }
 }

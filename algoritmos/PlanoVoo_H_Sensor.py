@@ -91,6 +91,10 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         # ===== Verificações =====================================================
 
+        # Verificar Drone selecionado
+        if drone == "":
+            raise QgsProcessingException("❌ Drone is not selected!")
+        
         # Verificar se as camadas estão salvas e fora da edição
         for lyr, nome in [(area_layer, 'Area'), (primeira_linha, 'First line')]:
             if lyr.isEditable():
