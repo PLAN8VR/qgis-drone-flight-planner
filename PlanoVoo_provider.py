@@ -27,7 +27,7 @@ from .algoritmos.PlanoVoo_H_RC2 import PlanoVoo_H_RC2
 from .algoritmos.PlanoVoo_H_Manual import PlanoVoo_H_Manual
 from .algoritmos.PlanoVoo_V_F import PlanoVoo_V_F
 from .algoritmos.PlanoVoo_V_C import PlanoVoo_V_C
-from .algoritmos.PlanoVoo_H_Simplified import PlanoVoo_H_Simplified
+from .algoritmos.CSV_Simplify import CSV_Simplify
 
 class PlanoVooProvider(QgsProcessingProvider):
     def __init__(self):
@@ -42,7 +42,7 @@ class PlanoVooProvider(QgsProcessingProvider):
         self.addAlgorithm(PlanoVoo_H_Manual())
         self.addAlgorithm(PlanoVoo_V_C())
         self.addAlgorithm(PlanoVoo_V_F())
-        self.addAlgorithm(PlanoVoo_H_Simplified())
+        self.addAlgorithm(CSV_Simplify())
 
     def id(self):
         return 'GeoFlightPlanner'
