@@ -23,10 +23,11 @@ from qgis.PyQt.QtGui import QIcon
 
 # Importa os algoritmos
 from .algoritmos.PlanoVoo_H_Sensor import PlanoVoo_H_Sensor
-from .algoritmos.PlanoVoo_H_Manual import PlanoVoo_H_Manual
 from .algoritmos.PlanoVoo_H_RC2 import PlanoVoo_H_RC2
+from .algoritmos.PlanoVoo_H_Manual import PlanoVoo_H_Manual
 from .algoritmos.PlanoVoo_V_F import PlanoVoo_V_F
 from .algoritmos.PlanoVoo_V_C import PlanoVoo_V_C
+from .algoritmos.PlanoVoo_H_Simplified import PlanoVoo_H_Simplified
 
 class PlanoVooProvider(QgsProcessingProvider):
     def __init__(self):
@@ -36,11 +37,12 @@ class PlanoVooProvider(QgsProcessingProvider):
         pass
 
     def loadAlgorithms(self):
-        self.addAlgorithm(PlanoVoo_H_Manual())
-        self.addAlgorithm(PlanoVoo_H_RC2())
         self.addAlgorithm(PlanoVoo_H_Sensor())
+        self.addAlgorithm(PlanoVoo_H_RC2())
+        self.addAlgorithm(PlanoVoo_H_Manual())
         self.addAlgorithm(PlanoVoo_V_C())
         self.addAlgorithm(PlanoVoo_V_F())
+        self.addAlgorithm(PlanoVoo_H_Simplified())
 
     def id(self):
         return 'GeoFlightPlanner'

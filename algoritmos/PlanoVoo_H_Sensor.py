@@ -68,15 +68,15 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
 
         camadaMDE = self.parameterAsRasterLayer(parameters, 'raster', context)
 
-        H = parameters['altura']
+        altVoo = parameters['altura']
         terrain = parameters['aboveGround']
 
         # Drone Sensor Parameters from QGIS Settings - Calculator
         s = QgsSettings()
         drone = s.value("qgis-drone-flight-planner/nameDrone", "No drone defined in Calculator")
-        dc = s.value("qgis-drone-flight-planner/sensorH")
-        dl = s.value("qgis-drone-flight-planner/sensorV")
-        f = s.value("qgis-drone-flight-planner/dFocal")
+        dc = float(s.value("qgis-drone-flight-planner/sensorH"))
+        dl = float(s.value("qgis-drone-flight-planner/sensorV"))
+        f = float(s.value("qgis-drone-flight-planner/dFocal"))
 
         feedback.pushInfo("")
         feedback.pushInfo(f"✅ Drone {drone}: sensor_width: {dc} mm - sensor_height: {dl} mm - focal_lenght: {f} mm")
@@ -177,17 +177,17 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
          # =====Cálculo das Sobreposições=========================================
         # Distância das linhas de voo paralelas - Espaçamento Lateral
         tg_alfa_2 = dc / (2 * f)
-        D_lat = dc * H / f
+        D_lat = dc * altVoo / f
         SD_lat = percL * D_lat
         h1 = SD_lat / (2 * tg_alfa_2)
-        deltaLat = SD_lat * (H / h1 - 1)
+        deltaLat = SD_lat * (altVoo / h1 - 1)
 
         # Espaçamento Frontal entre as fotografias- Espaçamento Frontal
         tg_alfa_2 = dl / (2 * f)
-        D_front = dl * H / f
+        D_front = dl * altVoo / f
         SD_front = percF * D_front
         h1 = SD_front / (2 * tg_alfa_2)
-        deltaFront = SD_front * (H / h1 - 1)
+        deltaFront = SD_front * (altVoo / h1 - 1)
 
         feedback.pushInfo(f"✅ Lateral Spacing: {round(deltaLat,2)}, Frontal Spacing: {round(deltaFront,2)}")
 
@@ -538,7 +538,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         linha_voo_feature = QgsFeature()
         linha_voo_feature.setFields(linha_voo_layer.fields())
         linha_voo_feature.setAttribute("id", 1)
-        linha_voo_feature.setAttribute("height", H)
+        linha_voo_feature.setAttribute("height", altVoo)
         linha_voo_feature.setGeometry(linha_unica)
         linha_provider.addFeature(linha_voo_feature)
 
@@ -551,7 +551,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         linha_voo_reproj = set_Z_value(linha_voo_reproj, z_field="height")
 
         # Configurar simbologia de seta
-        simbologiaLinhaVoo('H', linha_voo_reproj)
+        simbologiaLinhaVoo('altVoo', linha_voo_reproj)
 
         # ===== LINHA VOO =================================
         QgsProject.instance().addMapLayer(linha_voo_reproj)
@@ -626,12 +626,12 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
                 # Obter o valor de Z do MDE
                 value, result = camadaMDE.dataProvider().sample(point_transf, 1)  # Resolução = 1
                 if result:
-                    f["altitude"] = value + H
-                    f["height"] = H
+                    f["altitude"] = value + altVoo
+                    f["height"] = altVoo
                     pontos_fotos.updateFeature(f)
         else:
             for f in pontos_fotos.getFeatures():
-                f["height"] = H
+                f["height"] = altVoo
                 pontos_fotos.updateFeature(f)
 
         pontos_fotos.commitChanges()
@@ -661,7 +661,7 @@ class PlanoVoo_H_Sensor(QgsProcessingAlgorithm):
         feedback.pushInfo("")
 
         if arquivo_csv and arquivo_csv.endswith('.csv'): # Verificar se o caminho CSV está preenchido
-            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, H, gimbalAng, terrain)
+            gerar_CSV("H", pontos_reproj, arquivo_csv, velocidade, tempo, deltaFront, 360, altVoo, gimbalAng, terrain)
 
             feedback.pushInfo("✅ CSV file successfully generated.")
         else:

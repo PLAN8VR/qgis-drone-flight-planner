@@ -289,7 +289,7 @@ def simbologiaPontos(layer):
 
    return
 
-def verificar_plugins(plugins_list, feedback=None): # Não está sendo usada
+def verificar_plugins(plugins_list, feedback=None):
     # Obter a lista de todos os plugins instalados
     installed_plugins = qgis.utils.plugins.keys()
 
@@ -404,9 +404,10 @@ def duplicaPontoInicial(layer):
 
    return
 
-def saveParametros(tipoVoo, h, gimbal, raster, csv, 
+def saveParametros(tipoVoo, h=None, gimbal=None, raster=None, csv=None, 
                    v=None, t=None, abGround=None, dl=None, df=None, dfop=None,
-                   altMin=None, nPartesVC=None, dVertVC=None):
+                   altMin=None, nPartesVC=None, dVertVC=None, csvI=None, crs=None, 
+                   tol=None, add1=None, add2=None, add3=None):
     s = QgsSettings()
     prefixo = "qgis-drone-flight-planner/"
 
@@ -462,6 +463,16 @@ def saveParametros(tipoVoo, h, gimbal, raster, csv,
         s.setValue(prefixo + "gimbalVC", gimbal)
         s.setValue(prefixo + "rasterVC", raster)
         s.setValue(prefixo + "csvVC", csv)
+
+    elif tipoVoo == "H_Simplified":
+        s.setValue(prefixo + "csvInSimplified", csvI)
+        s.setValue(prefixo + "csvOutSimplified", csv)
+        s.setValue(prefixo + "rasterSimplified", raster)
+        s.setValue(prefixo + "CRSSimplified", crs)
+        s.setValue(prefixo + "toleranceSimplified", tol)
+        s.setValue(prefixo + "addPCsvSimplified", add1)
+        s.setValue(prefixo + "addPSimplified", add2)
+        s.setValue(prefixo + "addLSimplified", add3)
 
 def loadParametros(tipoVoo):
     s = QgsSettings()
@@ -528,6 +539,17 @@ def loadParametros(tipoVoo):
             s.value(prefixo + "gimbalVC", 0),
             s.value(prefixo + "rasterVC", ""),
             s.value(prefixo + "csvVC", "")
+        )
+    elif tipoVoo == "H_Simplified":
+        return (
+            s.value(prefixo + "csvInSimplified", ""),
+            s.value(prefixo + "csvOutSimplified", ""),
+            s.value(prefixo + "rasterSimplified", ""),
+            s.value(prefixo + "CRSSimplified", "EPSG:31983"),
+            s.value(prefixo + "toleranceSimplified", 15.0),
+            s.value(prefixo + "addPCsvSimplified", False),
+            s.value(prefixo + "addPSimplified", False),
+            s.value(prefixo + "addLSimplified", False)
         )
 
 def removeLayersReproj(txtFinal):
