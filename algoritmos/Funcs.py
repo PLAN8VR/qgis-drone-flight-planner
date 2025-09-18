@@ -545,7 +545,6 @@ def loadParametros(tipoVoo):
             s.value(prefixo + "csvInSimplified", ""),
             s.value(prefixo + "csvOutSimplified", ""),
             s.value(prefixo + "rasterSimplified", ""),
-            s.value(prefixo + "CRSSimplified", "EPSG:31983"),
             s.value(prefixo + "toleranceSimplified", 15.0),
             s.value(prefixo + "addPCsvSimplified", False),
             s.value(prefixo + "addPSimplified", False),
