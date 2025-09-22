@@ -52,7 +52,7 @@ class GeoFlightPlanner:
         # Create submenus
         horizontal_menu = QMenu("Horizontal Flight Plan", self.menu)
         vertical_menu = QMenu("Vertical Flight Plan", self.menu)
-        simplified_menu = QMenu("Simplified Flights", self.menu)
+        csv_menu = QMenu("CSV Tools", self.menu)
 
         # Add Calculator action directly to main menu
         self._add_action("GSD and Overlap - Mission Calculator...", self._open_calculator, icon_path=os.path.join(icon_dir, "calculator.png"))
@@ -67,12 +67,12 @@ class GeoFlightPlanner:
         self._add_action("Facade", lambda: self._run_algorithm("Flight_Plan_V_F"), vertical_menu, os.path.join(icon_dir, "Vertical.png"))
 
          # Add Simplified submenu actions
-        self._add_action("Horizontal Flight Simplified", lambda: self._run_algorithm("Flight_Plan_H_Simp"), simplified_menu, os.path.join(icon_dir, "Horizontal.png"))
+        self._add_action("Simplify Waypoints", lambda: self._run_algorithm('SimplifyWaypoints'.lower()), csv_menu, os.path.join(icon_dir, "CSV.png"))
 
         # Add submenus to main menu
         self.menu.addMenu(horizontal_menu)
         self.menu.addMenu(vertical_menu)
-        self.menu.addMenu(simplified_menu)
+        self.menu.addMenu(csv_menu)
 
     def unload(self):
         for action in self.actions:
