@@ -22,6 +22,8 @@ from qgis.PyQt.QtWidgets import QAction, QMenu, QMessageBox
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import QgsApplication
 from qgis.utils import iface
+from .algoritmos.PlanoVoo_H_Grid import PlanoVoo_H_Grid
+
 
 from .PlanoVoo_provider import PlanoVooProvider
 
