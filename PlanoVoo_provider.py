@@ -39,6 +39,7 @@ class PlanoVooProvider(QgsProcessingProvider):
 
     def loadAlgorithms(self):
         self.addAlgorithm(PlanoVoo_H_Sensor())
+        self.addAlgorithm(PlanoVoo_H_Grid())
         self.addAlgorithm(PlanoVoo_H_RC2())
         self.addAlgorithm(PlanoVoo_H_Manual())
         self.addAlgorithm(PlanoVoo_V_C())
