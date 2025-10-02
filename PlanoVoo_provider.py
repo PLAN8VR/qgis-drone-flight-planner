@@ -23,6 +23,7 @@ from qgis.PyQt.QtGui import QIcon
 
 # Importa os algoritmos
 from .algoritmos.PlanoVoo_H_Sensor import PlanoVoo_H_Sensor
+from .algoritmos.PlanoVoo_H_Grid import PlanoVoo_H_Grid
 from .algoritmos.PlanoVoo_H_RC2 import PlanoVoo_H_RC2
 from .algoritmos.PlanoVoo_H_Manual import PlanoVoo_H_Manual
 from .algoritmos.PlanoVoo_V_F import PlanoVoo_V_F
